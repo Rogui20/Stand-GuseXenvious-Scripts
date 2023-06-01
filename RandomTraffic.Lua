@@ -447,6 +447,38 @@ menu.toggle(VehModelsOnly, "Allow Helicopters", {}, "", function(toggle)
 	end
 end, AllowHelis)
 
+local AllowBlimps = true
+menu.toggle(VehModelsOnly, "Allow Blimps", {}, "", function(toggle)
+	AllowBlimps = toggle
+	if AllowBlimps then
+		for i = 1, #AllGameVehs do
+			AllGameVehs[i] = nil
+		end
+		for index, vehmodels in pairs(AllowedVehicles) do
+			if util.is_this_model_a_blimp(joaat(vehmodels.Name)) then
+				vehmodels.Allowed = true
+			end
+			if vehmodels.Allowed then
+				AllGameVehs[1 + #AllGameVehs] = vehmodels.Name
+			end
+		end
+	end
+	if not AllowBlimps then
+		for i = 1, #AllGameVehs do
+			AllGameVehs[i] = nil
+		end
+		for index, vehmodels in pairs(AllowedVehicles) do
+			if util.is_this_model_a_blimp(joaat(vehmodels.Name)) then
+				vehmodels.Allowed = false
+			end
+			if vehmodels.Allowed then
+				AllGameVehs[1 + #AllGameVehs] = vehmodels.Name
+			end
+		end
+	end
+end, AllowBlimps)
+
+
 local AllowBoats = true
 menu.toggle(VehModelsOnly, "Allow Boats", {}, "", function(toggle)
 	AllowBoats = toggle
@@ -659,6 +691,21 @@ menu.toggle(OptionsMenu, "More Traffic", {}, "", function(toggle)
 	MoreTraffic = toggle
 end, MoreTraffic)
 
+local PlaneMode = false
+menu.toggle(OptionsMenu, "Plane Mode", {}, "", function(toggle)
+	PlaneMode = toggle
+end, PlaneMode)
+
+local PlaneModeWithTask = true
+menu.toggle(OptionsMenu, "Plane Mode With Task", {}, "", function(toggle)
+	PlaneModeWithTask = toggle
+end, PlaneModeWithTask)
+
+local PlaneModeSetSpeed = true
+menu.toggle(OptionsMenu, "Plane Mode Set Speed", {}, "", function(toggle)
+	PlaneModeSetSpeed = toggle
+end, PlaneModeSetSpeed)
+
 local DeleteEmptyVehs = true
 menu.toggle(OptionsMenu, "Delete if empty for long", {}, "", function(toggle)
 	DeleteEmptyVehs = toggle
@@ -865,7 +912,11 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 								end
 								DECORATOR.DECOR_SET_INT(passengers.Handle, "Casino_Game_Info_Decorator", 31)
 								TASK.TASK_LEAVE_VEHICLE(passengers.Handle, CreatedVehs[i].OldVehicle, 16)
-								ENTITY.SET_ENTITY_COORDS(passengers.Handle, VehPos.x, VehPos.y, VehPos.z + 50.0)
+								if PlaneMode then
+									ENTITY.SET_ENTITY_COORDS(passengers.Handle, VehPos.x, VehPos.y, VehPos.z)
+								else
+									ENTITY.SET_ENTITY_COORDS(passengers.Handle, VehPos.x, VehPos.y, VehPos.z + 50.0)
+								end
 								--ENTITY.FREEZE_ENTITY_POSITION(passengers.Handle, true)
 								if not PED.IS_PED_IN_VEHICLE(passengers.Handle, CreatedVehs[i].OldVehicle, false) then
 									CreatedVehs[i].OutsideVehCount = CreatedVehs[i].OutsideVehCount + 1
@@ -894,6 +945,9 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 											local VehHealth = ENTITY.GET_ENTITY_HEALTH(CreatedVehs[i].OldVehicle)
 											local VehMaxHealth = ENTITY.GET_ENTITY_MAX_HEALTH(CreatedVehs[i].OldVehicle)
 											local VehSpeed = ENTITY.GET_ENTITY_SPEED(CreatedVehs[i].OldVehicle)
+											if PlaneMode then
+												VehPos.z = VehPos.z + 50.0
+											end
 										
 											NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].OldVehicle)
 											
@@ -932,7 +986,12 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 														if VEHICLE.IS_VEHICLE_SEAT_FREE(NewVeh, passengers.SeatIndex, false) then
 															PED.SET_PED_INTO_VEHICLE(passengers.Handle, CreatedVehs[i].Handle, passengers.SeatIndex)
 															if passengers.Handle ~= PlayerPed then
-																TASK.TASK_VEHICLE_DRIVE_WANDER(passengers.Handle, NewVeh, 30.0, 1)
+																if PlaneModeWithTask then
+																	local Coords = ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(NewVeh, math.random(-1000, 1000), 1000.0, 0.0)
+																	TASK.TASK_VEHICLE_DRIVE_TO_COORD(passengers.Handle, NewVeh, Coords.x, Coords.y, Coords.z, 30.0, 0, ENTITY.GET_ENTITY_MODEL(NewVeh), 1, 10.0, 1.0)
+																else
+																	TASK.TASK_VEHICLE_DRIVE_WANDER(passengers.Handle, NewVeh, 30.0, 1)
+																end
 															end
 														else
 															entities.delete_by_handle(passengers.Handle)
@@ -942,11 +1001,15 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 																util.remove_blip(CreatedVehs[i].Blip)
 															end
 															NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(NewVeh)
+															DECORATOR.DECOR_SET_INT(NewVeh, "Casino_Game_Info_Decorator", 32)
 															entities.delete_by_handle(NewVeh)
 															entities.delete_by_handle(passengers.Handle)
 														end
 													end
 												end
+											end
+											if PlaneModeSetSpeed then
+												VEHICLE.SET_VEHICLE_FORWARD_SPEED(NewVeh, 40.0)
 											end
 											if ENTITY.DOES_ENTITY_EXIST(CreatedVehs[i].OldVehicle) then
 												NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].OldVehicle)
@@ -1021,6 +1084,7 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 															util.remove_blip(CreatedVehs[i].Blip)
 														end
 														NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].Handle)
+														DECORATOR.DECOR_SET_INT(CreatedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
 														entities.delete_by_handle(CreatedVehs[i].Handle)
 													end
 												end
@@ -1042,16 +1106,16 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 				end
 				if CreatedVehs[i].HasCreatedVeh or CreatedVehs[i].HandleZeroTick >= 100 and CreatedVehs[i].HasSetPedsIntoVeh then
 					if CreatedVehs[i].Handle ~= 0 then
-						local HavedPassengers = false
+						local ShouldDelete = false
 						if #CreatedVehs[i].Passengers > 0 then
 							if VEHICLE.GET_VEHICLE_NUMBER_OF_PASSENGERS(CreatedVehs[i].Handle, true, true) == 0 then
 								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].Handle)
 								DECORATOR.DECOR_SET_INT(CreatedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
+								ShouldDelete = true
 							end
-							HavedPassengers = true
 						end
 						ReplacedVehs[1 + #ReplacedVehs] = {Handle = CreatedVehs[i].Handle, DeadTick = 0,
-						AwayTick = 0, Count = 0, Tick = 0, CloserCount = 0, Blip = CreatedVehs[i].Blip, HavedPassengers = HavedPassengers}
+						AwayTick = 0, Count = 0, Tick = 0, CloserCount = 0, Blip = CreatedVehs[i].Blip, HavedPassengers = ShouldDelete}
 					end
 					CreatedVehs[i].Handle = nil
 					CreatedVehs[i].Tick = nil
@@ -1158,6 +1222,21 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 						else
 							ReplacedVehs[i].Tick = 0
 						end
+					end
+					if ReplacedVehs[i].HavedPassengers then
+						if ReplacedVehs[i].Blip ~= 0 then
+							util.remove_blip(ReplacedVehs[i].Blip)
+						end
+						for k = 1, #PlayerInVehCount do
+							if ENTITY.DOES_ENTITY_EXIST(PlayerInVehCount[k]) then
+								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(PlayerInVehCount[k])
+								DECORATOR.DECOR_SET_INT(PlayerInVehCount[k], "Casino_Game_Info_Decorator", 32)
+								entities.delete_by_handle(PlayerInVehCount[k])
+							end
+						end
+						NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(ReplacedVehs[i].Handle)
+						DECORATOR.DECOR_SET_INT(ReplacedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
+						entities.delete_by_handle(ReplacedVehs[i].Handle)
 					end
 					if #ReplacedVehs > 50 then
 						if DeleteNotOnScreen then
@@ -1393,12 +1472,16 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 							for index, passengers in pairs(CreatedVehs[i].Passengers) do
 								local VehPos = ENTITY.GET_ENTITY_COORDS(CreatedVehs[i].OldVehicle)
 								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(passengers.Handle)
-								DECORATOR.DECOR_SET_INT(passengers.Handle, "Casino_Game_Info_Decorator", 31)
 								if MoreTraffic then
 									ENTITY.SET_ENTITY_AS_MISSION_ENTITY(passengers.Handle, true, false)
 								end
+								DECORATOR.DECOR_SET_INT(passengers.Handle, "Casino_Game_Info_Decorator", 31)
 								TASK.TASK_LEAVE_VEHICLE(passengers.Handle, CreatedVehs[i].OldVehicle, 16)
-								ENTITY.SET_ENTITY_COORDS(passengers.Handle, VehPos.x, VehPos.y, VehPos.z + 50.0)
+								if PlaneMode then
+									ENTITY.SET_ENTITY_COORDS(passengers.Handle, VehPos.x, VehPos.y, VehPos.z)
+								else
+									ENTITY.SET_ENTITY_COORDS(passengers.Handle, VehPos.x, VehPos.y, VehPos.z + 50.0)
+								end
 								--ENTITY.FREEZE_ENTITY_POSITION(passengers.Handle, true)
 								if not PED.IS_PED_IN_VEHICLE(passengers.Handle, CreatedVehs[i].OldVehicle, false) then
 									CreatedVehs[i].OutsideVehCount = CreatedVehs[i].OutsideVehCount + 1
@@ -1427,18 +1510,25 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 											local VehHealth = ENTITY.GET_ENTITY_HEALTH(CreatedVehs[i].OldVehicle)
 											local VehMaxHealth = ENTITY.GET_ENTITY_MAX_HEALTH(CreatedVehs[i].OldVehicle)
 											local VehSpeed = ENTITY.GET_ENTITY_SPEED(CreatedVehs[i].OldVehicle)
+											if PlaneMode then
+												VehPos.z = VehPos.z + 50.0
+											end
 										
 											NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].OldVehicle)
 											
 											local NewVeh = entities.create_vehicle(LastRequestedModel, VehPos, VehHeading)
 											NetworkEntityVeh(NewVeh)
 											DECORATOR.DECOR_SET_INT(NewVeh, "Casino_Game_Info_Decorator", 31)
+											--local EntNetID = NETWORK.VEH_TO_NET(NewVeh)
+											--NETWORK.SET_NETWORK_ID_EXISTS_ON_ALL_MACHINES(EntNetID, true)
+											--NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(EntNetID, PLAYER.PLAYER_ID(), true)
 											ENTITY.SET_ENTITY_MAX_HEALTH(NewVeh, VehMaxHealth)
 											ENTITY.SET_ENTITY_HEALTH(NewVeh, VehHealth)
 											VEHICLE.SET_VEHICLE_FORWARD_SPEED(NewVeh, VehSpeed)
 											ENTITY.SET_ENTITY_SHOULD_FREEZE_WAITING_ON_COLLISION(NewVeh, true)
 											
 											if NewVeh ~= 0 then
+												--Print("New Veh Is ".. NewVeh)
 												CreatedVehs[i].Handle = NewVeh
 												CreatedVehs[i].HasCreatedVeh = true
 												CreatedVehs[i].IsDeletingOldVeh = true
@@ -1456,12 +1546,17 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 												for index, passengers in pairs(CreatedVehs[i].Passengers) do
 													if passengers ~= nil then
 														NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(passengers.Handle)
-														DECORATOR.DECOR_SET_INT(passengers.Handle, "Casino_Game_Info_Decorator", 31)
 														ENTITY.FREEZE_ENTITY_POSITION(passengers.Handle, false)
+														DECORATOR.DECOR_SET_INT(passengers.Handle, "Casino_Game_Info_Decorator", 31)
 														if VEHICLE.IS_VEHICLE_SEAT_FREE(NewVeh, passengers.SeatIndex, false) then
 															PED.SET_PED_INTO_VEHICLE(passengers.Handle, CreatedVehs[i].Handle, passengers.SeatIndex)
 															if passengers.Handle ~= PlayerPed then
-																TASK.TASK_VEHICLE_DRIVE_WANDER(passengers.Handle, NewVeh, 30.0, 1)
+																if PlaneModeWithTask then
+																	local Coords = ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(NewVeh, math.random(-1000, 1000), 1000.0, 0.0)
+																	TASK.TASK_VEHICLE_DRIVE_TO_COORD(passengers.Handle, NewVeh, Coords.x, Coords.y, Coords.z, 30.0, 0, ENTITY.GET_ENTITY_MODEL(NewVeh), 1, 10.0, 1.0)
+																else
+																	TASK.TASK_VEHICLE_DRIVE_WANDER(passengers.Handle, NewVeh, 30.0, 1)
+																end
 															end
 														else
 															entities.delete_by_handle(passengers.Handle)
@@ -1471,11 +1566,15 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 																util.remove_blip(CreatedVehs[i].Blip)
 															end
 															NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(NewVeh)
+															DECORATOR.DECOR_SET_INT(NewVeh, "Casino_Game_Info_Decorator", 32)
 															entities.delete_by_handle(NewVeh)
 															entities.delete_by_handle(passengers.Handle)
 														end
 													end
 												end
+											end
+											if PlaneModeSetSpeed then
+												VEHICLE.SET_VEHICLE_FORWARD_SPEED(NewVeh, 40.0)
 											end
 											if ENTITY.DOES_ENTITY_EXIST(CreatedVehs[i].OldVehicle) then
 												NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].OldVehicle)
@@ -1522,6 +1621,7 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 										if not PED.IS_PED_IN_VEHICLE(passengers.Handle, CreatedVehs[i].Handle, false) then
 											CreatedVehs[i].SetInVehTick = CreatedVehs[i].SetInVehTick + 1
 											NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(passengers.Handle)
+											DECORATOR.DECOR_SET_INT(passengers.Handle, "Casino_Game_Info_Decorator", 31)
 											ENTITY.FREEZE_ENTITY_POSITION(passengers.Handle, false)
 											if VEHICLE.IS_VEHICLE_SEAT_FREE(CreatedVehs[i].Handle, passengers.SeatIndex, false) then
 												PED.SET_PED_INTO_VEHICLE(passengers.Handle, CreatedVehs[i].Handle, passengers.SeatIndex)
@@ -1549,6 +1649,7 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 															util.remove_blip(CreatedVehs[i].Blip)
 														end
 														NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].Handle)
+														DECORATOR.DECOR_SET_INT(CreatedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
 														entities.delete_by_handle(CreatedVehs[i].Handle)
 													end
 												end
@@ -1570,16 +1671,16 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 				end
 				if CreatedVehs[i].HasCreatedVeh or CreatedVehs[i].HandleZeroTick >= 100 and CreatedVehs[i].HasSetPedsIntoVeh then
 					if CreatedVehs[i].Handle ~= 0 then
-						local HavedPassengers = false
+						local ShouldDelete = false
 						if #CreatedVehs[i].Passengers > 0 then
 							if VEHICLE.GET_VEHICLE_NUMBER_OF_PASSENGERS(CreatedVehs[i].Handle, true, true) == 0 then
-								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].OldVehicle)
+								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].Handle)
 								DECORATOR.DECOR_SET_INT(CreatedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
+								ShouldDelete = true
 							end
-							HavedPassengers = true
 						end
 						ReplacedVehs[1 + #ReplacedVehs] = {Handle = CreatedVehs[i].Handle, DeadTick = 0,
-						AwayTick = 0, Count = 0, Tick = 0, CloserCount = 0, Blip = CreatedVehs[i].Blip, HavedPassengers = HavedPassengers}
+						AwayTick = 0, Count = 0, Tick = 0, CloserCount = 0, Blip = CreatedVehs[i].Blip, HavedPassengers = ShouldDelete}
 					end
 					CreatedVehs[i].Handle = nil
 					CreatedVehs[i].Tick = nil
@@ -1687,6 +1788,21 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 							ReplacedVehs[i].Tick = 0
 						end
 					end
+					if ReplacedVehs[i].HavedPassengers then
+						if ReplacedVehs[i].Blip ~= 0 then
+							util.remove_blip(ReplacedVehs[i].Blip)
+						end
+						for k = 1, #PlayerInVehCount do
+							if ENTITY.DOES_ENTITY_EXIST(PlayerInVehCount[k]) then
+								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(PlayerInVehCount[k])
+								DECORATOR.DECOR_SET_INT(PlayerInVehCount[k], "Casino_Game_Info_Decorator", 32)
+								entities.delete_by_handle(PlayerInVehCount[k])
+							end
+						end
+						NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(ReplacedVehs[i].Handle)
+						DECORATOR.DECOR_SET_INT(ReplacedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
+						entities.delete_by_handle(ReplacedVehs[i].Handle)
+					end
 					if #ReplacedVehs > 50 then
 						if DeleteNotOnScreen then
 							if not ENTITY.IS_ENTITY_ON_SCREEN(ReplacedVehs[i].Handle) and
@@ -1732,6 +1848,7 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 					--ReplacedVehs[i].Count = nil
 					--ReplacedVehs[i].Tick = nil
 					--ReplacedVehs[i].Blip = nil
+					--ReplacedVehs[i].HavedPassengers = nil
 					--ReplacedVehs[i] = nil
 				end
 			end
@@ -1803,20 +1920,26 @@ menu.toggle(MiscMenu, "Goku Anti Aim", {"gokutp"}, "Goku Teleport Behind enemy",
 	GokuAntiAim = toggle
 	while GokuAntiAim do
 		Wait()
+		local PlayerPed = PLAYER.PLAYER_PED_ID()
 		for k, peds in pairs(entities.get_all_peds_as_handles()) do
-			if PED.IS_PED_IN_COMBAT(peds, PLAYER.PLAYER_PED_ID()) and
-			PED.CAN_PED_IN_COMBAT_SEE_TARGET(peds, PLAYER.PLAYER_PED_ID()) and 
-			not PED.IS_PED_IN_ANY_VEHICLE(peds, false) and peds ~= PLAYER.PLAYER_PED_ID() then
-				local forwardheadingped = ENTITY.GET_ENTITY_HEADING(peds)
-				local forwardy = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
-				local pedpos = ENTITY.GET_ENTITY_COORDS(peds)
-				forwardy.x = forwardy.x - forwardy.x * 2
-				forwardy.y = forwardy.y - forwardy.y * 2
-				forwardy.z = forwardy.z
-				
-				ENTITY.SET_ENTITY_COORDS(PLAYER.PLAYER_PED_ID(), pedpos.x + forwardy.x, pedpos.y + forwardy.y, pedpos.z - 1, false, false, false, false)
-				ENTITY.SET_ENTITY_HEADING(PLAYER.PLAYER_PED_ID(), forwardheadingped)
-				Wait(1000)
+			if peds ~= PlayerPed then
+				if not ENTITY.IS_ENTITY_DEAD(peds) then
+					if not PED.IS_PED_IN_ANY_VEHICLE(peds, false) then
+						if PED.IS_PED_FACING_PED(peds, PlayerPed, 1.0) and
+						ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 500.0, 500.0, 1000.0, false, true, false) then
+							local forwardheadingped = ENTITY.GET_ENTITY_HEADING(peds)
+							local forwardy = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+							local pedpos = ENTITY.GET_ENTITY_COORDS(peds)
+							forwardy.x = forwardy.x - forwardy.x * 2
+							forwardy.y = forwardy.y - forwardy.y * 2
+							forwardy.z = forwardy.z
+							
+							ENTITY.SET_ENTITY_COORDS(PLAYER.PLAYER_PED_ID(), pedpos.x + forwardy.x, pedpos.y + forwardy.y, pedpos.z - 1, false, false, false, false)
+							ENTITY.SET_ENTITY_HEADING(PLAYER.PLAYER_PED_ID(), forwardheadingped)
+							--Wait(1000)
+						end
+					end
+				end
 			end
 		end
 	end
