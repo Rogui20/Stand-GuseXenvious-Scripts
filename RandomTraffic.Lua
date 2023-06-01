@@ -955,11 +955,15 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 											for k = 0, 48 do
 												local NumMods = entities.get_upgrade_max_value(NewVeh, k)
 												if NumMods > 0 then
-													local Rand = math.random(0, NumMods-1)
+													local Rand = math.random(0, NumMods)
 													if Rand <= -1 then
 														Rand = 0
 													end
 													entities.set_upgrade_value(NewVeh, k, Rand, false)
+												else
+													if math.random(0, 1) == 1 then
+														entities.set_upgrade_value(NewVeh, k, NumMods, false)
+													end
 												end
 											end
 										end
@@ -1480,11 +1484,15 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 											for k = 0, 48 do
 												local NumMods = entities.get_upgrade_max_value(NewVeh, k)
 												if NumMods > 0 then
-													local Rand = math.random(0, NumMods-1)
+													local Rand = math.random(0, NumMods)
 													if Rand <= -1 then
 														Rand = 0
 													end
 													entities.set_upgrade_value(NewVeh, k, Rand, false)
+												else
+													if math.random(0, 1) == 1 then
+														entities.set_upgrade_value(NewVeh, k, NumMods, false)
+													end
 												end
 											end
 										end
