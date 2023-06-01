@@ -4,8 +4,6 @@ Wait = util.yield
 joaat = util.joaat
 Print = util.toast
 
-local NULL <const> = 0
-
 local StreetVehModels = {
 	"airbus",
 	"airtug",
@@ -1321,7 +1319,7 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 											local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, i, false)
 											if Ped ~= 0 then
 												NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-												DCEORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31)
+												DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31)
 												if not PED.IS_PED_A_PLAYER(Ped) then
 													Passengers[1 + #Passengers] = {Handle = Ped, SeatIndex = i}
 												end
