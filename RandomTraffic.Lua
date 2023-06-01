@@ -4,6 +4,8 @@ Wait = util.yield
 joaat = util.joaat
 Print = util.toast
 
+local NULL <const> = 0
+
 local StreetVehModels = {
 	"airbus",
 	"airtug",
@@ -289,6 +291,7 @@ menu.action(VehModelsOnly, "Allow Everything", {}, "", function(toggle)
 	end
 end)
 ]]
+
 local AllowCars = true
 menu.toggle(VehModelsOnly, "Allow Cars", {}, "", function(toggle)
 	AllowCars = toggle
@@ -630,6 +633,15 @@ menu.toggle(VehModelsOnly, "Allow Amphibious Quadbikes", {}, "", function(toggle
 	end
 end, AllowAmphibiousQuadbikes)
 
+menu.text_input(VehModelsOnly, "Input a Only Vehicle Model", {"inputonlyvehmodel"}, "Only models of this type will be used to replace vehicles.", function(on_change)
+	if STREAMING.IS_MODEL_VALID(joaat(on_change)) then
+		for i = 1, #AllGameVehs do
+			AllGameVehs[i] = nil
+		end
+		AllGameVehs[1 + #AllGameVehs] = on_change
+	end
+end)
+
 local OptionsMenu = menu.list(menu.my_root(), "Options", {}, "To handle with vehicle replacer.")
 
 local SetBlips = false
@@ -940,21 +952,16 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 												NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].OldVehicle)
 												entities.delete_by_handle(CreatedVehs[i].OldVehicle)
 											end
-											--[[
-											for i = 0, 48 do
-												local NumMods = VEHICLE.GET_NUM_VEHICLE_MODS(NewVeh, i)
+											for k = 0, 48 do
+												local NumMods = entities.get_upgrade_max_value(NewVeh, k)
 												if NumMods > 0 then
 													local Rand = math.random(0, NumMods-1)
 													if Rand <= -1 then
 														Rand = 0
 													end
-													
-													if not FILES.IS_DLC_VEHICLE_MOD(VEHICLE.GET_VEHICLE_MOD_IDENTIFIER_HASH(NewVeh, i, Rand)) then
-														VEHICLE.SET_VEHICLE_MOD(NewVeh, i, Rand, false)
-													end
+													entities.set_upgrade_value(NewVeh, k, Rand, false)
 												end
 											end
-											]]
 										end
 									else
 										LastRequestedModel = 0
@@ -1470,21 +1477,16 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 												NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].OldVehicle)
 												entities.delete_by_handle(CreatedVehs[i].OldVehicle)
 											end
-											--[[
-											for i = 0, 48 do
-												local NumMods = VEHICLE.GET_NUM_VEHICLE_MODS(NewVeh, i)
+											for k = 0, 48 do
+												local NumMods = entities.get_upgrade_max_value(NewVeh, k)
 												if NumMods > 0 then
 													local Rand = math.random(0, NumMods-1)
 													if Rand <= -1 then
 														Rand = 0
 													end
-													
-													if not FILES.IS_DLC_VEHICLE_MOD(VEHICLE.GET_VEHICLE_MOD_IDENTIFIER_HASH(NewVeh, i, Rand)) then
-														VEHICLE.SET_VEHICLE_MOD(NewVeh, i, Rand, false)
-													end
+													entities.set_upgrade_value(NewVeh, k, Rand, false)
 												end
 											end
-											]]
 										end
 									else
 										LastRequestedModel = 0
