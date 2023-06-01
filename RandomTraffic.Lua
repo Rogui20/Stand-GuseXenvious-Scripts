@@ -1008,7 +1008,7 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 													end
 												end
 											end
-											if PlaneModeSetSpeed then
+											if PlaneModeSetSpeed and PlaneMode then
 												VEHICLE.SET_VEHICLE_FORWARD_SPEED(NewVeh, 40.0)
 											end
 											if ENTITY.DOES_ENTITY_EXIST(CreatedVehs[i].OldVehicle) then
@@ -1573,7 +1573,7 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 													end
 												end
 											end
-											if PlaneModeSetSpeed then
+											if PlaneModeSetSpeed and PlaneMode then
 												VEHICLE.SET_VEHICLE_FORWARD_SPEED(NewVeh, 40.0)
 											end
 											if ENTITY.DOES_ENTITY_EXIST(CreatedVehs[i].OldVehicle) then
