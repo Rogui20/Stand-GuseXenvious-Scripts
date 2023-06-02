@@ -986,7 +986,7 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 														if VEHICLE.IS_VEHICLE_SEAT_FREE(NewVeh, passengers.SeatIndex, false) then
 															PED.SET_PED_INTO_VEHICLE(passengers.Handle, CreatedVehs[i].Handle, passengers.SeatIndex)
 															if passengers.Handle ~= PlayerPed then
-																if PlaneModeWithTask then
+																if PlaneModeWithTask and PlaneMode then
 																	local Coords = ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(NewVeh, math.random(-1000, 1000), 1000.0, 0.0)
 																	TASK.TASK_VEHICLE_DRIVE_TO_COORD(passengers.Handle, NewVeh, Coords.x, Coords.y, Coords.z, 30.0, 0, ENTITY.GET_ENTITY_MODEL(NewVeh), 1, 10.0, 1.0)
 																else
@@ -1551,7 +1551,7 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 														if VEHICLE.IS_VEHICLE_SEAT_FREE(NewVeh, passengers.SeatIndex, false) then
 															PED.SET_PED_INTO_VEHICLE(passengers.Handle, CreatedVehs[i].Handle, passengers.SeatIndex)
 															if passengers.Handle ~= PlayerPed then
-																if PlaneModeWithTask then
+																if PlaneModeWithTask and PlaneMode then
 																	local Coords = ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(NewVeh, math.random(-1000, 1000), 1000.0, 0.0)
 																	TASK.TASK_VEHICLE_DRIVE_TO_COORD(passengers.Handle, NewVeh, Coords.x, Coords.y, Coords.z, 30.0, 0, ENTITY.GET_ENTITY_MODEL(NewVeh), 1, 10.0, 1.0)
 																else
