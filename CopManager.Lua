@@ -1,0 +1,1710 @@
+util.require_natives(1676318796)
+
+Wait = util.yield
+joaat = util.joaat
+Print = util.toast
+
+local NULL <const> = 0
+
+local CayoCopsGlobalAddr = 2657704+1+442 --463
+
+local AiHateRel = "rgFM_AiHate"
+local AiLikeRel = "rgFM_AiLike"
+local AiLikeHateAiHateRel = "rgFM_AiLike_HateAiHate"
+local AiHateAiHateRel = "rgFM_HateAiHate"
+local AiHateEveryone = "rgFM_HateEveryOne"
+
+local WeaponsForCops = {
+	"weapon_appistol",
+	"weapon_pistol50",
+	"weapon_navyrevolver",
+	"weapon_stungun_mp",
+	"weapon_flaregun",
+	"weapon_heavypistol",
+	"weapon_raypistol",
+	"weapon_gadgetpistol",
+	"weapon_microsmg",
+	"weapon_assaultsmg",
+	"weapon_smg",
+	"weapon_smg_mk2",
+	"weapon_combatpdw",
+	"weapon_machinepistol",
+	"weapon_minismg",
+	"weapon_raycarbine",
+	"weapon_tecpistol",
+	"weapon_pumpshotgun",
+	"weapon_sawnoffshotgun",
+	"weapon_assaultshotgun",
+	"weapon_musket",
+	"weapon_heavyshotgun",
+	"weapon_dbshotgun",
+	"weapon_autoshotgun",
+	"weapon_combatshotgun",
+	"weapon_assaultrifle",
+	"weapon_assaultrifle_mk2",
+	"weapon_carbinerifle",
+	"weapon_carbinerifle_mk2",
+	"weapon_specialcarbine",
+	"weapon_specialcarbine_mk2",
+	"weapon_bullpuprifle",
+	"weapon_bullpuprifle_mk2",
+	"weapon_compactrifle",
+	"weapon_militaryrifle",
+	"weapon_heavyrifle",
+	"weapon_tacticalrifle",
+	"weapon_mg",
+	"weapon_combatmg",
+	"weapon_combatmg_mk2",
+	"weapon_gusenberg",
+	"weapon_sniperrifle",
+	"weapon_heavysniper",
+	"weapon_heavysniper_mk2",
+	"weapon_marksmanrifle",
+	"weapon_marksmanrifle_mk2",
+	"weapon_precisionrifle",
+	"weapon_rpg",
+	"weapon_grenadelauncher",
+	"weapon_minigun",
+	"weapon_firework",
+	"weapon_railgun",
+	"weapon_hominglauncher",
+	"weapon_compactlauncher",
+	"weapon_rayminigun",
+	"weapon_emplauncher"
+}
+
+local GiveWeaponOptions = {
+	"Force Cop Weapon",
+	"Auto Give Cop Weapon",
+	"Random Cop Weapon",
+	"Random Cop Weapon By Chance"
+}
+
+local CopSettingsMenu = menu.list(menu.my_root(), "Cop Settings", {}, "Which settings apply to cops.")
+local AllyCopSettingsMenu = menu.list(CopSettingsMenu, "Ally Cop Settings", {}, "Which settings apply to ally cops.")
+local HostileCopSettingsMenu = menu.list(CopSettingsMenu, "Hostile Cop Settings", {}, "Which settings apply to hostile cops.")
+local CopWeaponsMenu = menu.list(CopSettingsMenu, "Cop Weapon Loadout", {}, "Weapons settings for cops.")
+
+local CopsAttackEveryone = false
+menu.toggle(HostileCopSettingsMenu, "Cops Attack Everyone", {}, "If cops see a player, will start attacking.", function(toggle)
+	CopsAttackEveryone = toggle
+end, CopsAttackEveryone)
+
+local MakeCopsAttackEveryone = false
+menu.toggle(HostileCopSettingsMenu, "Make Cops Attack Everyone", {}, "Cops will attack the nearest player, no need to see the player to start the attack.", function(toggle)
+	MakeCopsAttackEveryone = toggle
+end, MakeCopsAttackEveryone)
+
+local ZombieMode = false
+menu.toggle(HostileCopSettingsMenu, "Zombie Mode", {}, "", function(toggle)
+	ZombieMode = toggle
+end, ZombieMode)
+
+local SelectedForcedPedWeaponHash = 0
+local CopsForcedWeaponList = menu.list_select(CopWeaponsMenu, "Forced Cop Weapon", {"forcedcopweapon"}, "Cops will be forced to use the selected weapon.", WeaponsForCops, 1, function(on_change)
+	SelectedForcedPedWeaponHash = joaat(WeaponsForCops[on_change])
+end)
+
+local SelectedAutoGivePedWeaponHash = 0
+local CopsAutoGiveWeaponList = menu.list_select(CopWeaponsMenu, "Auto Give Cop Weapon", {"autogivecopweapon"}, "Auto give this weapon to cops.", WeaponsForCops, 26, function(on_change)
+	SelectedAutoGivePedWeaponHash = joaat(WeaponsForCops[on_change])
+end)
+
+local SelectedGiveWeaponType = 4
+menu.list_select(CopWeaponsMenu, "Give Weapon Settings", {"giveweaponsettings"}, "Set how cops will get weapons.", GiveWeaponOptions, SelectedGiveWeaponType, function(on_change)
+	SelectedGiveWeaponType = on_change
+end)
+
+local RandomWeaponComponents = true
+menu.toggle(CopWeaponsMenu, "Random Weapon Components", {}, "", function(toggle)
+	RandomWeaponComponents = toggle
+end, RandomWeaponComponents)
+
+local FlashlightForAllCopWeapons = false
+menu.toggle(CopWeaponsMenu, "Flashlight For All Cop Weapons", {}, "", function(toggle)
+	FlashlightForAllCopWeapons = toggle
+end, FlashlightForAllCopWeapons)
+
+local EnableWeaponSettsForCops = true
+menu.toggle(CopWeaponsMenu, "Enable Weapon Settings", {}, "If this is enabled, wanted level will be set to 5 stars and will set 0 stars when 50 cops is generated.", function(toggle)
+	EnableWeaponSettsForCops = toggle
+end, EnableWeaponSettsForCops)
+
+local AutomaticGenCops = true
+menu.toggle(CopSettingsMenu, "Automatically Generate Cops", {}, "If this is enabled, wanted level will be set to 5 stars and will set 0 stars when 50 cops is generated.", function(toggle)
+	AutomaticGenCops = toggle
+end, AutomaticGenCops)
+
+local MaxCopsToEdit = 50
+menu.slider(CopSettingsMenu, "Max Cops To Edit", {"maxcopstoedit"}, "Set the max amount of cops to turn into mission entity and edit.", 1, 50, MaxCopsToEdit, 1, function(on_change)
+	MaxCopsToEdit = on_change
+end)
+
+local MakeCopsAsMissionEntities = true
+menu.toggle(CopSettingsMenu, "Make Cops As Mission Entities", {}, "This will make the game generate more cops.", function(toggle)
+	MakeCopsAsMissionEntities = toggle
+end, MakeCopsAsMissionEntities)
+
+local CopsForMission = true
+menu.toggle(CopSettingsMenu, "Edit Normal Cops", {}, "Edit cops with default models.", function(toggle)
+	CopsForMission = toggle
+end, CopsForMission)
+
+local CopsModelForMission = true
+menu.toggle(CopSettingsMenu, "Edit Cops With Different Model", {}, "Edit some other cops with another model.", function(toggle)
+	CopsModelForMission = toggle
+end, CopsModelForMission)
+
+local AddBlipsForCopsDifferentModel = true
+menu.toggle(CopSettingsMenu, "Add Blip For Different Cop Ped Models", {}, "Add red blips for hostile peds or blue blips for ally peds.", function(toggle)
+	AddBlipsForCopsDifferentModel = toggle
+end, AddBlipsForCopsDifferentModel)
+
+local UpgradeCopCars = true
+menu.toggle(CopSettingsMenu, "Upgrade Cop Cars", {}, "Cop cars will have a random upgrade.", function(toggle)
+	UpgradeCopCars = toggle
+end, UpgradeCopCars)
+
+local SetCopPassengersIntoTurretSeat = true
+menu.toggle(CopSettingsMenu, "Put Cops Into Turret Seats", {}, "", function(toggle)
+	SetCopPassengersIntoTurretSeat = toggle
+end, SetCopPassengersIntoTurretSeat)
+
+local OnlyEditOwnedCops = false
+menu.toggle(CopSettingsMenu, "Only Edit Owned Cops", {}, "", function(toggle)
+	OnlyEditOwnedCops = toggle
+end, OnlyEditOwnedCops)
+
+local CopsFollowInVehTask = true
+menu.toggle(AllyCopSettingsMenu, "All Cops In Veh Follow You", {}, "", function(toggle)
+	CopsFollowInVehTask = toggle
+end, CopsFollowInVehTask)
+
+local CopsFollowTask = true
+menu.toggle(AllyCopSettingsMenu, "All Cops Follow You", {}, "", function(toggle)
+	CopsFollowTask = toggle
+end, CopsFollowTask)
+
+local CopsFollowAsBodyguard = true
+menu.toggle(AllyCopSettingsMenu, "Cops Follow As Bodyguard", {}, "", function(toggle)
+	CopsFollowAsBodyguard = toggle
+end, CopsFollowAsBodyguard)
+
+local BringFarCopsCloser = true
+menu.toggle(AllyCopSettingsMenu, "Auto Bring Far Cops Back To You", {}, "", function(toggle)
+	BringFarCopsCloser = toggle
+end, BringFarCopsCloser)
+
+local CopsCanAttackPlayers = false
+menu.toggle(AllyCopSettingsMenu, "Cops Can Attack Players", {}, "", function(toggle)
+	CopsCanAttackPlayers = toggle
+end, CopsCanAttackPlayers)
+
+local AddBlipsForAllyCops = true
+menu.toggle(AllyCopSettingsMenu, "Add Blip For Ally Cops", {}, "", function(toggle)
+	AddBlipsForAllyCops = toggle
+end, AddBlipsForAllyCops)
+
+local RemoveCopsFromVeh = false
+menu.toggle(AllyCopSettingsMenu, "Remove Cops From Vehicle", {}, "", function(toggle)
+	RemoveCopsFromVeh = toggle
+end, RemoveCopsFromVeh)
+
+local PutCopsIntoPlayerVeh = false
+menu.toggle(AllyCopSettingsMenu, "Put Cops Into Your Vehicle", {}, "", function(toggle)
+	PutCopsIntoPlayerVeh = toggle
+end, PutCopsIntoPlayerVeh)
+
+--menu.list_select(AllyCopSettingsMenu, "Cop Relationship Type", {"allycoprelationship"}, "Set if cops will be able to attack players or only npcs.", table<int, table> options, 1, function on_change)
+
+local RenderCopCount = false
+menu.toggle(menu.my_root(), "Show Cop Count HUD", {}, "", function(toggle)
+	RenderCopCount = toggle
+end, RenderCopCount)
+
+local CopsAreAllies = true
+menu.toggle(menu.my_root(), "Make Cops As Allies", {}, "", function(toggle)
+	CopsAreAllies = toggle
+end, CopsAreAllies)
+
+local CopCustomRelMenu = menu.list(CopSettingsMenu, "Custom Relationship Settings", {}, "For DEVs.")
+
+local KnownCustomRelationships = {
+	"relRescueContactPlayer"
+}
+
+local CustomRelText = "relRescueContactPlayer"
+
+menu.list_select(CopCustomRelMenu, "Known Custom Rels", {"setknowncustomrel"}, "Known custom relationships list.", KnownCustomRelationships, 1, function(on_change)
+	CustomRelText = joaat(KnownCustomRelationships[on_change])
+end)
+
+local CopsCustomRelationship = false
+menu.toggle(CopCustomRelMenu, "Set Cops Custom Relationship", {}, "", function(toggle)
+	CopsCustomRelationship = toggle
+end, CopsCustomRelationship)
+
+menu.text_input(CopCustomRelMenu, "Custom Relationship Name", {"copcustomrelationship"}, "Write a missing custom relationship name to set.", function(on_change)
+	CustomRelText = on_change
+end)
+
+local ApplyCopSettings = false
+menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
+	ApplyCopSettings = toggle
+	if not ApplyCopSettings then
+		for index, peds in pairs(entities.get_all_peds_as_handles()) do
+			if peds ~= PLAYER.PLAYER_PED_ID() then
+				if ENTITY.IS_ENTITY_A_MISSION_ENTITY(peds) then
+					local CanEditCop = false
+					if OnlyEditOwnedCops then
+						local PlayerID = PLAYER.PLAYER_ID()
+						if get_entity_owner(peds) == PlayerID then
+							CanEditCop = true
+						end
+					else
+						CanEditCop = true
+					end
+					if CanEditCop then
+						local DecorInt = DECORATOR.DECOR_GET_INT(peds, "Casino_Game_Info_Decorator")
+						if DecorInt == 31 or DecorInt == 32 then
+							NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+							entities.delete_by_handle(peds)
+						end
+					end
+				end
+			end
+		end
+		if AutomaticGenCops then
+			local PlayerID = PLAYER.PLAYER_ID()
+			PLAYER.SET_PLAYER_WANTED_LEVEL(PlayerID, 0, false)
+			PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(PlayerID, false)
+		end
+		for i = 0, 30 do
+			local RelTarget = joaat("rgFM_Team"..i)
+			PED.SET_RELATIONSHIP_BETWEEN_GROUPS(3, joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]"), RelTarget)
+			PED.SET_RELATIONSHIP_BETWEEN_GROUPS(3, RelTarget, joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]"))
+		end
+	end
+	local AiTeam1Hash = joaat("rgFM_AiPed20000")
+	local SelectedTeam = -607974925
+	local FriendlyAll = -607974925
+	--local FriendlyAll = AiTeam1Hash
+	local DeadPeds = {}
+	local BlipColorToGive = 1
+	while ApplyCopSettings do
+		Wait()
+		if ApplyCopSettings then
+			local PlayerPed = PLAYER.PLAYER_PED_ID()
+			local PlayerID = PLAYER.PLAYER_ID()
+			local PlayerGroup = PLAYER.GET_PLAYER_GROUP(PlayerID)
+			local PlTeamRel = 536121530
+			local MissionCopCount = 0
+			local PlRel = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PlayerPed)
+			local PlayerVeh = PED.GET_VEHICLE_PED_IS_IN(PlayerPed, false)
+			local CustomRelExists = false
+			if CopsCustomRelationship then
+				if PED.DOES_RELATIONSHIP_GROUP_EXIST(joaat(CustomRelText)) then
+					CustomRelExists = true
+					SelectedTeam = joaat(CustomRelText)
+					if CopsAreAllies then
+						BlipColorToGive = 3
+					else
+						BlipColorToGive = 1
+					end
+				end
+			end
+			if not CustomRelExists then
+				if CopsAreAllies then
+					BlipColorToGive = 3
+					if not CopsCanAttackPlayers then
+						if PED.DOES_RELATIONSHIP_GROUP_EXIST(FriendlyAll) then
+							SelectedTeam = FriendlyAll
+						else
+							if PED.DOES_RELATIONSHIP_GROUP_EXIST(joaat(AiLikeHateAiHateRel)) then
+								SelectedTeam = joaat(AiLikeHateAiHateRel)
+							else
+								SelectedTeam = PlRel
+							end
+						end
+					else
+						local RelTarget = joaat("rgFM_Team"..PlayerID)
+						PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]"), RelTarget)
+						PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, RelTarget, joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]"))
+						SelectedTeam = joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]")
+					end
+				else
+					BlipColorToGive = 1
+					if CopsAttackEveryone or ZombieMode then
+						if PED.DOES_RELATIONSHIP_GROUP_EXIST(joaat(AiHateRel)) then
+							SelectedTeam = joaat(AiHateRel)
+						else
+							SelectedTeam = joaat("COP")
+						end
+					else
+						SelectedTeam = joaat("COP")
+					end
+				end
+			end
+			for index, peds in pairs(entities.get_all_peds_as_handles()) do
+				if DECORATOR.DECOR_GET_INT(peds, "Casino_Game_Info_Decorator") == 31 then
+					MissionCopCount = MissionCopCount + 1
+				end
+			end
+			if RenderCopCount then
+				directx.draw_text(0.7, 0.7, "Cops "..MissionCopCount, ALIGN_CENTRE, 1.0, {r = 0, g = 255 , b = 255, a = 200}, false)
+			end
+			for index, peds in pairs(entities.get_all_peds_as_handles()) do
+				if peds ~= PlayerPed then
+					if not PED.IS_PED_A_PLAYER(peds) then
+						local CanEditCop = false
+						if OnlyEditOwnedCops then
+							if get_entity_owner(peds) == PlayerID then
+								CanEditCop = true
+							end
+						else
+							CanEditCop = true
+						end
+						local IsCopModel = IsCopPedModel(peds)
+						local HaveCopRel = IsWithCopRel(peds)
+						local CanAddBlip = false
+						if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(peds) then
+							if CanEditCop then
+								if MissionCopCount < MaxCopsToEdit then
+									local CanApplyDecor = false
+									local DecorApplied = false
+									if CopsModelForMission then
+										if IsCopModel then
+											CanApplyDecor = true
+										end
+									end
+									if CopsForMission then
+										if HaveCopRel then
+											CanApplyDecor = true
+										end
+									end
+									if CanApplyDecor and MakeCopsAsMissionEntities then
+										NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+										DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31)
+										ENTITY.SET_ENTITY_AS_MISSION_ENTITY(peds, false, true)
+										DecorApplied = true
+									else
+										if CopsForMission then
+											if HaveCopRel then
+												CanApplyDecor = true
+											end
+										end
+										if CopsModelForMission then
+											if IsCopModel then
+												CanApplyDecor = true
+											end
+										end
+										if CanApplyDecor then
+											if not DECORATOR.DECOR_EXIST_ON(peds, "Casino_Game_Info_Decorator") then
+												DecorApplied = true
+												NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+												DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31)
+											end
+										end
+									end
+									if DecorApplied then
+										NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+										PED.SET_PED_RELATIONSHIP_GROUP_HASH(peds, SelectedTeam)
+										PED.SET_PED_FLEE_ATTRIBUTES(peds, 512, true)
+										if not ZombieMode then
+											if EnableWeaponSettsForCops then
+												GiveCorrectWeaponsToPed(peds)
+											end
+											WEAPON.GIVE_WEAPON_TO_PED(peds, joaat("weapon_pistol"), 99999, false, true)
+											if RandomWeaponComponents then
+												Set_Weapon_Components(peds)
+											end
+											if IsCopModel then
+												SetPedCombatAbilities(peds)
+												PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
+												PED.SET_PED_COMBAT_ATTRIBUTES(peds, 52, true)
+												PED.SET_PED_COMBAT_ATTRIBUTES(peds, 53, true)
+											end
+										else
+											ENTITY.SET_ENTITY_PROOFS(peds, false, false, false, false, true, false, false, false)
+											WEAPON.REMOVE_ALL_PED_WEAPONS(peds, false)
+											SetPedCombatAbilities(peds)
+											PED.SET_PED_SUFFERS_CRITICAL_HITS(peds, false)
+											PED.SET_RAGDOLL_BLOCKING_FLAGS(peds, 1)
+											SetPedHealth(peds, 400)
+											WEAPON.GIVE_WEAPON_TO_PED(peds, joaat("weapon_knife"), 99999, false, false)
+										end
+										if UpgradeCopCars then
+											local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+											if Veh ~= 0 then
+												if Veh ~= PlayerVeh then
+													if SetCopPassengersIntoTurretSeat then
+														local HasSetInTurretSeat = false
+														if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) ~= peds then
+															for i = -1, 9 do
+																if not HasSetInTurretSeat then
+																	if VEHICLE.IS_TURRET_SEAT(Veh, i) then
+																		if VEHICLE.IS_VEHICLE_SEAT_FREE(Veh, i, true) then
+																			HasSetInTurretSeat = true
+																			NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																			PED.SET_PED_INTO_VEHICLE(peds, Veh, i)
+																		end
+																	end
+																end
+															end
+														end
+													end
+													if DECORATOR.DECOR_GET_INT(Veh, "Casino_Game_Info_Decorator") ~= 31 then
+														NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Veh)
+														for k = 0, 48 do
+															local NumMods = entities.get_upgrade_max_value(Veh, k)
+															if NumMods > 0 then
+																local Rand = math.random(0, NumMods)
+																if Rand <= -1 then
+																	Rand = 0
+																end
+																entities.set_upgrade_value(Veh, k, Rand, false)
+															else
+																if math.random(0, 1) == 1 then
+																	entities.set_upgrade_value(Veh, k, NumMods, false)
+																end
+															end
+														end
+														VEHICLE.SET_VEHICLE_CUSTOM_PRIMARY_COLOUR(Veh, math.random(0, 255), math.random(0, 255), math.random(0, 255))
+														VEHICLE.SET_VEHICLE_CUSTOM_SECONDARY_COLOUR(Veh, math.random(0, 255), math.random(0, 255), math.random(0, 255))
+														VEHICLE.SET_VEHICLE_COLOURS(Veh, math.random(0, 160), math.random(0, 160))
+														DECORATOR.DECOR_SET_INT(Veh, "Casino_Game_Info_Decorator", 31)
+													end
+												end
+											end
+										end
+									end
+								end
+								if DECORATOR.DECOR_EXIST_ON(peds, "Casino_Game_Info_Decorator") then
+									if PED.GET_PED_RELATIONSHIP_GROUP_HASH(peds) ~= SelectedTeam then
+										NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+										PED.SET_PED_RELATIONSHIP_GROUP_HASH(peds, SelectedTeam)
+									end
+									if PutCopsIntoPlayerVeh then
+										if PlayerVeh ~= 0 then
+											for i = -1, 9 do
+												if VEHICLE.IS_VEHICLE_SEAT_FREE(PlayerVeh, i, true) then
+													NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+													PED.SET_PED_INTO_VEHICLE(peds, PlayerVeh, i)
+												end
+											end
+										end
+									end
+									if AddBlipsForAllyCops then
+										if not IsCopModel then
+											CanAddBlip = true
+										end
+									end
+									if AddBlipsForCopsDifferentModel then
+										if IsCopModel then
+											CanAddBlip = true
+										end
+									end
+									if CanAddBlip then
+										if not HUD.DOES_PED_HAVE_AI_BLIP(peds) then
+											NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+											HUD.SET_PED_HAS_AI_BLIP_WITH_COLOUR(peds, true, BlipColorToGive)
+											HUD.SET_PED_AI_BLIP_HAS_CONE(peds, false)
+											HUD.SET_PED_AI_BLIP_FORCED_ON(peds, true)
+										end
+									end
+									if CopsAreAllies then
+										local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+										local IsPedInGroup = PED.IS_PED_IN_GROUP(peds)
+										local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+										local IsPedInGroup = PED.IS_PED_IN_GROUP(peds)
+										if not IsPedInGroup then
+											if CopsFollowAsBodyguard then
+												if GetPedGroupSize(PlayerGroup) < 7 then
+													if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 30.0, 30.0, 30.0, false, true, false) then
+														NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+														PED.SET_PED_AS_GROUP_MEMBER(peds, PlayerGroup)
+														PED.SET_PED_NEVER_LEAVES_GROUP(peds, true)
+														PED.SET_GROUP_SEPARATION_RANGE(PlayerGroup, 9999.0)
+														PED.SET_GROUP_FORMATION_SPACING(PlayerGroup, 1.0, -1.0, -1.0)
+														PED.SET_GROUP_FORMATION(PlayerGroup, 1)
+														TASK.CLEAR_PED_TASKS(peds)
+													end
+												end
+											end
+										end
+										IsPedInGroup = PED.IS_PED_IN_GROUP(peds)
+										if CopsFollowInVehTask then
+											if Veh ~= 0 then
+												if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
+													local VehModel = ENTITY.GET_ENTITY_MODEL(Veh)
+													local IsAPlane = VEHICLE.IS_THIS_MODEL_A_PLANE(VehModel)
+													local IsAHeli = VEHICLE.IS_THIS_MODEL_A_HELI(VehModel)
+													if not IsAPlane and not IsAHeli then
+														if not IsPedInGroup then
+															if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
+																if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+																	NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																	TASK.TASK_VEHICLE_MISSION_PED_TARGET(peds, Veh, PlayerPed, 12, 100.0, 0, 20.0, 10.0, true)
+																end
+															end
+														end
+													else
+														if IsAHeli then
+															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+																NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																TASK.TASK_HELI_MISSION(peds, Veh, 0, PlayerPed, 0.0, 0.0, 0.0, 12, 100.0, 70.0, 0, 50.0, 20.0, 50.0, 0)
+															end
+														end
+														if IsAPlane then
+															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+																NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																TASK.TASK_PLANE_MISSION(peds, Veh, 0, PlayerPed, 0, 0, 0, 12, 100.0, 50.0, 0.0, 50.0, 30.0, true)
+															end
+														end
+													end
+												end
+											end
+											if CopsFollowTask then
+												if Veh == 0 then
+													if not IsPedInGroup then
+														if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 50.0, 50.0, 50.0, false, true, false) then
+															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_FOLLOW_TO_OFFSET_OF_ENTITY")) == 7 then
+																NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																TASK.TASK_FOLLOW_TO_OFFSET_OF_ENTITY(peds, PlayerPed, math.random(-10, 10), math.random(-10, 10), math.random(-10, 10), 100.0, -1, 5.0, true)
+															end
+														end
+													end
+												end
+											end
+										end
+										if BringFarCopsCloser then
+											if not PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false) then
+												if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
+													NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+													if not RemoveCopsFromVeh then
+														if Veh ~= 0 then
+															NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Veh)
+															if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
+																local VehClass = VEHICLE.GET_VEHICLE_CLASS(Veh)
+																if VehClass ~= 15 and VehClass ~= 16 then
+																	if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, 700.0, 700.0, 700.0, false, true, false) then
+																		local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																		local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+																		local AdjustedX = PPos.x + FVect.x * 10
+																		local AdjustedY = PPos.y + FVect.y * 10
+																		local AdjustedZ = PPos.z + FVect.z * 10
+																		if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ, 1.0, false, true, true, false, false, PlayerPed, true) then
+																			ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX, AdjustedY, AdjustedZ)
+																		end
+																	end
+																else
+																	if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, 700.0, 700.0, 700.0, false, true, false) then
+																		local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																		local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+																		local AdjustedX = PPos.x + FVect.x * 10
+																		local AdjustedY = PPos.y + FVect.y * 10
+																		local AdjustedZ = PPos.z + FVect.z * 10
+																		if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ + 100.0, 1.0, false, true, true, false, false, PlayerPed, true) then
+																			ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX, AdjustedY, AdjustedZ + 100.0)
+																		end
+																	end
+																end
+															end
+														else
+															local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+															local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+															local AdjustedX = PPos.x + FVect.x * 5
+															local AdjustedY = PPos.y + FVect.y * 5
+															local AdjustedZ = PPos.z + FVect.z * 5
+															local DidHit = memory.alloc(1)
+															local EndCoords = v3.new()
+															local Normal = v3.new()
+															local HitEntity = memory.alloc_int()
+														
+															local Handle = SHAPETEST.START_EXPENSIVE_SYNCHRONOUS_SHAPE_TEST_LOS_PROBE(
+																PPos.x, PPos.y, PPos.z,
+																AdjustedX, AdjustedY, AdjustedZ,
+																-1,
+																PlayerPed, 7
+															)
+															SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
+															if memory.read_byte(DidHit) ~= 0 then
+																if not MISC.IS_POSITION_OCCUPIED(EndCoords.x, EndCoords.y, EndCoords.z - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																	ENTITY.SET_ENTITY_COORDS(peds, EndCoords.x, EndCoords.y, EndCoords.z - 1.0)
+																end
+															else
+																if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																	ENTITY.SET_ENTITY_COORDS(peds, AdjustedX, AdjustedY, AdjustedZ - 1.0)
+																end
+															end
+														end
+													else
+														local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+														local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+														local AdjustedX = PPos.x + FVect.x * 5
+														local AdjustedY = PPos.y + FVect.y * 5
+														local AdjustedZ = PPos.z + FVect.z * 5
+														local DidHit = memory.alloc(1)
+														local EndCoords = v3.new()
+														local Normal = v3.new()
+														local HitEntity = memory.alloc_int()
+													
+														local Handle = SHAPETEST.START_EXPENSIVE_SYNCHRONOUS_SHAPE_TEST_LOS_PROBE(
+															PPos.x, PPos.y, PPos.z,
+															AdjustedX, AdjustedY, AdjustedZ,
+															-1,
+															PlayerPed, 7
+														)
+														SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
+														if memory.read_byte(DidHit) ~= 0 then
+															if not MISC.IS_POSITION_OCCUPIED(EndCoords.x, EndCoords.y, EndCoords.z - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																ENTITY.SET_ENTITY_COORDS(peds, EndCoords.x, EndCoords.y, EndCoords.z - 1.0)
+															end
+														else
+															if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																ENTITY.SET_ENTITY_COORDS(peds, AdjustedX, AdjustedY, AdjustedZ - 1.0)
+															end
+														end
+													end
+												end
+											end
+										end
+									else
+										if CopsAttackEveryone then
+											if MakeCopsAttackEveryone then
+												if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT_HATED_TARGETS_AROUND_PED")) == 7 then
+													TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, 1000.0, 0)
+												end
+											end
+										end
+									end
+								end
+							else
+								if CanAddBlip then
+									if not HUD.DOES_PED_HAVE_AI_BLIP(peds) then
+										HUD.SET_PED_HAS_AI_BLIP_WITH_COLOUR(peds, true, 2)
+										HUD.SET_PED_AI_BLIP_HAS_CONE(peds, false)
+										HUD.SET_PED_AI_BLIP_FORCED_ON(peds, true)
+									end
+								end
+							end
+							if ZombieMode then
+								if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
+									NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+									local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+									local OutPos, FoundCoords = find_right_spawn_normal(PPos.x, PPos.y, PPos.z, 40.0, 70.0)
+									if FoundCoords then
+										if not MISC.IS_POSITION_OCCUPIED(OutPos.x, OutPos.y, OutPos.z, 1.0, false, true, true, false, false, PlayerPed, true) then
+											ENTITY.SET_ENTITY_COORDS(peds, OutPos.x, OutPos.y, OutPos.z)
+											ENTITY.SET_ENTITY_HEADING(peds, math.random(0, 360))
+										end
+									end
+								end
+								if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT_HATED_TARGETS_AROUND_PED")) == 7 then
+									NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+									TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, 1000.0, 0)
+								end
+							end
+						else
+							local DecorInt = DECORATOR.DECOR_GET_INT(peds, "Casino_Game_Info_Decorator")
+							if DecorInt == 32 then
+								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+								entities.delete_by_handle(peds)
+							end
+							if DecorInt == 31 then
+								if CanEditCop then
+									if PED.GET_PED_RELATIONSHIP_GROUP_HASH(peds) ~= SelectedTeam then
+										NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+										PED.SET_PED_RELATIONSHIP_GROUP_HASH(peds, SelectedTeam)
+									end
+									if PutCopsIntoPlayerVeh then
+										if PlayerVeh ~= 0 then
+											for i = -1, 9 do
+												if VEHICLE.IS_VEHICLE_SEAT_FREE(PlayerVeh, i, true) then
+													NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+													PED.SET_PED_INTO_VEHICLE(peds, PlayerVeh, i)
+												end
+											end
+										end
+									end
+								end
+								if ENTITY.IS_ENTITY_DEAD(peds) then
+									if not DoesValueExistInTable3(DeadPeds, peds) then
+										util.create_thread(function()
+											DeadPeds[peds] = {}
+											Wait(10000)
+											NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+											DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 32)
+											entities.delete_by_handle(peds)
+											DeadPeds[peds] = nil
+										end)
+									end
+								end
+								CanAddBlip = false
+								if AddBlipsForAllyCops then
+									if not IsCopModel then
+										CanAddBlip = true
+									end
+								end
+								if AddBlipsForCopsDifferentModel then
+									if IsCopModel then
+										CanAddBlip = true
+									end
+								end
+								if CanEditCop then
+									if CanAddBlip then
+										if not HUD.DOES_PED_HAVE_AI_BLIP(peds) then
+											NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+											HUD.SET_PED_HAS_AI_BLIP_WITH_COLOUR(peds, true, BlipColorToGive)
+											HUD.SET_PED_AI_BLIP_HAS_CONE(peds, false)
+											HUD.SET_PED_AI_BLIP_FORCED_ON(peds, true)
+										end
+									end
+								else
+									if CanAddBlip then
+										if not HUD.DOES_PED_HAVE_AI_BLIP(peds) then
+											HUD.SET_PED_HAS_AI_BLIP_WITH_COLOUR(peds, true, 2)
+											HUD.SET_PED_AI_BLIP_HAS_CONE(peds, false)
+											HUD.SET_PED_AI_BLIP_FORCED_ON(peds, true)
+										end
+									end
+								end
+								if CopsAreAllies then
+									if CanEditCop then
+										local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+										local IsPedInGroup = PED.IS_PED_IN_GROUP(peds)
+										if not IsPedInGroup then
+											if CopsFollowAsBodyguard then
+												if GetPedGroupSize(PlayerGroup) < 7 then
+													if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 30.0, 30.0, 30.0, false, true, false) then
+														NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+														PED.SET_PED_AS_GROUP_MEMBER(peds, PlayerGroup)
+														PED.SET_PED_NEVER_LEAVES_GROUP(peds, true)
+														PED.SET_GROUP_SEPARATION_RANGE(PlayerGroup, 9999.0)
+														PED.SET_GROUP_FORMATION_SPACING(PlayerGroup, 1.0, -1.0, -1.0)
+														PED.SET_GROUP_FORMATION(PlayerGroup, 1)
+														TASK.CLEAR_PED_TASKS(peds)
+													end
+												end
+											end
+										end
+										IsPedInGroup = PED.IS_PED_IN_GROUP(peds)
+										if CopsFollowInVehTask then
+											if Veh ~= 0 then
+												if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
+													local VehModel = ENTITY.GET_ENTITY_MODEL(Veh)
+													local IsAPlane = VEHICLE.IS_THIS_MODEL_A_PLANE(VehModel)
+													local IsAHeli = VEHICLE.IS_THIS_MODEL_A_HELI(VehModel)
+													if not IsAPlane and not IsAHeli then
+														if not IsPedInGroup then
+															if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
+																if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+																	NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																	TASK.TASK_VEHICLE_MISSION_PED_TARGET(peds, Veh, PlayerPed, 12, 100.0, 0, 20.0, 10.0, true)
+																end
+															end
+														end
+													else
+														if IsAHeli then
+															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+																NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																TASK.TASK_HELI_MISSION(peds, Veh, 0, PlayerPed, 0.0, 0.0, 0.0, 12, 100.0, 70.0, 0, 50.0, 20.0, 50.0, 0)
+															end
+														end
+														if IsAPlane then
+															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+																NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																TASK.TASK_PLANE_MISSION(peds, Veh, 0, PlayerPed, 0, 0, 0, 12, 100.0, 50.0, 0.0, 50.0, 30.0, true)
+															end
+														end
+													end
+												end
+											end
+											if CopsFollowTask then
+												if Veh == 0 then
+													if not IsPedInGroup then
+														if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 50.0, 50.0, 50.0, false, true, false) then
+															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_FOLLOW_TO_OFFSET_OF_ENTITY")) == 7 then
+																NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																TASK.TASK_FOLLOW_TO_OFFSET_OF_ENTITY(peds, PlayerPed, math.random(-10, 10), math.random(-10, 10), math.random(-10, 10), 100.0, -1, 5.0, true)
+															end
+														end
+													end
+												end
+											end
+										end
+										if BringFarCopsCloser then
+											if not PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false) then
+												if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
+													NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+													if not RemoveCopsFromVeh then
+														if Veh ~= 0 then
+															NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Veh)
+															if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
+																local VehClass = VEHICLE.GET_VEHICLE_CLASS(Veh)
+																if VehClass ~= 15 and VehClass ~= 16 then
+																	if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, 700.0, 700.0, 700.0, false, true, false) then
+																		local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																		local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+																		local AdjustedX = PPos.x + FVect.x * 10
+																		local AdjustedY = PPos.y + FVect.y * 10
+																		local AdjustedZ = PPos.z + FVect.z * 10
+																		if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ, 1.0, false, true, true, false, false, PlayerPed, true) then
+																			ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX, AdjustedY, AdjustedZ)
+																		end
+																	end
+																else
+																	if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, 700.0, 700.0, 700.0, false, true, false) then
+																		local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																		local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+																		local AdjustedX = PPos.x + FVect.x * 10
+																		local AdjustedY = PPos.y + FVect.y * 10
+																		local AdjustedZ = PPos.z + FVect.z * 10
+																		if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ + 100.0, 1.0, false, true, true, false, false, PlayerPed, true) then
+																			ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX, AdjustedY, AdjustedZ + 100.0)
+																		end
+																	end
+																end
+															end
+														else
+															local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+															local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+															local AdjustedX = PPos.x + FVect.x * 5
+															local AdjustedY = PPos.y + FVect.y * 5
+															local AdjustedZ = PPos.z + FVect.z * 5
+															local DidHit = memory.alloc(1)
+															local EndCoords = v3.new()
+															local Normal = v3.new()
+															local HitEntity = memory.alloc_int()
+														
+															local Handle = SHAPETEST.START_EXPENSIVE_SYNCHRONOUS_SHAPE_TEST_LOS_PROBE(
+																PPos.x, PPos.y, PPos.z,
+																AdjustedX, AdjustedY, AdjustedZ,
+																-1,
+																PlayerPed, 7
+															)
+															SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
+															if memory.read_byte(DidHit) ~= 0 then
+																if not MISC.IS_POSITION_OCCUPIED(EndCoords.x, EndCoords.y, EndCoords.z - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																	ENTITY.SET_ENTITY_COORDS(peds, EndCoords.x, EndCoords.y, EndCoords.z - 1.0)
+																end
+															else
+																if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																	ENTITY.SET_ENTITY_COORDS(peds, AdjustedX, AdjustedY, AdjustedZ - 1.0)
+																end
+															end
+														end
+													else
+														local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+														local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+														local AdjustedX = PPos.x + FVect.x * 5
+														local AdjustedY = PPos.y + FVect.y * 5
+														local AdjustedZ = PPos.z + FVect.z * 5
+														local DidHit = memory.alloc(1)
+														local EndCoords = v3.new()
+														local Normal = v3.new()
+														local HitEntity = memory.alloc_int()
+													
+														local Handle = SHAPETEST.START_EXPENSIVE_SYNCHRONOUS_SHAPE_TEST_LOS_PROBE(
+															PPos.x, PPos.y, PPos.z,
+															AdjustedX, AdjustedY, AdjustedZ,
+															-1,
+															PlayerPed, 7
+														)
+														SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
+														if memory.read_byte(DidHit) ~= 0 then
+															if not MISC.IS_POSITION_OCCUPIED(EndCoords.x, EndCoords.y, EndCoords.z - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																ENTITY.SET_ENTITY_COORDS(peds, EndCoords.x, EndCoords.y, EndCoords.z - 1.0)
+															end
+														else
+															if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																ENTITY.SET_ENTITY_COORDS(peds, AdjustedX, AdjustedY, AdjustedZ - 1.0)
+															end
+														end
+													end
+												end
+											end
+										else
+											if CopsAttackEveryone then
+												if MakeCopsAttackEveryone then
+													if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT_HATED_TARGETS_AROUND_PED")) == 7 then
+														TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, 1000.0, 0)
+													end
+												end
+											end
+										end
+									end
+								end
+								if ZombieMode then
+									if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
+										NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+										local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+										local OutPos, FoundCoords = find_right_spawn_normal(PPos.x, PPos.y, PPos.z, 40.0, 70.0)
+										if FoundCoords then
+											if not MISC.IS_POSITION_OCCUPIED(OutPos.x, OutPos.y, OutPos.z, 1.0, false, true, true, false, false, PlayerPed, true) then
+												ENTITY.SET_ENTITY_COORDS(peds, OutPos.x, OutPos.y, OutPos.z)
+												ENTITY.SET_ENTITY_HEADING(peds, math.random(0, 360))
+											end
+										end
+									end
+									if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT_HATED_TARGETS_AROUND_PED")) == 7 then
+										NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+										TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, 1000.0, 0)
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+			if ApplyCopSettings then
+				if AutomaticGenCops then
+					if MissionCopCount >= MaxCopsToEdit then
+						PLAYER.SET_PLAYER_WANTED_LEVEL(PlayerID, 0, false)
+						PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(PlayerID, false)
+					else
+						PLAYER.SET_DISPATCH_COPS_FOR_PLAYER(PlayerID, true)
+						PLAYER.SET_MAX_WANTED_LEVEL(5)
+						PLAYER.SET_PLAYER_WANTED_LEVEL(PlayerID, 5, false)
+						PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(PlayerID, false)
+					end
+				end
+			end
+		end
+	end
+end)
+
+menu.toggle_loop(menu.my_root(), "Enable Cops In Cayo Perico", {}, "", function(toggle)
+	local PlayerId = PLAYER.PLAYER_ID()
+	local Addr = memory.script_global(CayoCopsGlobalAddr + 463 * PlayerId)
+	local Value = memory.read_int(Addr)
+	if is_bit_set(Value, 1) then
+		memory.write_int(Addr, clear_bit(Value, 1))
+	end
+end)
+
+local OnlyShowCopBlips = false
+menu.toggle(menu.my_root(), "Only Show Cop Blips", {}, "", function(toggle)
+	OnlyShowCopBlips = toggle
+	while OnlyShowCopBlips do
+		Wait()
+		local PlayerPed = PLAYER.PLAYER_PED_ID()
+		local MissionCopCount = 0
+		for index, peds in pairs(entities.get_all_peds_as_handles()) do
+			if peds ~= PlayerPed then
+				if not PED.IS_PED_A_PLAYER(peds) then
+					local DecorInt = DECORATOR.DECOR_GET_INT(peds, "Casino_Game_Info_Decorator")
+					if DecorInt == 31 then
+						MissionCopCount = MissionCopCount + 1
+						if not HUD.DOES_PED_HAVE_AI_BLIP(peds) then
+							HUD.SET_PED_HAS_AI_BLIP_WITH_COLOUR(peds, true, 2)
+							HUD.SET_PED_AI_BLIP_HAS_CONE(peds, false)
+							HUD.SET_PED_AI_BLIP_FORCED_ON(peds, true)
+						end
+					end
+				end
+			end
+		end
+		if RenderCopCount then
+			directx.draw_text(0.7, 0.7, "Cops "..MissionCopCount, ALIGN_CENTRE, 1.0, {r = 0, g = 255 , b = 255, a = 200}, false)
+		end
+	end
+end, OnlyShowCopBlips)
+
+function is_bit_set(value, bit)
+    bit = bit - 1
+    return (value & (1 << bit)) ~= 0
+end
+
+function clear_bit(value, bit)
+    bit = bit - 1;
+    return value & ~(1 << bit)
+end
+
+function set_bit(value, bit)
+    bit = bit - 1;
+    return value | 1 << bit
+end
+
+local WeaponsLevel1 = {
+	"weapon_pistol50",
+	"weapon_heavypistol",
+	"weapon_microsmg",
+	"weapon_minismg",
+	"weapon_tecpistol"
+}
+
+local WeaponsLevel2 = {
+	"weapon_appistol",
+	"weapon_gadgetpistol",
+	"weapon_assaultsmg",
+	"weapon_smg",
+	"weapon_smg_mk2",
+	"weapon_machinepistol",
+	"weapon_pumpshotgun"
+}
+
+local WeaponsLevel3 = {
+	"weapon_navyrevolver",
+	"weapon_combatpdw",
+	"weapon_sawnoffshotgun",
+	"weapon_assaultshotgun",
+	"weapon_heavyshotgun",
+	"weapon_dbshotgun",
+	"weapon_autoshotgun",
+	"weapon_combatshotgun",
+	"weapon_carbinerifle",
+	"weapon_carbinerifle_mk2",
+	"weapon_specialcarbine",
+	"weapon_specialcarbine_mk2",
+	"weapon_bullpuprifle",
+	"weapon_bullpuprifle_mk2",
+	"weapon_compactrifle",
+	"weapon_militaryrifle",
+	"weapon_heavyrifle",
+	"weapon_tacticalrifle",
+	"weapon_gusenberg"
+}
+
+local WeaponsLevel4 = {
+	"weapon_mg",
+	"weapon_combatmg",
+	"weapon_combatmg_mk2",
+}
+
+local WeaponsLevel5 = {
+	"weapon_sniperrifle",
+	"weapon_heavysniper",
+	"weapon_heavysniper_mk2",
+	"weapon_marksmanrifle",
+	"weapon_marksmanrifle_mk2",
+	"weapon_precisionrifle",
+}
+
+local WeaponsLevel6 = {
+	"weapon_rpg",
+	"weapon_grenadelauncher",
+	"weapon_minigun",
+	"weapon_firework",
+	"weapon_railgun",
+	"weapon_hominglauncher",
+	"weapon_compactlauncher",
+	"weapon_emplauncher"
+}
+
+function GiveCorrectWeaponsToPed(Ped)
+	if EnableWeaponSettsForCops then
+		if SelectedGiveWeaponType == 1 then
+			WEAPON.REMOVE_ALL_PED_WEAPONS(Ped, true)
+			WEAPON.GIVE_WEAPON_TO_PED(Ped, SelectedForcedPedWeaponHash, 99999, false, true)
+		end
+		if SelectedGiveWeaponType == 2 then
+			WEAPON.GIVE_WEAPON_TO_PED(Ped, SelectedAutoGivePedWeaponHash, 99999, false, true)
+		end
+		if SelectedGiveWeaponType == 3 then
+			WEAPON.REMOVE_ALL_PED_WEAPONS(Ped, true)
+			local RandomWeapHash = joaat(WeaponsForCops[math.random(#WeaponsForCops)])
+			WEAPON.GIVE_WEAPON_TO_PED(Ped, RandomWeapHash, 99999, false, true)
+		end
+		if SelectedGiveWeaponType == 4 then
+			local ChosenWeaponHash = 0
+			local RandomChance = math.random(0, 120)
+			if RandomChance <= 20 then
+				ChosenWeaponHash = joaat(WeaponsLevel1[math.random(#WeaponsLevel1)])
+			end
+			if RandomChance > 20 and RandomChance <= 40 then
+				ChosenWeaponHash = joaat(WeaponsLevel2[math.random(#WeaponsLevel2)])
+			end
+			if RandomChance > 40 and RandomChance <= 60 then
+				ChosenWeaponHash = joaat(WeaponsLevel3[math.random(#WeaponsLevel3)])
+			end
+			if RandomChance > 60 and RandomChance <= 80 then
+				ChosenWeaponHash = joaat(WeaponsLevel4[math.random(#WeaponsLevel4)])
+			end
+			if RandomChance > 80 and RandomChance <= 100 then
+				ChosenWeaponHash = joaat(WeaponsLevel5[math.random(#WeaponsLevel5)])
+			end
+			if RandomChance > 100 and RandomChance <= 120 then
+				ChosenWeaponHash = joaat(WeaponsLevel6[math.random(#WeaponsLevel6)])
+			end
+			WEAPON.GIVE_WEAPON_TO_PED(Ped, ChosenWeaponHash, 99999, false, true)
+		end
+	end
+end
+
+function IsWithCopRel(Ped)
+	local RelHash = PED.GET_PED_RELATIONSHIP_GROUP_HASH(Ped)
+	if RelHash == joaat("COP") or RelHash == joaat("ARMY") then
+		return true
+	end
+	return false
+end
+
+function IsCopPedModel(Ped)
+	local PedModel = ENTITY.GET_ENTITY_MODEL(Ped)
+	if PedModel == joaat("mp_m_bogdangoon") or PedModel == joaat("player_two") or PedModel == joaat("ig_mp_agent14")
+	or PedModel == joaat("player_zero") or PedModel == joaat("ig_lestercrest_2") or PedModel == joaat("s_m_y_blackops_01")
+	or PedModel == joaat("u_m_y_zombie_01") then
+		return true
+	end
+	return false
+end
+
+local MiscMenu = menu.list(menu.my_root(), "Misc Features", {}, "")
+
+menu.action(MiscMenu, "Fill Pop", {}, "", function(toggle)
+	PED.INSTANTLY_FILL_PED_POPULATION()
+end)
+
+menu.toggle_loop(MiscMenu, "Network Door", {}, "Some doors you aim will be able to open by other players.", function(toggle)
+	local PlayerId = PLAYER.PLAYER_ID()
+	if PLAYER.IS_PLAYER_FREE_AIMING(PlayerId) then
+		local Entity = get_entity_player_is_aiming_at(PlayerId)
+		if Entity ~= nil then
+			--request_control_once(Entity)
+			local Pos = ENTITY.GET_ENTITY_COORDS(Entity)
+			local ModelHash = ENTITY.GET_ENTITY_MODEL(Entity)
+			local DoorHash = memory.alloc(8)
+			local Found = OBJECT.DOOR_SYSTEM_FIND_EXISTING_DOOR(Pos.x, Pos.y, Pos.z, ModelHash, DoorHash)
+			if Found then
+				OBJECT.DOOR_SYSTEM_SET_DOOR_STATE(memory.read_int(DoorHash), 0, true, false)
+			end
+		end
+	end
+end)
+
+menu.toggle_loop(MiscMenu, "Set Aimed Entity Invincible", {}, "", function(toggle)
+	local PlayerId = PLAYER.PLAYER_ID()
+	if PLAYER.IS_PLAYER_FREE_AIMING(PlayerId) then
+		local Entity = get_entity_player_is_aiming_at(PlayerId)
+		if Entity ~= nil then
+			NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Entity)
+			ENTITY.SET_ENTITY_INVINCIBLE(Entity, true)
+		end
+	end
+end)
+
+local CollectAll = false
+menu.toggle(MiscMenu, "B Battle Collect All 8 Crates", {""}, "", function(toggle)
+	CollectAll = toggle
+	while CollectAll do
+		Wait()
+		local pickups = entities.get_all_pickups_as_handles()
+		for index, crates in ipairs(pickups) do
+			if ENTITY.GET_ENTITY_SCRIPT(crates, 0) == "fm_content_business_battles"
+			and not ENTITY.IS_ENTITY_ATTACHED_TO_ANY_PED(crates) then
+                NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(crates)
+				ENTITY.ATTACH_ENTITY_TO_ENTITY(crates, PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(PLAYER.PLAYER_ID()), 0, 0, 0, 0, 0, 0, 0, 0, true, true, false, 0, true)
+				--OBJECT.ATTACH_PORTABLE_PICKUP_TO_PED(crates, PLAYER.PLAYER_PED_ID())
+			end
+		end
+	end
+end)
+
+menu.toggle_loop(MiscMenu, "Kill List Veh Valkyrie", {""}, "", function(toggle)
+	local HostSet = false
+	local ChosenVehModel = joaat("tampa3")
+	if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("am_kill_list")) > 0 then
+		if not HostSet then
+			NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+			HostSet = true
+		end
+		memory.write_int(memory.script_local("am_kill_list", 94+27), ChosenVehModel)
+		local VehNetID = memory.read_int(memory.script_local("am_kill_list", 94+7+1))
+		local VehHandle = 0
+		util.spoof_script("am_kill_list", function()
+			if not NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+				NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+			end
+			if VehNetID > 0 then
+				VehHandle = NETWORK.NET_TO_VEH(VehNetID)
+			end
+		end)
+		if VehHandle > 0 then
+			if ENTITY.GET_ENTITY_MODEL(VehHandle) == ChosenVehModel then
+				memory.write_int(memory.script_local("am_kill_list", 94+27), joaat("buzzard"))
+			end
+		end
+	else
+		HostSet = false
+	end
+end)
+
+menu.action(MiscMenu, "Start Kill List", {}, "", function(toggle)
+	if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("am_kill_list")) > 0 then
+		memory.write_int(memory.script_local("am_kill_list", 94+413), -4144)
+		util.spoof_script("am_kill_list", function()
+			if not NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+				NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+			end
+		end)
+	end
+end)
+
+menu.action(MiscMenu, "Bring Fortified Boxville", {}, "", function(toggle)
+	for index, vehs in pairs(entities.get_all_vehicles_as_handles()) do
+		if ENTITY.GET_ENTITY_SCRIPT(vehs, 0) == "GB_FORTIFIED" then
+			if ENTITY.GET_ENTITY_MODEL(vehs) == joaat("boxville5") then
+				local PlCoords = ENTITY.GET_ENTITY_COORDS(PLAYER.PLAYER_PED_ID())
+				NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(vehs)
+				ENTITY.SET_ENTITY_COORDS(vehs, PlCoords.x, PlCoords.y, PlCoords.z)
+			end
+		end
+	end
+end)
+
+menu.toggle_loop(MiscMenu, "Business Battles Chaos", {""}, "Enemies will rush and respawn.", function(toggle)
+	if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_content_business_battles")) > 0 then
+		util.spoof_script("fm_content_business_battles", function()
+			if not NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+				NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+			end
+		end)
+		for i = 0, 29 do
+			memory.write_int(memory.script_local("fm_content_business_battles", (215+129+1+2) + 21 * i), 1024)
+			memory.write_float(memory.script_local("fm_content_business_battles", (215+129+1+20) + 21 * i), -1)
+		end
+	end
+end)
+
+local StartMissionMenu = menu.list(menu.my_root(), "Missions", {}, "")
+
+local NextIndexGlobal = 609
+local StartMissionGlobal = 1895156+1+10+32
+
+local BikerMissions = menu.list(StartMissionMenu, "Biker Missions", {}, "")
+menu.action(BikerMissions, "Joust", {}, "Start this mission.", function(toggle)
+	local PlayerID = PLAYER.PLAYER_ID()
+	memory.write_int(memory.script_global(StartMissionGlobal + NextIndexGlobal * PlayerID), 179)
+end)
+
+menu.action(BikerMissions, "Unload Weapons", {}, "Start this mission.", function(toggle)
+	local PlayerID = PLAYER.PLAYER_ID()
+	memory.write_int(memory.script_global(StartMissionGlobal + NextIndexGlobal * PlayerID), 180)
+end)
+
+menu.action(BikerMissions, "Bad Deal", {}, "Start this mission.", function(toggle)
+	local PlayerID = PLAYER.PLAYER_ID()
+	memory.write_int(memory.script_global(StartMissionGlobal + NextIndexGlobal * PlayerID), 182)
+end)
+
+menu.action(BikerMissions, "Rescue Contact", {}, "Start this mission.", function(toggle)
+	local PlayerID = PLAYER.PLAYER_ID()
+	memory.write_int(memory.script_global(StartMissionGlobal + NextIndexGlobal * PlayerID), 183)
+end)
+
+menu.action(BikerMissions, "Drive-by Assassin", {}, "Start this mission.", function(toggle)
+	local PlayerID = PLAYER.PLAYER_ID()
+	memory.write_int(memory.script_global(StartMissionGlobal + NextIndexGlobal * PlayerID), 193)
+end)
+
+menu.action(BikerMissions, "Rippin It Up", {}, "Start this mission.", function(toggle)
+	local PlayerID = PLAYER.PLAYER_ID()
+	memory.write_int(memory.script_global(StartMissionGlobal + NextIndexGlobal * PlayerID), 194)
+end)
+
+menu.action(BikerMissions, "Free Prisoner", {}, "Start this mission.", function(toggle)
+	local PlayerID = PLAYER.PLAYER_ID()
+	memory.write_int(memory.script_global(StartMissionGlobal + NextIndexGlobal * PlayerID), 197)
+end)
+
+menu.action(BikerMissions, "Safe Cracker", {}, "Start this mission.", function(toggle)
+	local PlayerID = PLAYER.PLAYER_ID()
+	memory.write_int(memory.script_global(StartMissionGlobal + NextIndexGlobal * PlayerID), 198)
+end)
+
+menu.action(BikerMissions, "Steal Bikes", {}, "Start this mission.", function(toggle)
+	local PlayerID = PLAYER.PLAYER_ID()
+	memory.write_int(memory.script_global(StartMissionGlobal + NextIndexGlobal * PlayerID), 195)
+end)
+
+menu.action(BikerMissions, "Search And Destroy", {}, "Start this mission.", function(toggle)
+	local PlayerID = PLAYER.PLAYER_ID()
+	memory.write_int(memory.script_global(StartMissionGlobal + NextIndexGlobal * PlayerID), 199)
+end)
+
+menu.action(BikerMissions, "Destroy Vans", {}, "Start this mission.", function(toggle)
+	local PlayerID = PLAYER.PLAYER_ID()
+	memory.write_int(memory.script_global(StartMissionGlobal + NextIndexGlobal * PlayerID), 207)
+end)
+
+menu.action(BikerMissions, "Burn Assets", {}, "Start this mission.", function(toggle)
+	local PlayerID = PLAYER.PLAYER_ID()
+	memory.write_int(memory.script_global(StartMissionGlobal + NextIndexGlobal * PlayerID), 208)
+end)
+
+menu.action(BikerMissions, "Wheelie Rider", {}, "Start this mission.", function(toggle)
+	local PlayerID = PLAYER.PLAYER_ID()
+	memory.write_int(memory.script_global(StartMissionGlobal + NextIndexGlobal * PlayerID), 210)
+end)
+
+local DevMenu = menu.list(menu.my_root(), "DEV Tools", {}, "")
+
+menu.action(DevMenu, "Bypass Law Vehicles", {}, "To spawn cops and SWATS inside different police vehicles", function(toggle)
+	local AddrDispatch = memory.scan("8b ? ? ? ? ? 41 8b f1 45 8a d0 c1 e8 1f 40 8a ea 41 84 c4 75")
+	if AddrDispatch ~= 0 then
+		local AddrTarget = AddrDispatch + 21
+		memory.write_byte(AddrTarget, 0xEB)
+	end
+	local AddrSWATDispatch = memory.scan("74 ? 3b 05 ? ? ? ? 74 ? 3b 05 ? ? ? ? 75 ? ? b0 01")
+	if AddrSWATDispatch ~= 0 then
+		local AddrTarget = AddrSWATDispatch + 16
+		memory.write_byte(AddrTarget, 0x90)
+		memory.write_byte(AddrTarget + 1, 0x90)
+	end
+end)
+
+menu.action(DevMenu, "Get Group Size", {}, "", function(toggle)
+	Print(GetPedGroupSize(PLAYER.GET_PLAYER_GROUP(PLAYER.PLAYER_ID())))
+end)
+
+menu.action(DevMenu, "Relationship Hash", {}, "", function(toggle)
+	local PlayerID = PLAYER.PLAYER_ID()
+	local RelTarget = joaat("rgFM_Team"..PlayerID)
+	local MyRel = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PLAYER.PLAYER_PED_ID())
+	Print(RelTarget .. " MyRel " .. MyRel)
+end)
+
+--[[
+
+menu.action(DevMenu, "Addr Patch", {}, "", function(toggle)
+	local Addr = memory.scan("38 00 5D ? ? ? 06 1F 56 ? ? 71 38 01")
+	util.copy_to_clipboard(string.format("%X", Addr))
+	Print(string.format("%X", Addr))
+		"38 00 5D ? ? ? 06 1F 56 ? ? 71 38 01 ", 0, { 0x2E, 0x05, 0x00 }
+
+end)
+]]
+
+function DoesValueExistInTable2(T, Value)
+	for index, values in pairs(T) do
+		if Value == values.OldVehicle then return true end
+	end
+	return false
+end
+
+function DoesValueExistInTable3(T, Value)
+	for index, values in pairs(T) do
+		if index == Value then return true end
+	end
+	return false
+end
+
+--Credit to Wiri for these functions
+function get_entity_player_is_aiming_at(player)
+	if not PLAYER.IS_PLAYER_FREE_AIMING(player) then
+		return NULL
+	end
+	local entity, pEntity = NULL, memory.alloc_int()
+	if PLAYER.GET_ENTITY_PLAYER_IS_FREE_AIMING_AT(player, pEntity) then
+		entity = memory.read_int(pEntity)
+	end
+	if entity ~= NULL and ENTITY.IS_ENTITY_A_PED(entity) and PED.IS_PED_IN_ANY_VEHICLE(entity, false) then
+		entity = PED.GET_VEHICLE_PED_IS_IN(entity, false)
+	end
+	return entity
+end
+
+function GetPedGroupSize(Group)
+	local HasLeader, SizePtr = memory.alloc(1), memory.alloc(1)
+	PED.GET_GROUP_SIZE(Group, HasLeader, SizePtr)
+	return memory.read_int(SizePtr)
+end
+
+---@param entity Entity
+function set_entity_as_no_longer_needed(entity)
+	if not ENTITY.DOES_ENTITY_EXIST(entity) then return end
+	local pHandle = memory.alloc_int()
+	memory.write_int(pHandle, entity)
+	ENTITY.SET_ENTITY_AS_NO_LONGER_NEEDED(pHandle)
+end
+
+function SetPedCombatAbilities(ped)
+	PED.SET_PED_COMBAT_ATTRIBUTES(ped, 5, true)
+	PED.SET_PED_COMBAT_ATTRIBUTES(ped, 1, true)
+	PED.SET_PED_COMBAT_ATTRIBUTES(ped, 13, true)
+	PED.SET_PED_COMBAT_ATTRIBUTES(ped, 21, true)
+	PED.SET_PED_COMBAT_ATTRIBUTES(ped, 38, true)
+	PED.SET_PED_COMBAT_ATTRIBUTES(ped, 46, true)
+	PED.SET_PED_COMBAT_ATTRIBUTES(ped, 443, true)
+	--PED.SET_PED_COMBAT_MOVEMENT(ped, 2)
+	--PED.SET_PED_COMBAT_ABILITY(ped, 2) 
+	PED.SET_PED_COMBAT_RANGE(ped, 2)
+	PED.SET_PED_SEEING_RANGE(ped, 900.0)
+	PED.SET_PED_TARGET_LOSS_RESPONSE(ped, 1)
+	PED.SET_PED_HIGHLY_PERCEPTIVE(ped, true)
+	PED.SET_PED_VISUAL_FIELD_PERIPHERAL_RANGE(ped, 400.0)
+	PED.SET_COMBAT_FLOAT(ped, 10, 400.0)
+end
+
+function Random_Weapon_Components(ped, weaponHash, componentHash, setColor, AlwaysSet)
+	if WEAPON.HAS_PED_GOT_WEAPON(ped, weaponHash, false) then
+		local randomComponent = math.random(0, 1)
+		if AlwaysSet ~= nil then
+			if AlwaysSet then
+				randomComponent = 1
+			end
+		end
+		if randomComponent == 1 then
+			WEAPON.GIVE_WEAPON_COMPONENT_TO_PED(ped, weaponHash, componentHash)
+		end
+		if setColor then
+			WEAPON.SET_PED_WEAPON_TINT_INDEX(ped, weaponHash, math.random(0, 7))
+		end
+	end
+end
+
+function Set_Weapon_Components(ped)
+	Random_Weapon_Components(ped, joaat("weapon_appistol"), joaat("COMPONENT_APPISTOL_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_appistol"), joaat("COMPONENT_AT_PI_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_appistol"), joaat("COMPONENT_AT_PI_SUPP"), false)
+	Random_Weapon_Components(ped, joaat("weapon_appistol"), joaat("COMPONENT_APPISTOL_VARMOD_SECURITY"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_pistol50"), joaat("COMPONENT_PISTOL50_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_pistol50"), joaat("COMPONENT_AT_PI_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_pistol50"), joaat("COMPONENT_AT_AR_SUPP_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_pistol50"), joaat("COMPONENT_PISTOL50_VARMOD_LUXE"), false)
+	
+	Random_Weapon_Components(ped, joaat("weapon_heavypistol"), joaat("COMPONENT_HEAVYPISTOL_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_heavypistol"), joaat("COMPONENT_AT_PI_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_heavypistol"), joaat("COMPONENT_AT_PI_SUPP"), false)
+	Random_Weapon_Components(ped, joaat("weapon_heavypistol"), joaat("COMPONENT_HEAVYPISTOL_VARMOD_LUXE"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_microsmg"), joaat("COMPONENT_MICROSMG_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_microsmg"), joaat("COMPONENT_AT_PI_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_microsmg"), joaat("COMPONENT_AT_SCOPE_MACRO"), false)
+	Random_Weapon_Components(ped, joaat("weapon_microsmg"), joaat("COMPONENT_AT_AR_SUPP_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_microsmg"), joaat("COMPONENT_MICROSMG_VARMOD_FRN"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_combatpdw"), joaat("COMPONENT_COMBATPDW_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_combatpdw"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_combatpdw"), joaat("COMPONENT_AT_AR_AFGRIP"), false)
+	Random_Weapon_Components(ped, joaat("weapon_combatpdw"), joaat("COMPONENT_AT_SCOPE_SMALL"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_machinepistol"), joaat("COMPONENT_MACHINEPISTOL_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_machinepistol"), joaat("COMPONENT_AT_PI_SUPP"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_minismg"), joaat("COMPONENT_MINISMG_CLIP_02"), true)
+	
+	Random_Weapon_Components(ped, joaat("weapon_tecpistol"), joaat("COMPONENT_TECPISTOL_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_tecpistol"), joaat("COMPONENT_AT_AR_SUPP_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_tecpistol"), joaat("COMPONENT_AT_SCOPE_MACRO"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_pumpshotgun"), joaat("COMPONENT_AT_AR_FLSH"), true, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_pumpshotgun"), joaat("COMPONENT_AT_SR_SUPP"), false)
+	Random_Weapon_Components(ped, joaat("weapon_pumpshotgun"), joaat("COMPONENT_PUMPSHOTGUN_VARMOD_XM3"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_combatshotgun"), joaat("COMPONENT_AT_AR_FLSH"), true, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_combatshotgun"), joaat("COMPONENT_AT_AR_SUPP"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_assaultrifle"), joaat("COMPONENT_ASSAULTRIFLE_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_assaultrifle"), joaat("COMPONENT_ASSAULTRIFLE_CLIP_03"), false)
+	Random_Weapon_Components(ped, joaat("weapon_assaultrifle"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_assaultrifle"), joaat("COMPONENT_AT_SCOPE_MACRO"), false)
+	Random_Weapon_Components(ped, joaat("weapon_assaultrifle"), joaat("COMPONENT_AT_AR_SUPP_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_assaultrifle"), joaat("COMPONENT_AT_AR_AFGRIP"), false)
+	Random_Weapon_Components(ped, joaat("weapon_assaultrifle"), joaat("COMPONENT_ASSAULTRIFLE_VARMOD_LUXE"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_bullpuprifle"), joaat("COMPONENT_BULLPUPRIFLE_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_bullpuprifle"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_bullpuprifle"), joaat("COMPONENT_AT_SCOPE_SMALL"), false)
+	Random_Weapon_Components(ped, joaat("weapon_bullpuprifle"), joaat("COMPONENT_AT_AR_SUPP"), false)
+	Random_Weapon_Components(ped, joaat("weapon_bullpuprifle"), joaat("COMPONENT_AT_AR_AFGRIP"), false)
+	Random_Weapon_Components(ped, joaat("weapon_bullpuprifle"), joaat("COMPONENT_BULLPUPRIFLE_VARMOD_LOW"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_bullpuprifle_mk2"), joaat("COMPONENT_AT_SCOPE_MACRO_02_MK2"), true)
+	Random_Weapon_Components(ped, joaat("weapon_bullpuprifle_mk2"), joaat("COMPONENT_AT_SCOPE_SMALL_MK2"), false)
+	Random_Weapon_Components(ped, joaat("weapon_bullpuprifle_mk2"), joaat("COMPONENT_BULLPUPRIFLE_MK2_CLIP_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_bullpuprifle_mk2"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_bullpuprifle_mk2"), joaat("COMPONENT_AT_SIGHTS"), false)
+	Random_Weapon_Components(ped, joaat("weapon_bullpuprifle_mk2"), joaat("COMPONENT_AT_BP_BARREL_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_bullpuprifle_mk2"), joaat("COMPONENT_AT_AR_SUPP"), false)
+	Random_Weapon_Components(ped, joaat("weapon_bullpuprifle_mk2"), joaat("COMPONENT_AT_MUZZLE_07"), false)
+	Random_Weapon_Components(ped, joaat("weapon_bullpuprifle_mk2"), joaat("COMPONENT_AT_AR_AFGRIP_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_bullpuprifle_mk2"), joaat("COMPONENT_BULLPUPRIFLE_MK2_CAMO"), false)
+	Random_Weapon_Components(ped, joaat("weapon_bullpuprifle_mk2"), joaat("COMPONENT_BULLPUPRIFLE_MK2_CAMO_05"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_compactrifle"), joaat("COMPONENT_COMPACTRIFLE_CLIP_02"), true)
+
+	Random_Weapon_Components(ped, joaat("weapon_heavyrifle"), joaat("COMPONENT_HEAVYRIFLE_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_heavyrifle"), joaat("COMPONENT_HEAVYRIFLE_SIGHT_01"), false)
+	Random_Weapon_Components(ped, joaat("weapon_heavyrifle"), joaat("COMPONENT_AT_SCOPE_MEDIUM"), false)
+	Random_Weapon_Components(ped, joaat("weapon_heavyrifle"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_heavyrifle"), joaat("COMPONENT_AT_AR_SUPP"), false)
+	Random_Weapon_Components(ped, joaat("weapon_heavyrifle"), joaat("COMPONENT_AT_AR_AFGRIP"), false)
+	Random_Weapon_Components(ped, joaat("weapon_heavyrifle"), joaat("COMPONENT_HEAVYRIFLE_CAMO1"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_mg"), joaat("COMPONENT_MG_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_mg"), joaat("COMPONENT_AT_SCOPE_SMALL_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_mg"), joaat("COMPONENT_MG_VARMOD_LOWRIDER"), false)
+	
+	Random_Weapon_Components(ped, joaat("weapon_sniperrifle"), joaat("COMPONENT_AT_AR_SUPP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_sniperrifle"), joaat("COMPONENT_AT_SCOPE_MAX"), false)
+	Random_Weapon_Components(ped, joaat("weapon_sniperrifle"), joaat("COMPONENT_AT_SCOPE_LARGE"), false)
+	Random_Weapon_Components(ped, joaat("weapon_sniperrifle"), joaat("COMPONENT_SNIPERRIFLE_VARMOD_LUXE"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_heavysniper"), joaat("COMPONENT_AT_SCOPE_LARGE"), true)
+	Random_Weapon_Components(ped, joaat("weapon_heavysniper"), joaat("COMPONENT_AT_SCOPE_MAX"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_marksmanrifle"), joaat("COMPONENT_MARKSMANRIFLE_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_marksmanrifle"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_marksmanrifle"), joaat("COMPONENT_AT_SCOPE_LARGE_FIXED_ZOOM"), false)
+	Random_Weapon_Components(ped, joaat("weapon_marksmanrifle"), joaat("COMPONENT_AT_AR_SUPP"), false)
+	Random_Weapon_Components(ped, joaat("weapon_marksmanrifle"), joaat("COMPONENT_AT_AR_AFGRIP"), false)
+	Random_Weapon_Components(ped, joaat("weapon_marksmanrifle"), joaat("COMPONENT_MARKSMANRIFLE_VARMOD_LUXE"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_marksmanrifle_mk2"), joaat("COMPONENT_MARKSMANRIFLE_MK2_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_marksmanrifle_mk2"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_marksmanrifle_mk2"), joaat("COMPONENT_AT_SCOPE_LARGE_FIXED_ZOOM_MK2"), false)
+	Random_Weapon_Components(ped, joaat("weapon_marksmanrifle_mk2"), joaat("COMPONENT_AT_SIGHTS"), false)
+	Random_Weapon_Components(ped, joaat("weapon_marksmanrifle_mk2"), joaat("COMPONENT_AT_AR_SUPP"), false)
+	Random_Weapon_Components(ped, joaat("weapon_marksmanrifle_mk2"), joaat("COMPONENT_AT_MUZZLE_07"), false)
+	Random_Weapon_Components(ped, joaat("weapon_marksmanrifle_mk2"), joaat("COMPONENT_AT_AR_AFGRIP_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_marksmanrifle_mk2"), joaat("COMPONENT_AT_MRFL_BARREL_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_marksmanrifle_mk2"), joaat("COMPONENT_MARKSMANRIFLE_MK2_CAMO"), false)
+	Random_Weapon_Components(ped, joaat("weapon_marksmanrifle_mk2"), joaat("COMPONENT_MARKSMANRIFLE_MK2_CAMO_07"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_tacticalrifle"), joaat("COMPONENT_AT_AR_FLSH_REH"), true, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_tacticalrifle"), joaat("COMPONENT_TACTICALRIFLE_CLIP_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_tacticalrifle"), joaat("COMPONENT_AT_AR_SUPP_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_tacticalrifle"), joaat("COMPONENT_AT_AR_AFGRIP"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_smg"), joaat("COMPONENT_SMG_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_smg"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_smg"), joaat("COMPONENT_AT_SCOPE_MACRO"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_assaultsmg"), joaat("COMPONENT_ASSAULTSMG_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_assaultsmg"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_assaultsmg"), joaat("COMPONENT_AT_SCOPE_MACRO"), false)
+	Random_Weapon_Components(ped, joaat("weapon_assaultsmg"), joaat("COMPONENT_AT_AR_SUPP_02"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_assaultshotgun"), joaat("COMPONENT_ASSAULTSHOTGUN_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_assaultshotgun"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_assaultshotgun"), joaat("COMPONENT_AT_AR_SUPP"), false)
+	Random_Weapon_Components(ped, joaat("weapon_assaultshotgun"), joaat("COMPONENT_AT_AR_AFGRIP"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_carbinerifle"), joaat("COMPONENT_CARBINERIFLE_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_carbinerifle"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_carbinerifle"), joaat("COMPONENT_AT_RAILCOVER_01"), false)
+	Random_Weapon_Components(ped, joaat("weapon_carbinerifle"), joaat("COMPONENT_AT_SCOPE_MEDIUM"), false)
+	Random_Weapon_Components(ped, joaat("weapon_carbinerifle"), joaat("COMPONENT_AT_AR_SUPP"), false)
+	Random_Weapon_Components(ped, joaat("weapon_carbinerifle"), joaat("COMPONENT_AT_AR_AFGRIP"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_carbinerifle_mk2"), joaat("COMPONENT_CARBINERIFLE_MK2_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_carbinerifle_mk2"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_carbinerifle_mk2"), joaat("COMPONENT_AT_SIGHTS"), false)
+	Random_Weapon_Components(ped, joaat("weapon_carbinerifle_mk2"), joaat("COMPONENT_AT_MUZZLE_07"), false)
+	Random_Weapon_Components(ped, joaat("weapon_carbinerifle_mk2"), joaat("COMPONENT_AT_AR_SUPP"), false)
+	Random_Weapon_Components(ped, joaat("weapon_carbinerifle_mk2"), joaat("COMPONENT_AT_CR_BARREL_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_carbinerifle_mk2"), joaat("COMPONENT_CARBINERIFLE_MK2_CAMO"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_combatmg"), joaat("COMPONENT_COMBATMG_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_combatmg"), joaat("COMPONENT_AT_SCOPE_MEDIUM"), false)
+	Random_Weapon_Components(ped, joaat("weapon_combatmg"), joaat("COMPONENT_AT_AR_AFGRIP"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_combatmg_mk2"), joaat("COMPONENT_COMBATMG_MK2_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_combatmg_mk2"), joaat("COMPONENT_AT_SCOPE_SMALL_MK2"), false)
+	Random_Weapon_Components(ped, joaat("weapon_combatmg_mk2"), joaat("COMPONENT_AT_MUZZLE_07"), false)
+	Random_Weapon_Components(ped, joaat("weapon_combatmg_mk2"), joaat("COMPONENT_AT_AR_AFGRIP_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_combatmg_mk2"), joaat("COMPONENT_AT_MG_BARREL_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_combatmg_mk2"), joaat("COMPONENT_COMBATMG_MK2_CAMO"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_specialcarbine_mk2"), joaat("COMPONENT_SPECIALCARBINE_MK2_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_specialcarbine_mk2"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_specialcarbine_mk2"), joaat("COMPONENT_AT_SCOPE_MEDIUM_MK2"), false)
+	Random_Weapon_Components(ped, joaat("weapon_specialcarbine_mk2"), joaat("COMPONENT_AT_MUZZLE_07"), false)
+	Random_Weapon_Components(ped, joaat("weapon_specialcarbine_mk2"), joaat("COMPONENT_AT_AR_AFGRIP_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_specialcarbine_mk2"), joaat("COMPONENT_AT_SC_BARREL_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_specialcarbine_mk2"), joaat("COMPONENT_SPECIALCARBINE_MK2_CAMO_04"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_pumpshotgun_mk2"), joaat("COMPONENT_PUMPSHOTGUN_MK2_CLIP_EXPLOSIVE"), true)
+	Random_Weapon_Components(ped, joaat("weapon_pumpshotgun_mk2"), joaat("COMPONENT_AT_SCOPE_SMALL_MK2"), false)
+	Random_Weapon_Components(ped, joaat("weapon_pumpshotgun_mk2"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_pumpshotgun_mk2"), joaat("COMPONENT_AT_SR_SUPP_03"), false)
+	Random_Weapon_Components(ped, joaat("weapon_pumpshotgun_mk2"), joaat("COMPONENT_AT_MUZZLE_08"), false)
+	Random_Weapon_Components(ped, joaat("weapon_pumpshotgun_mk2"), joaat("COMPONENT_PUMPSHOTGUN_MK2_CAMO_02"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_smg_mk2"), joaat("COMPONENT_SMG_MK2_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_smg_mk2"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_smg_mk2"), joaat("COMPONENT_AT_SIGHTS_SMG"), false)
+	Random_Weapon_Components(ped, joaat("weapon_smg_mk2"), joaat("COMPONENT_AT_PI_SUPP"), false)
+	Random_Weapon_Components(ped, joaat("weapon_smg_mk2"), joaat("COMPONENT_AT_MUZZLE_03"), false)
+	Random_Weapon_Components(ped, joaat("weapon_smg_mk2"), joaat("COMPONENT_AT_SB_BARREL_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_smg_mk2"), joaat("COMPONENT_SMG_MK2_CAMO_03"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_assaultrifle_mk2"), joaat("COMPONENT_ASSAULTRIFLE_MK2_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_assaultrifle_mk2"), joaat("COMPONENT_AT_AR_AFGRIP_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_assaultrifle_mk2"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_assaultrifle_mk2"), joaat("COMPONENT_AT_SIGHTS"), false)
+	Random_Weapon_Components(ped, joaat("weapon_assaultrifle_mk2"), joaat("COMPONENT_AT_MUZZLE_03"), false)
+	Random_Weapon_Components(ped, joaat("weapon_assaultrifle_mk2"), joaat("COMPONENT_AT_AR_BARREL_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_assaultrifle_mk2"), joaat("COMPONENT_ASSAULTRIFLE_MK2_CAMO"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_militaryrifle"), joaat("COMPONENT_MILITARYRIFLE_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_militaryrifle"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_militaryrifle"), joaat("COMPONENT_MILITARYRIFLE_SIGHT_01"), false)
+	Random_Weapon_Components(ped, joaat("weapon_militaryrifle"), joaat("COMPONENT_AT_AR_SUPP"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_specialcarbine"), joaat("COMPONENT_SPECIALCARBINE_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_specialcarbine"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_specialcarbine"), joaat("COMPONENT_AT_SCOPE_MEDIUM"), false)
+	Random_Weapon_Components(ped, joaat("weapon_specialcarbine"), joaat("COMPONENT_AT_AR_SUPP_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_specialcarbine"), joaat("COMPONENT_AT_AR_AFGRIP"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_heavyshotgun"), joaat("COMPONENT_HEAVYSHOTGUN_CLIP_03"), true)
+	Random_Weapon_Components(ped, joaat("weapon_heavyshotgun"), joaat("COMPONENT_AT_AR_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_heavyshotgun"), joaat("COMPONENT_AT_AR_SUPP_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_heavyshotgun"), joaat("COMPONENT_AT_AR_AFGRIP"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_heavysniper_mk2"), joaat("COMPONENT_HEAVYSNIPER_MK2_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_heavysniper_mk2"), joaat("COMPONENT_AT_SCOPE_MAX"), false)
+	Random_Weapon_Components(ped, joaat("weapon_heavysniper_mk2"), joaat("COMPONENT_AT_SR_SUPP_03"), false)
+	Random_Weapon_Components(ped, joaat("weapon_heavysniper_mk2"), joaat("COMPONENT_AT_SR_BARREL_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_heavysniper_mk2"), joaat("COMPONENT_HEAVYSNIPER_MK2_CAMO_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_heavysniper_mk2"), joaat("COMPONENT_HEAVYSNIPER_MK2_CAMO_03"), false)
+
+	Random_Weapon_Components(ped, joaat("weapon_gusenberg"), joaat("COMPONENT_GUSENBERG_CLIP_02"), true)
+
+	Random_Weapon_Components(ped, joaat("weapon_pistol"), joaat("COMPONENT_PISTOL_CLIP_02"), true)
+	Random_Weapon_Components(ped, joaat("weapon_pistol"), joaat("COMPONENT_AT_PI_FLSH"), false, FlashlightForAllCopWeapons)
+	Random_Weapon_Components(ped, joaat("weapon_pistol"), joaat("COMPONENT_AT_PI_SUPP_02"), false)
+	Random_Weapon_Components(ped, joaat("weapon_pistol"), joaat("COMPONENT_PISTOL_VARMOD_LUXE"), false)
+end
+
+---@param entity Entity
+---@return integer address
+function get_net_obj(entity)
+	local pEntity = entities.handle_to_pointer(entity)
+	return pEntity ~= NULL and memory.read_long(pEntity + 0xD0) or NULL
+end
+
+
+---@param entity Entity
+---@return Player owner
+function get_entity_owner(entity)
+	local net_obj = get_net_obj(entity)
+	return net_obj ~= NULL and memory.read_byte(net_obj + 0x49) or -1
+end
+
+function find_right_spawn_vehicle(posX, posY, posZ, minDist, maxDist)
+	local outpos = v3.new()
+	local outheading = memory.alloc(4)
+	local foundCoord = PATHFIND.GET_CLOSEST_VEHICLE_NODE_WITH_HEADING(posX + (math.random() < 0.5 and math.random(-maxDist, -minDist) or math.random(minDist, maxDist)), posY + (math.random() < 0.5 and math.random(-maxDist, -minDist) or math.random(minDist, maxDist)), posZ, outpos, outheading, 0, 3, 0)
+	return outpos, memory.read_float(outheading), foundCoord
+end
+
+function find_right_spawn_normal(posX, posY, posZ, minDist, maxDist)
+	local outpos = v3.new()
+	local foundCoord = PATHFIND.GET_SAFE_COORD_FOR_PED(posX + (math.random() < 0.5 and math.random(-maxDist, -minDist) or math.random(minDist, maxDist)), posY + (math.random() < 0.5 and math.random(-maxDist, -minDist) or math.random(minDist, maxDist)), posZ, false, outpos, 16)
+	return outpos, foundCoord
+end
+
+function SetPedHealth(ped, Health)
+	PED.SET_PED_MAX_HEALTH(ped, Health)
+	ENTITY.SET_ENTITY_MAX_HEALTH(ped, Health)
+	ENTITY.SET_ENTITY_HEALTH(ped, Health)
+end
+
+util.create_tick_handler(function()
+	return true
+end)
