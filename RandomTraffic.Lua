@@ -819,44 +819,46 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 				NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(vehs)
 				entities.delete_by_handle(vehs)
 			end
-			if #CreatedVehs < 30 then
-				if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(vehs)
-				and ENTITY.IS_ENTITY_VISIBLE(vehs) and
-				ENTITY.IS_ENTITY_AT_ENTITY(vehs, PlayerPed, 200.0, 200.0, 500.0, false, true, false)
-				and DECORATOR.DECOR_GET_INT(vehs, "Casino_Game_Info_Decorator") ~= 31 and not ENTITY.IS_ENTITY_DEAD(vehs) then
-					if not MISC.IS_POINT_OBSCURED_BY_A_MISSION_ENTITY (ReplaceVehCoords.x, ReplaceVehCoords.y,
-					ReplaceVehCoords.z, 1.0, 1.0, 1.0, 0) then
-						local PedHandle = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false)
-						if not PED.IS_PED_A_PLAYER(PedHandle) or PedHandle == PlayerPed then
-							local CanReplace = false
-							if ReplaceOnlyWithDrivers then
-								if VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false) > 0 then
+			if #CreatedVehs < 100 then
+				if NETWORK.CAN_REGISTER_MISSION_VEHICLES(1) then
+					if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(vehs)
+					and ENTITY.IS_ENTITY_VISIBLE(vehs) and
+					ENTITY.IS_ENTITY_AT_ENTITY(vehs, PlayerPed, 200.0, 200.0, 500.0, false, true, false)
+					and DECORATOR.DECOR_GET_INT(vehs, "Casino_Game_Info_Decorator") ~= 31 and not ENTITY.IS_ENTITY_DEAD(vehs) then
+						if not MISC.IS_POINT_OBSCURED_BY_A_MISSION_ENTITY (ReplaceVehCoords.x, ReplaceVehCoords.y,
+						ReplaceVehCoords.z, 1.0, 1.0, 1.0, 0) then
+							local PedHandle = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false)
+							if not PED.IS_PED_A_PLAYER(PedHandle) or PedHandle == PlayerPed then
+								local CanReplace = false
+								if ReplaceOnlyWithDrivers then
+									if VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false) > 0 then
+										CanReplace = true
+									end
+								else
 									CanReplace = true
 								end
-							else
-								CanReplace = true
-							end
-							if CanReplace then
-								if not DoesValueExistInTable2(CreatedVehs, vehs) then
-									local Passengers = {}
-									for i = -1, 9 do
-										local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, i, false)
-										if Ped ~= 0 then
-											NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-											DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31)
-											if not PED.IS_PED_A_PLAYER(Ped) then
-												Passengers[1 + #Passengers] = {Handle = Ped, SeatIndex = i}
+								if CanReplace then
+									if not DoesValueExistInTable2(CreatedVehs, vehs) then
+										local Passengers = {}
+										for i = -1, 9 do
+											local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, i, false)
+											if Ped ~= 0 then
+												NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+												DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31)
+												if not PED.IS_PED_A_PLAYER(Ped) then
+													Passengers[1 + #Passengers] = {Handle = Ped, SeatIndex = i}
+												end
 											end
 										end
+										local OldVehModel = ENTITY.GET_ENTITY_MODEL(vehs)
+										CreatedVehs[1 + #CreatedVehs] = {Handle = 0, Tick = 0, Count = 0, Passengers = Passengers,
+										OldVehicle = vehs, HasDeletedOldVeh = false, HasSetPedsIntoVeh = false, DeadTick = 0,
+										HasRemovedPassengers = false, OutsideVehCount = 0, IsDeletingOldVeh = false,
+										SettedPedsIntoVeh = 0, AwayTick = 0, HasCreatedVeh = false, HandleZeroTick = 0,
+										SetInVehTick = 0, OldModel = OldVehModel, Blip = 0}
+										--Print(ENTITY.GET_ENTITY_MODEL(vehs))
+										--Print("Reached")
 									end
-									local OldVehModel = ENTITY.GET_ENTITY_MODEL(vehs)
-									CreatedVehs[1 + #CreatedVehs] = {Handle = 0, Tick = 0, Count = 0, Passengers = Passengers,
-									OldVehicle = vehs, HasDeletedOldVeh = false, HasSetPedsIntoVeh = false, DeadTick = 0,
-									HasRemovedPassengers = false, OutsideVehCount = 0, IsDeletingOldVeh = false,
-									SettedPedsIntoVeh = 0, AwayTick = 0, HasCreatedVeh = false, HandleZeroTick = 0,
-									SetInVehTick = 0, OldModel = OldVehModel, Blip = 0}
-									--Print(ENTITY.GET_ENTITY_MODEL(vehs))
-									--Print("Reached")
 								end
 							end
 						end
@@ -904,6 +906,7 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 					if not CreatedVehs[i].HasRemovedPassengers and LastRequestedModel ~= 0 and
 					STREAMING.HAS_MODEL_LOADED(LastRequestedModel) then
 						if #CreatedVehs[i].Passengers > 0 then
+							local TheVehCoords = ENTITY.GET_ENTITY_COORDS(CreatedVehs[i].OldVehicle)
 							for index, passengers in pairs(CreatedVehs[i].Passengers) do
 								local VehPos = ENTITY.GET_ENTITY_COORDS(CreatedVehs[i].OldVehicle)
 								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(passengers.Handle)
@@ -912,19 +915,22 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 								end
 								DECORATOR.DECOR_SET_INT(passengers.Handle, "Casino_Game_Info_Decorator", 31)
 								TASK.TASK_LEAVE_VEHICLE(passengers.Handle, CreatedVehs[i].OldVehicle, 16)
-								if PlaneMode then
-									ENTITY.SET_ENTITY_COORDS(passengers.Handle, VehPos.x, VehPos.y, VehPos.z)
-								else
+								--if PlaneMode then
+									--ENTITY.SET_ENTITY_COORDS(passengers.Handle, VehPos.x, VehPos.y, VehPos.z)
+								--else
 									ENTITY.SET_ENTITY_COORDS(passengers.Handle, VehPos.x, VehPos.y, VehPos.z + 50.0)
-								end
+								--end
 								--ENTITY.FREEZE_ENTITY_POSITION(passengers.Handle, true)
-								if not PED.IS_PED_IN_VEHICLE(passengers.Handle, CreatedVehs[i].OldVehicle, false) then
-									CreatedVehs[i].OutsideVehCount = CreatedVehs[i].OutsideVehCount + 1
-								else
-									CreatedVehs[i].OutsideVehCount = 0
-								end
-								if CreatedVehs[i].OutsideVehCount >= #CreatedVehs[i].Passengers then
-									CreatedVehs[i].HasRemovedPassengers = true
+								local ThePedCoords = ENTITY.GET_ENTITY_COORDS(passengers.Handle)
+								if ThePedCoords.z > TheVehCoords.z+40.0 then
+									if not PED.IS_PED_IN_VEHICLE(passengers.Handle, CreatedVehs[i].OldVehicle, false) then
+										CreatedVehs[i].OutsideVehCount = CreatedVehs[i].OutsideVehCount + 1
+									else
+										CreatedVehs[i].OutsideVehCount = 0
+									end
+									if CreatedVehs[i].OutsideVehCount >= #CreatedVehs[i].Passengers then
+										CreatedVehs[i].HasRemovedPassengers = true
+									end
 								end
 							end
 						else
@@ -952,7 +958,7 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 											NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].OldVehicle)
 											
 											local NewVeh = entities.create_vehicle(LastRequestedModel, VehPos, VehHeading)
-											NetworkEntityVeh(NewVeh)
+											--NetworkEntityVeh(NewVeh)
 											DECORATOR.DECOR_SET_INT(NewVeh, "Casino_Game_Info_Decorator", 31)
 											--local EntNetID = NETWORK.VEH_TO_NET(NewVeh)
 											--NETWORK.SET_NETWORK_ID_EXISTS_ON_ALL_MACHINES(EntNetID, true)
@@ -1379,48 +1385,50 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 				NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(vehs)
 				entities.delete_by_handle(vehs)
 			end
-			if #CreatedVehs < 30 then
-				local VehModel = ENTITY.GET_ENTITY_MODEL(vehs)
-				if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(vehs)
-				and ENTITY.IS_ENTITY_VISIBLE(vehs) and
-				ENTITY.IS_ENTITY_AT_ENTITY(vehs, PLAYER.PLAYER_PED_ID(), 200.0, 200.0, 500.0, false, true, false)
-				and DECORATOR.DECOR_GET_INT(vehs, "Casino_Game_Info_Decorator") ~= 31 and not ENTITY.IS_ENTITY_DEAD(vehs)
-				and VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false) ~= 0 then
-					if not MISC.IS_POINT_OBSCURED_BY_A_MISSION_ENTITY (ReplaceVehCoords.x, ReplaceVehCoords.y,
-					ReplaceVehCoords.z, 1.0, 1.0, 1.0, 0) then
-						local PedHandle = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false)
-						if not PED.IS_PED_A_PLAYER(PedHandle) or PedHandle == PlayerPed then
-							if VehModel == joaat("police3") or VehModel == joaat("fbi2") or VehModel == joaat("riot") or
-							VehModel == joaat("polmav") or VehModel == joaat("sheriff") or VehModel == joaat("sheriff2")
-							or VehModel == joaat("policet") or VehModel == joaat("barracks") or VehModel == joaat("barracks2")
-							or VehModel == joaat("crusader") or VehModel == joaat("rhino") or VehModel == joaat("cargobob") then
-								local CanReplace = false
-								if ReplaceOnlyWithDrivers then
-									if VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false) > 0 then
+			if #CreatedVehs < 100 then
+				if NETWORK.CAN_REGISTER_MISSION_VEHICLES(1) then
+					local VehModel = ENTITY.GET_ENTITY_MODEL(vehs)
+					if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(vehs)
+					and ENTITY.IS_ENTITY_VISIBLE(vehs) and
+					ENTITY.IS_ENTITY_AT_ENTITY(vehs, PLAYER.PLAYER_PED_ID(), 200.0, 200.0, 500.0, false, true, false)
+					and DECORATOR.DECOR_GET_INT(vehs, "Casino_Game_Info_Decorator") ~= 31 and not ENTITY.IS_ENTITY_DEAD(vehs)
+					and VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false) ~= 0 then
+						if not MISC.IS_POINT_OBSCURED_BY_A_MISSION_ENTITY (ReplaceVehCoords.x, ReplaceVehCoords.y,
+						ReplaceVehCoords.z, 1.0, 1.0, 1.0, 0) then
+							local PedHandle = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false)
+							if not PED.IS_PED_A_PLAYER(PedHandle) or PedHandle == PlayerPed then
+								if VehModel == joaat("police3") or VehModel == joaat("fbi2") or VehModel == joaat("riot") or
+								VehModel == joaat("polmav") or VehModel == joaat("sheriff") or VehModel == joaat("sheriff2")
+								or VehModel == joaat("policet") or VehModel == joaat("barracks") or VehModel == joaat("barracks2")
+								or VehModel == joaat("crusader") or VehModel == joaat("rhino") or VehModel == joaat("cargobob") then
+									local CanReplace = false
+									if ReplaceOnlyWithDrivers then
+										if VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false) > 0 then
+											CanReplace = true
+										end
+									else
 										CanReplace = true
 									end
-								else
-									CanReplace = true
-								end
-								if CanReplace then
-									if not DoesValueExistInTable2(CreatedVehs, vehs) then
-										local Passengers = {}
-										for i = -1, 9 do
-											local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, i, false)
-											if Ped ~= 0 then
-												NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-												DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31)
-												if not PED.IS_PED_A_PLAYER(Ped) then
-													Passengers[1 + #Passengers] = {Handle = Ped, SeatIndex = i}
+									if CanReplace then
+										if not DoesValueExistInTable2(CreatedVehs, vehs) then
+											local Passengers = {}
+											for i = -1, 9 do
+												local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, i, false)
+												if Ped ~= 0 then
+													NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+													DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31)
+													if not PED.IS_PED_A_PLAYER(Ped) then
+														Passengers[1 + #Passengers] = {Handle = Ped, SeatIndex = i}
+													end
 												end
 											end
+											local OldVehModel = ENTITY.GET_ENTITY_MODEL(vehs)
+											CreatedVehs[1 + #CreatedVehs] = {Handle = 0, Tick = 0, Count = 0, Passengers = Passengers,
+											OldVehicle = vehs, HasDeletedOldVeh = false, HasSetPedsIntoVeh = false, DeadTick = 0,
+											HasRemovedPassengers = false, OutsideVehCount = 0, IsDeletingOldVeh = false,
+											SettedPedsIntoVeh = 0, AwayTick = 0, HasCreatedVeh = false, HandleZeroTick = 0,
+											SetInVehTick = 0, OldModel = OldVehModel, Blip = 0}
 										end
-										local OldVehModel = ENTITY.GET_ENTITY_MODEL(vehs)
-										CreatedVehs[1 + #CreatedVehs] = {Handle = 0, Tick = 0, Count = 0, Passengers = Passengers,
-										OldVehicle = vehs, HasDeletedOldVeh = false, HasSetPedsIntoVeh = false, DeadTick = 0,
-										HasRemovedPassengers = false, OutsideVehCount = 0, IsDeletingOldVeh = false,
-										SettedPedsIntoVeh = 0, AwayTick = 0, HasCreatedVeh = false, HandleZeroTick = 0,
-										SetInVehTick = 0, OldModel = OldVehModel, Blip = 0}
 									end
 								end
 							end
@@ -1469,6 +1477,7 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 					if not CreatedVehs[i].HasRemovedPassengers and LastRequestedModel ~= 0 and
 					STREAMING.HAS_MODEL_LOADED(LastRequestedModel) then
 						if #CreatedVehs[i].Passengers > 0 then
+							local TheVehCoords = ENTITY.GET_ENTITY_COORDS(CreatedVehs[i].OldVehicle)
 							for index, passengers in pairs(CreatedVehs[i].Passengers) do
 								local VehPos = ENTITY.GET_ENTITY_COORDS(CreatedVehs[i].OldVehicle)
 								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(passengers.Handle)
@@ -1477,19 +1486,22 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 								end
 								DECORATOR.DECOR_SET_INT(passengers.Handle, "Casino_Game_Info_Decorator", 31)
 								TASK.TASK_LEAVE_VEHICLE(passengers.Handle, CreatedVehs[i].OldVehicle, 16)
-								if PlaneMode then
-									ENTITY.SET_ENTITY_COORDS(passengers.Handle, VehPos.x, VehPos.y, VehPos.z)
-								else
+								--if PlaneMode then
+									--ENTITY.SET_ENTITY_COORDS(passengers.Handle, VehPos.x, VehPos.y, VehPos.z)
+								--else
 									ENTITY.SET_ENTITY_COORDS(passengers.Handle, VehPos.x, VehPos.y, VehPos.z + 50.0)
-								end
+								--end
 								--ENTITY.FREEZE_ENTITY_POSITION(passengers.Handle, true)
-								if not PED.IS_PED_IN_VEHICLE(passengers.Handle, CreatedVehs[i].OldVehicle, false) then
-									CreatedVehs[i].OutsideVehCount = CreatedVehs[i].OutsideVehCount + 1
-								else
-									CreatedVehs[i].OutsideVehCount = 0
-								end
-								if CreatedVehs[i].OutsideVehCount >= #CreatedVehs[i].Passengers then
-									CreatedVehs[i].HasRemovedPassengers = true
+								local ThePedCoords = ENTITY.GET_ENTITY_COORDS(passengers.Handle)
+								if ThePedCoords.z > TheVehCoords.z+40.0 then
+									if not PED.IS_PED_IN_VEHICLE(passengers.Handle, CreatedVehs[i].OldVehicle, false) then
+										CreatedVehs[i].OutsideVehCount = CreatedVehs[i].OutsideVehCount + 1
+									else
+										CreatedVehs[i].OutsideVehCount = 0
+									end
+									if CreatedVehs[i].OutsideVehCount >= #CreatedVehs[i].Passengers then
+										CreatedVehs[i].HasRemovedPassengers = true
+									end
 								end
 							end
 						else
@@ -1517,7 +1529,7 @@ menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
 											NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].OldVehicle)
 											
 											local NewVeh = entities.create_vehicle(LastRequestedModel, VehPos, VehHeading)
-											NetworkEntityVeh(NewVeh)
+											--NetworkEntityVeh(NewVeh)
 											DECORATOR.DECOR_SET_INT(NewVeh, "Casino_Game_Info_Decorator", 31)
 											--local EntNetID = NETWORK.VEH_TO_NET(NewVeh)
 											--NETWORK.SET_NETWORK_ID_EXISTS_ON_ALL_MACHINES(EntNetID, true)
@@ -2288,10 +2300,10 @@ end)
 
 function NetworkEntityVeh(Entity)
     ENTITY.SET_ENTITY_AS_MISSION_ENTITY(Entity, false, true)
-    local EntNetID = NETWORK.VEH_TO_NET(Entity)
-    NETWORK.SET_NETWORK_ID_EXISTS_ON_ALL_MACHINES(EntNetID, true)
-    NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(EntNetID, PLAYER.PLAYER_ID(), true)
-	return EntNetID
+    --local EntNetID = NETWORK.VEH_TO_NET(Entity)
+    --NETWORK.SET_NETWORK_ID_EXISTS_ON_ALL_MACHINES(EntNetID, true)
+    --NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(EntNetID, PLAYER.PLAYER_ID(), true)
+	--return EntNetID
 end
 
 function DoesValueExistInTable(T, Value)
@@ -2313,6 +2325,12 @@ function DoesValueExistInTable3(T, Value)
 		if index == Value then return true end
 	end
 	return false
+end
+
+function set_entity_as_no_longer_needed(entity)
+	local pHandle = memory.alloc_int()
+	memory.write_int(pHandle, entity)
+	ENTITY.SET_ENTITY_AS_NO_LONGER_NEEDED(pHandle)
 end
 
 util.create_tick_handler(function()
