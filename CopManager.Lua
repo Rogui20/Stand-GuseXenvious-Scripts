@@ -514,6 +514,15 @@ menu.toggle(AllyCopSettingsMenu, "Put Cops Into Your Vehicle", {}, "", function(
 	PutCopsIntoPlayerVeh = toggle
 end, PutCopsIntoPlayerVeh)
 
+local AllyAttacksHostiles = false
+menu.toggle(AllyCopSettingsMenu, "Auto Attack Hostile Peds", {}, "", function(toggle)
+	AllyAttacksHostiles = toggle
+end, AllyAttacksHostiles)
+local DistanceNeededToAttack = 100.0
+menu.slider_float(AllyCopSettingsMenu, "Needed Range To Attack", {"autoattackrange"}, "Distance needed between peds to start the attack.", 10000, 1000000, 10000, 1000, function(OnChange)
+	DistanceNeededToAttack = OnChange / 100
+end)
+
 --menu.list_select(AllyCopSettingsMenu, "Cop Relationship Type", {"allycoprelationship"}, "Set if cops will be able to attack players or only npcs.", table<int, table> options, 1, function on_change)
 
 local RenderCopCount = false
@@ -686,7 +695,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 				for index, peds in pairs(entities.get_all_peds_as_handles()) do
 					if peds ~= PlayerPed then
 						if not PED.IS_PED_A_PLAYER(peds) then
-							if ENTITY.GET_ENTITY_SCRIPT(peds, 0) == "GB_HEADHUNTER" then
+							local EntScript = ENTITY.GET_ENTITY_SCRIPT(peds, 0)
+							if EntScript == "GB_HEADHUNTER" or EntScript == "GB_BIKER_RESCUE_CONTACT" then
 								ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(peds, false)
 							end
 							local CanEditCop = false
@@ -950,6 +960,11 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															end
 														end
 													end
+												end
+											end
+											if AllyAttacksHostiles then
+												if not PED.IS_PED_IN_COMBAT(peds, 0) then
+													TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, DistanceNeededToAttack, 0)
 												end
 											end
 											if BringFarCopsCloser then
@@ -1230,6 +1245,11 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															end
 														end
 													end
+												end
+											end
+											if AllyAttacksHostiles then
+												if not PED.IS_PED_IN_COMBAT(peds, 0) then
+													TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, 10000.0, 0)
 												end
 											end
 											if BringFarCopsCloser then
