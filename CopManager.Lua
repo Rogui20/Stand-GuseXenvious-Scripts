@@ -456,7 +456,7 @@ menu.toggle(CopSettingsMenu, "Set Different Cops Random Components", {}, "Outfit
 	RandomCopModelComponents = toggle
 end, RandomCopModelComponents)
 
-local SetNetworkID = false
+local SetNetworkID = true
 menu.toggle(CopSettingsMenu, "Set a Network ID", {}, "To maintain control...", function(toggle)
 	SetNetworkID = toggle
 end, SetNetworkID)
@@ -516,7 +516,8 @@ end, CopsAreAllies)
 local CopCustomRelMenu = menu.list(CopSettingsMenu, "Custom Relationship Settings", {}, "For DEVs.")
 
 local KnownCustomRelationships = {
-	"relRescueContactPlayer"
+	"relRescueContactPlayer",
+	"relHeadHunterPlayer"
 }
 
 local CustomRelText = "relRescueContactPlayer"
@@ -622,7 +623,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 						local RelTarget = joaat("rgFM_Team"..PlayerID)
 						PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]"), RelTarget)
 						PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, RelTarget, joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]"))
-						SelectedTeam = joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]")
+						--SelectedTeam = joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]")
+						SelectedTeam = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PlayerPed)
 					end
 				else
 					BlipColorToGive = 1
@@ -1071,7 +1073,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 									end
 								end
 								if ENTITY.IS_ENTITY_DEAD(peds) then
-									if not DoesValueExistInTable3(DeadPeds, peds) then
+									if DeadPeds[peds] == nil then
 										util.create_thread(function()
 											DeadPeds[peds] = {}
 											Wait(10000)
