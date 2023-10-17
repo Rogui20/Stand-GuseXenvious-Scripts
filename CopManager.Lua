@@ -209,14 +209,27 @@ local VehicleModels = {
 	"winky",
 	"elegy",
 	"elegy2",
-	"caracara2"
+	"caracara2",
+	"tampa3",
+	"buzzard",
+	"nightshark",
+	"technical3",
+	"technical",
+	"sultan2"
 }
 local PedModels = {
 	"mp_m_bogdangoon",
 	"u_m_y_juggernaut_01",
 	"mp_m_avongoon",
 	"g_m_m_cartelguards_01",
-	"g_m_m_cartelguards_02"
+	"g_m_m_cartelguards_02",
+	"s_f_y_cop_01",
+	"s_m_y_cop_01",
+	"s_m_m_movspace_01",
+	"ig_englishdave_02",
+	"ig_gustavo",
+	"ig_helmsmanpavel",
+	"u_m_y_rsranger_01"
 }
 
 local CopSettingsMenu = menu.list(menu.my_root(), "Cop Settings", {}, "Which settings apply to cops.")
