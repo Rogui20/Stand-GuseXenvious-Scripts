@@ -29,7 +29,7 @@ if NETWORK.GET_ONLINE_VERSION() == "1.67" then
 	Addr3 = memory.read_long(Addr2+0x08)
 	police3_FirstAddr = memory.read_long(Addr3+0xB0)
 	local AddressToScan = police3_FirstAddr - 8 * 1000
-	local MaxFoundAddrs = 10
+	local MaxFoundAddrs = 7
 	for i = 0, 2000 do
 		local Value = memory.read_int(AddressToScan + 8 * i)
 		if #police3_Addrs < MaxFoundAddrs then
@@ -207,7 +207,9 @@ local VehicleModels = {
 	"speedo4",
 	"squaddie",
 	"winky",
-	"manchez2"
+	"elegy",
+	"elegy2",
+	"caracara2"
 }
 local PedModels = {
 	"mp_m_bogdangoon",
@@ -615,8 +617,15 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 											if IsCopModel then
 												SetPedCombatAbilities(peds)
 												PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
-												PED.SET_PED_COMBAT_ATTRIBUTES(peds, 52, true)
-												PED.SET_PED_COMBAT_ATTRIBUTES(peds, 53, true)
+												local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+												if Veh ~= 0 then
+													if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
+														if IsArmoredVehModel(Veh) then
+															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 52, true)
+															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 53, true)
+														end
+													end
+												end
 											end
 										else
 											ENTITY.SET_ENTITY_PROOFS(peds, false, false, false, false, true, false, false, false)
@@ -1338,6 +1347,24 @@ function IsCopPedModel(Ped)
 	local PedModel = ENTITY.GET_ENTITY_MODEL(Ped)
 	for i = 1, #PedModels do
 		if PedModel == joaat(PedModels[i]) then
+			return true
+		end
+	end
+	return false
+end
+
+local ModelsToSet = {
+	"tampa3",
+	"savage",
+	"nightshark",
+	"khanjali",
+	"buzzard",
+
+}
+function IsArmoredVehModel(Veh)
+	local VehModel = ENTITY.GET_ENTITY_MODEL(Veh)
+	for i = 1, #ModelsToSet do
+		if VehModel == joaat(ModelsToSet[i]) then
 			return true
 		end
 	end
