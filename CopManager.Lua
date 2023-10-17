@@ -8,6 +8,86 @@ local NULL <const> = 0
 
 local CayoCopsGlobalAddr = 2657704+1+442 --463
 
+
+
+local Addr = 0
+local Addr2 = 0
+local Addr3 = 0
+local police3_FirstAddr = 0
+local police3_Addrs = {}
+local polmav_Addrs = {}
+local fbi2_Addrs = {}
+local sheriff_Addrs = {}
+local sheriff2_Addrs = {}
+local copped_Addrs = {}
+local sheriffped_Addrs = {}
+local swatped_Addrs = {}
+local CanSetModels = false
+if NETWORK.GET_ONLINE_VERSION() == "1.67" then
+	Addr = 0x7FF66E4E63F0
+	Addr2 = memory.read_long(Addr)
+	Addr3 = memory.read_long(Addr2+0x08)
+	police3_FirstAddr = memory.read_long(Addr3+0xB0)
+	local AddressToScan = police3_FirstAddr - 8 * 1000
+	local MaxFoundAddrs = 10
+	for i = 0, 2000 do
+		local Value = memory.read_int(AddressToScan + 8 * i)
+		if #police3_Addrs < MaxFoundAddrs then
+			if Value == joaat("police3") then
+				police3_Addrs[#police3_Addrs+1] = AddressToScan + 8 * i
+				CanSetModels = true
+			end
+		end
+		if #polmav_Addrs < MaxFoundAddrs then
+			if Value == joaat("polmav") then
+				polmav_Addrs[#polmav_Addrs+1] = AddressToScan + 8 * i
+			end
+		end
+		if #fbi2_Addrs < MaxFoundAddrs then
+			if Value == joaat("fbi2") then
+				fbi2_Addrs[#fbi2_Addrs+1] = AddressToScan + 8 * i
+			end
+		end
+		if #sheriff_Addrs < MaxFoundAddrs then
+			if Value == joaat("sheriff") then
+				sheriff_Addrs[#sheriff_Addrs+1] = AddressToScan + 8 * i
+			end
+		end
+		if #sheriff2_Addrs < MaxFoundAddrs then
+			if Value == joaat("sheriff2") then
+				sheriff2_Addrs[#sheriff2_Addrs+1] = AddressToScan + 8 * i
+			end
+		end
+		if #copped_Addrs < MaxFoundAddrs then
+			if Value == joaat("s_m_y_cop_01") then
+				copped_Addrs[#copped_Addrs+1] = AddressToScan + 8 * i
+				--Print("Found Cop")
+			end
+		end
+		if #sheriffped_Addrs < MaxFoundAddrs then
+			if Value == joaat("s_m_y_sheriff_01") then
+				sheriffped_Addrs[#sheriffped_Addrs+1] = AddressToScan + 8 * i
+				--Print("Found Sheriff")
+			end
+		end
+		if #swatped_Addrs < MaxFoundAddrs then
+			if Value == joaat("s_m_y_swat_01") then
+				swatped_Addrs[#swatped_Addrs+1] = AddressToScan + 8 * i
+				--Print("Found SWAT")
+			end
+		end
+	end
+	
+	--Print("Found Police3 Addrs "..#police3_Addrs)
+	--Print("Found Polmav Addrs "..#polmav_Addrs)
+	--Print("Found FBI2 Addrs "..#fbi2_Addrs)
+	--Print("Found Sheriff Addrs "..#sheriff_Addrs)
+	--Print("Found Sheriff2 Addrs "..#sheriff2_Addrs)
+	--Print("Found Cop Addrs "..#copped_Addrs)
+	--Print("Found Sheriff Addrs "..#sheriffped_Addrs)
+	--Print("Found SWAT Addrs "..#swatped_Addrs)
+end
+
 local AiHateRel = "rgFM_AiHate"
 local AiLikeRel = "rgFM_AiLike"
 local AiLikeHateAiHateRel = "rgFM_AiLike_HateAiHate"
@@ -80,7 +160,121 @@ local GiveWeaponOptions = {
 	"Random Cop Weapon By Chance"
 }
 
+function SplitGlobals(GlobalString)
+	local String = GlobalString
+	local Value = String:gsub("%[(.-)]", "+1")
+	local NewValue = Value:gsub("%a", "")
+	local NewValue2 = NewValue:gsub("._", "+")
+	local NewValue3 = NewValue2:gsub("_", "")
+	local _Text, SymbolCount = NewValue3:gsub("+", "")
+	local PatternCount = "(%d+)"
+	for i = 1, SymbolCount do
+		PatternCount = PatternCount .. "+(%d+)"
+	end
+	local Global, Global2, Global3, Global4, Global5, Global6, Global7 = NewValue3:match(PatternCount)
+	local GlobalNumber = 0
+	if Global ~= nil then
+		GlobalNumber = GlobalNumber + tonumber(Global)
+	end
+	if Global2 ~= nil then
+		GlobalNumber = GlobalNumber + tonumber(Global2)
+	end
+	if Global3 ~= nil then
+		GlobalNumber = GlobalNumber + tonumber(Global3)
+	end
+	if Global4 ~= nil then
+		GlobalNumber = GlobalNumber + tonumber(Global4)
+	end
+	if Global5 ~= nil then
+		GlobalNumber = GlobalNumber + tonumber(Global5)
+	end
+	if Global6 ~= nil then
+		GlobalNumber = GlobalNumber + tonumber(Global6)
+	end
+	if Global7 ~= nil then
+		GlobalNumber = GlobalNumber + tonumber(Global7)
+	end
+	return GlobalNumber
+end
+
+local VehicleModels = {
+	"polmav",
+	"savage",
+	"khanjali",
+	"rhino",
+	"dune3",
+	"caracara",
+	"speedo4",
+	"squaddie",
+	"winky",
+	"manchez2"
+}
+local PedModels = {
+	"mp_m_bogdangoon",
+	"u_m_y_juggernaut_01",
+	"mp_m_avongoon",
+	"g_m_m_cartelguards_01",
+	"g_m_m_cartelguards_02"
+}
+
 local CopSettingsMenu = menu.list(menu.my_root(), "Cop Settings", {}, "Which settings apply to cops.")
+local CopModelSettings = nil
+if CanSetModels then
+	CopModelSettings = menu.list(CopSettingsMenu, "Cop Model Settings", {}, "Change cop ped and vehicles models.")
+	menu.list_select(CopModelSettings, "Police Helicopter", {"polmavmodel"}, "", VehicleModels, 1, function(OnChange)
+		for i = 1, #polmav_Addrs do
+			memory.write_int(polmav_Addrs[i], joaat(VehicleModels[OnChange]))
+		end
+	end)
+	menu.list_select(CopModelSettings, "Police3", {"police3model"}, "", VehicleModels, 1, function(OnChange)
+		for i = 1, #police3_Addrs do
+			memory.write_int(police3_Addrs[i], joaat(VehicleModels[OnChange]))
+		end
+	end)
+	menu.list_select(CopModelSettings, "FBI2", {"fbi2model"}, "", VehicleModels, 1, function(OnChange)
+		for i = 1, #fbi2_Addrs do
+			memory.write_int(fbi2_Addrs[i], joaat(VehicleModels[OnChange]))
+		end
+	end)
+	menu.list_select(CopModelSettings, "Sheriff", {"sheriffmodel"}, "", VehicleModels, 1, function(OnChange)
+		for i = 1, #sheriff_Addrs do
+			memory.write_int(sheriff_Addrs[i], joaat(VehicleModels[OnChange]))
+		end
+	end)
+	menu.list_select(CopModelSettings, "Sheriff2", {"sheriff2model"}, "", VehicleModels, 1, function(OnChange)
+		for i = 1, #sheriff2_Addrs do
+			memory.write_int(sheriff2_Addrs[i], joaat(VehicleModels[OnChange]))
+		end
+	end)
+	menu.list_select(CopModelSettings, "Cop Ped", {"coppedmodel"}, "", PedModels, 1, function(OnChange)
+		for i = 1, #copped_Addrs do
+			memory.write_int(copped_Addrs[i], joaat(PedModels[OnChange]))
+		end
+	end)
+	menu.list_select(CopModelSettings, "Sheriff Ped", {"sheriffpedmodel"}, "", PedModels, 1, function(OnChange)
+		for i = 1, #sheriffped_Addrs do
+			memory.write_int(sheriffped_Addrs[i], joaat(PedModels[OnChange]))
+		end
+	end)
+	menu.list_select(CopModelSettings, "SWAT Ped", {"swatpedmodel"}, "", PedModels, 1, function(OnChange)
+		for i = 1, #swatped_Addrs do
+			memory.write_int(swatped_Addrs[i], joaat(PedModels[OnChange]))
+		end
+	end)
+	menu.action(CopModelSettings, "Bypass Law Vehicles", {}, "To spawn cops and SWATS inside different police vehicles", function(toggle)
+		local AddrDispatch = memory.scan("8b ? ? ? ? ? 41 8b f1 45 8a d0 c1 e8 1f 40 8a ea 41 84 c4 75")
+		if AddrDispatch ~= 0 then
+			local AddrTarget = AddrDispatch + 21
+			memory.write_byte(AddrTarget, 0xEB)
+		end
+		local AddrSWATDispatch = memory.scan("74 ? 3b 05 ? ? ? ? 74 ? 3b 05 ? ? ? ? 75 ? ? b0 01")
+		if AddrSWATDispatch ~= 0 then
+			local AddrTarget = AddrSWATDispatch + 16
+			memory.write_byte(AddrTarget, 0x90)
+			memory.write_byte(AddrTarget + 1, 0x90)
+		end
+	end)
+end
 local AllyCopSettingsMenu = menu.list(CopSettingsMenu, "Ally Cop Settings", {}, "Which settings apply to ally cops.")
 local HostileCopSettingsMenu = menu.list(CopSettingsMenu, "Hostile Cop Settings", {}, "Which settings apply to hostile cops.")
 local CopWeaponsMenu = menu.list(CopSettingsMenu, "Cop Weapon Loadout", {}, "Weapons settings for cops.")
@@ -136,7 +330,7 @@ menu.toggle(CopSettingsMenu, "Automatically Generate Cops", {}, "If this is enab
 end, AutomaticGenCops)
 
 local MaxCopsToEdit = 50
-menu.slider(CopSettingsMenu, "Max Cops To Edit", {"maxcopstoedit"}, "Set the max amount of cops to turn into mission entity and edit.", 1, 50, MaxCopsToEdit, 1, function(on_change)
+menu.slider(CopSettingsMenu, "Max Cops To Edit", {"maxcopstoedit"}, "Set the max amount of cops to turn into mission entity and edit.", 1, 80, MaxCopsToEdit, 1, function(on_change)
 	MaxCopsToEdit = on_change
 end)
 
@@ -1142,10 +1336,10 @@ end
 
 function IsCopPedModel(Ped)
 	local PedModel = ENTITY.GET_ENTITY_MODEL(Ped)
-	if PedModel == joaat("mp_m_bogdangoon") or PedModel == joaat("player_two") or PedModel == joaat("ig_mp_agent14")
-	or PedModel == joaat("player_zero") or PedModel == joaat("ig_lestercrest_2") or PedModel == joaat("s_m_y_blackops_01")
-	or PedModel == joaat("u_m_y_zombie_01") then
-		return true
+	for i = 1, #PedModels do
+		if PedModel == joaat(PedModels[i]) then
+			return true
+		end
 	end
 	return false
 end
@@ -1253,6 +1447,32 @@ menu.action(MiscMenu, "Bring Fortified Boxville", {}, "", function(toggle)
 	end
 end)
 
+menu.toggle_loop(MiscMenu, "GB_FORTIFIED Spam Enemies", {}, "", function(toggle)
+	if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("gb_fortified")) > 0 then
+		memory.write_int(memory.script_local("gb_fortified", 1082+331-26), 3)
+		memory.write_int(memory.script_local("gb_fortified", 1082+331-7), 1)
+		util.spoof_script("gb_fortified", function()
+			if not NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+				NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+			end
+		end)
+	end
+end)
+
+local FreezeVehSpawnCoords = false
+menu.toggle(MiscMenu, "Personal Vehicle Spawn Here", {}, "When enabled, the personal vehicle will only spawn where your character was when enabled this feature.", function(toggle)
+	FreezeVehSpawnCoords = toggle
+	local PlayerCoords = ENTITY.GET_ENTITY_COORDS(PLAYER.PLAYER_PED_ID())
+	while FreezeVehSpawnCoords do
+		memory.write_float(memory.script_global(2635560+683), PlayerCoords.x)
+		memory.write_float(memory.script_global(2635560+683+1), PlayerCoords.y)
+		memory.write_float(memory.script_global(2635560+683+2), PlayerCoords.z)
+		Wait()
+	end
+end)
+
+--util.copy_to_clipboard(string.format("%X", memory.script_global(SplitGlobals("Global_2635560.f_683"))))
+
 menu.toggle_loop(MiscMenu, "Business Battles Chaos", {""}, "Enemies will rush and respawn.", function(toggle)
 	if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_content_business_battles")) > 0 then
 		util.spoof_script("fm_content_business_battles", function()
@@ -1262,10 +1482,43 @@ menu.toggle_loop(MiscMenu, "Business Battles Chaos", {""}, "Enemies will rush an
 		end)
 		for i = 0, 29 do
 			memory.write_int(memory.script_local("fm_content_business_battles", (215+129+1+2) + 21 * i), 1024)
-			memory.write_float(memory.script_local("fm_content_business_battles", (215+129+1+20) + 21 * i), -1)
+			memory.write_float(memory.script_local("fm_content_business_battles", (215+129+1+21) + 21 * i), -1)
 		end
 	end
 end)
+
+menu.toggle_loop(MiscMenu, "Cargo Plane Takedown", {""}, "am_plane_takedown", function(toggle)
+	if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("am_plane_takedown")) > 0 then
+		util.spoof_script("am_plane_takedown", function()
+			if not NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+				NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+			end
+		end)
+		for i = 0, 29 do
+			memory.write_int(memory.script_local("am_plane_takedown", 86+4), joaat("cargoplane"))
+		end
+	end
+end)
+
+menu.action(MiscMenu, "Cargo Plane Takedown Blip", {""}, "am_plane_takedown", function(toggle)
+	for index, vehs in pairs(entities.get_all_vehicles_as_handles()) do
+		if ENTITY.GET_ENTITY_SCRIPT(vehs, 0) == "AM_PLANE_TAKEDOWN" then
+			local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false)
+			if Ped ~= 0 then
+				HUD.SET_PED_HAS_AI_BLIP_WITH_COLOUR(Ped, true, 1)
+				HUD.SET_PED_AI_BLIP_HAS_CONE(Ped, false)
+				HUD.SET_PED_AI_BLIP_FORCED_ON(Ped, true)
+			end
+		end
+	end
+end)
+
+--[[
+menu.action(MiscMenu, "am_plane_takedown Kill Script", {""}, "am_plane_takedown", function(toggle)
+	MISC.TERMINATE_ALL_SCRIPTS_WITH_THIS_NAME("am_plane_takedown")
+end)
+]]
+--util.copy_to_clipboard(string.format("%X", memory.script_local("fm_content_business_battles", (215+129+1+20) + 21 * 0)))
 
 local StartMissionMenu = menu.list(menu.my_root(), "Missions", {}, "")
 
@@ -1365,16 +1618,28 @@ menu.action(DevMenu, "Relationship Hash", {}, "", function(toggle)
 	Print(RelTarget .. " MyRel " .. MyRel)
 end)
 
---[[
-
-menu.action(DevMenu, "Addr Patch", {}, "", function(toggle)
-	local Addr = memory.scan("38 00 5D ? ? ? 06 1F 56 ? ? 71 38 01")
-	util.copy_to_clipboard(string.format("%X", Addr))
-	Print(string.format("%X", Addr))
-		"38 00 5D ? ? ? 06 1F 56 ? ? 71 38 01 ", 0, { 0x2E, 0x05, 0x00 }
-
+menu.action(DevMenu, "Addr Test", {}, "", function(toggle)
+	local Addr = 0x7FF66E4E63F0
+	local Addr2 = memory.read_long(Addr)
+	local Addr3 = memory.read_long(Addr2+0x08)
+	local Addr4 = memory.read_long(Addr3+0xB0)
+	local FormatedString = string.format("%02X", Addr4)
+	util.copy_to_clipboard(FormatedString)
+	Print(FormatedString)
 end)
-]]
+
+menu.action(DevMenu, "Addr Get", {}, "", function(toggle)
+	local Addr = memory.scan("? 89 5c ? ? ? 89 6c ? ? ? 89 74 ? ? 57")
+	local FormatedString = string.format("%02X", Addr)
+	util.copy_to_clipboard(FormatedString)
+	Print(FormatedString)
+end)
+
+menu.action(DevMenu, "Model Test", {}, "", function(toggle)
+	local HasLoaded = STREAMING.HAS_MODEL_LOADED(joaat("police3"))
+	Print(HasLoaded)
+end)
+
 
 function DoesValueExistInTable2(T, Value)
 	for index, values in pairs(T) do
@@ -1704,6 +1969,35 @@ function SetPedHealth(ped, Health)
 	ENTITY.SET_ENTITY_MAX_HEALTH(ped, Health)
 	ENTITY.SET_ENTITY_HEALTH(ped, Health)
 end
+
+util.on_stop(function()
+	if CanSetModels then
+		for i = 1, #police3_Addrs do
+			memory.write_int(police3_Addrs[i], joaat("police3"))
+		end
+		for i = 1, #sheriff_Addrs do
+			memory.write_int(sheriff_Addrs[i], joaat("sheriff"))
+		end
+		for i = 1, #polmav_Addrs do
+			memory.write_int(polmav_Addrs[i], joaat("polmav"))
+		end
+		for i = 1, #sheriff2_Addrs do
+			memory.write_int(sheriff2_Addrs[i], joaat("sheriff2"))
+		end
+		for i = 1, #fbi2_Addrs do
+			memory.write_int(fbi2_Addrs[i], joaat("fbi2"))
+		end
+		for i = 1, #copped_Addrs do
+			memory.write_int(copped_Addrs[i], joaat("s_m_y_cop_01"))
+		end
+		for i = 1, #sheriffped_Addrs do
+			memory.write_int(sheriffped_Addrs[i], joaat("s_m_y_sheriff_01"))
+		end
+		for i = 1, #swatped_Addrs do
+			memory.write_int(swatped_Addrs[i], joaat("s_m_y_swat_01"))
+		end
+	end
+end)
 
 util.create_tick_handler(function()
 	return true
