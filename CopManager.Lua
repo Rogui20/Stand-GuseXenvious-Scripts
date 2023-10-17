@@ -355,6 +355,9 @@ if CanSetModels then
 	end)
 	menu.toggle(CopModelSettings, "Set Random Cop Models", {}, "", function(toggle)
 		RandomModels = toggle
+		if RandomModels then
+			SetRandomModels()
+		end
 	end, RandomModels)
 end
 local AllyCopSettingsMenu = menu.list(CopSettingsMenu, "Ally Cop Settings", {}, "Which settings apply to ally cops.")
@@ -636,10 +639,16 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 						end
 					else
 						local RelTarget = joaat("rgFM_Team"..PlayerID)
-						PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]"), RelTarget)
-						PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, RelTarget, joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]"))
+						local RelHash = joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]")
+						PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, RelHash, RelTarget)
+						PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, RelTarget, RelHash)
+						local MyRelTeam = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PlayerPed)
+						if MyRelTeam ~= RelTarget then
 						--SelectedTeam = joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]")
-						SelectedTeam = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PlayerPed)
+							SelectedTeam = MyRelTeam
+						else
+							SelectedTeam = RelHash
+						end
 					end
 				else
 					BlipColorToGive = 1
@@ -2293,25 +2302,25 @@ function SetPedRandomOutfit(Ped)
 		local Drawables = PED.GET_NUMBER_OF_PED_DRAWABLE_VARIATIONS(Ped, i)
 		if Drawables > 0 then
 			Drawables = Drawables - 1
+			local RandomDrawable = math.random(0, Drawables)
+			local Textures = PED.GET_NUMBER_OF_PED_TEXTURE_VARIATIONS(Ped, i, RandomDrawable)
+			if Textures > 0 then
+				Textures = Textures-1
+				PED.SET_PED_COMPONENT_VARIATION(Ped, i, RandomDrawable, math.random(0, Textures), -1)
+			end
 		end
-		local RandomDrawable = math.random(0, Drawables)
-		local Textures = PED.GET_NUMBER_OF_PED_TEXTURE_VARIATIONS(Ped, i, RandomDrawable)
-		if Textures > 0 then
-			Textures = Textures-1
-		end
-		PED.SET_PED_COMPONENT_VARIATION(Ped, i, RandomDrawable, math.random(0, Textures), -1)
 	end
 	for i = 0, 8 do
 		local Drawables = PED.GET_NUMBER_OF_PED_PROP_DRAWABLE_VARIATIONS(Ped, i)
 		if Drawables > 0 then
 			Drawables = Drawables - 1
+			local RandomDrawable = math.random(0, Drawables)
+			local Textures = PED.GET_NUMBER_OF_PED_PROP_TEXTURE_VARIATIONS(Ped, i, RandomDrawable)
+			if Textures > 0 then
+				Textures = Textures-1
+				PED.SET_PED_PROP_INDEX(Ped, i, RandomDrawable, math.random(0, Textures), false)
+			end
 		end
-		local RandomDrawable = math.random(0, Drawables)
-		local Textures = PED.GET_NUMBER_OF_PED_PROP_TEXTURE_VARIATIONS(Ped, i, RandomDrawable)
-		if Textures > 0 then
-			Textures = Textures-1
-		end
-		PED.SET_PED_PROP_INDEX(Ped, i, RandomDrawable, math.random(0, Textures), false)
 	end
 end
 
