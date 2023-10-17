@@ -19,6 +19,7 @@ local polmav_Addrs = {}
 local fbi2_Addrs = {}
 local sheriff_Addrs = {}
 local sheriff2_Addrs = {}
+local predator_Addrs = {}
 local copped_Addrs = {}
 local sheriffped_Addrs = {}
 local swatped_Addrs = {}
@@ -61,6 +62,11 @@ if NETWORK.GET_ONLINE_VERSION() == "1.67" then
 			if #sheriff2_Addrs < MaxFoundAddrs then
 				if Value == joaat("sheriff2") then
 					sheriff2_Addrs[#sheriff2_Addrs+1] = AddressToScan + 8 * i
+				end
+			end
+			if #predator_Addrs < MaxFoundAddrs then
+				if Value == joaat("predator") then
+					predator_Addrs[#predator_Addrs+1] = AddressToScan + 8 * i
 				end
 			end
 			if #copped_Addrs < MaxFoundAddrs then
@@ -225,7 +231,23 @@ local VehicleModels = {
 	"rcbandito",
 	"insurgent3",
 	"riata",
-	"mesa3"
+	"mesa3",
+	"bruiser",
+	"bruiser2",
+	"bruiser3",
+	"barrage",
+	"apc",
+	"valkyrie",
+	"hunter",
+	"cargobob",
+	"cargobob2",
+	"akula",
+	"seasparrow",
+	"patrolboat",
+	"longfin",
+	"dinghy5",
+	"marquis",
+	"tug"
 }
 local PedModels = {
 	"mp_m_bogdangoon",
@@ -291,6 +313,12 @@ if CanSetModels then
 			memory.write_int(sheriff2_Addrs[i], joaat(VehicleModels[OnChange]))
 		end
 		SelectedVehicleModels[5] = VehicleModels[OnChange]
+	end)
+	menu.list_select(CopModelSettings, "Predator", {"predatorboatmodel"}, "", VehicleModels, 1, function(OnChange)
+		for i = 1, #predator_Addrs do
+			memory.write_int(predator_Addrs[i], joaat(VehicleModels[OnChange]))
+		end
+		SelectedVehicleModels[6] = VehicleModels[OnChange]
 	end)
 	menu.list_select(CopModelSettings, "Cop Ped", {"coppedmodel"}, "", PedModels, 1, function(OnChange)
 		for i = 1, #copped_Addrs do
@@ -2147,6 +2175,9 @@ util.on_stop(function()
 		end
 		for i = 1, #fbi2_Addrs do
 			memory.write_int(fbi2_Addrs[i], joaat("fbi2"))
+		end
+		for i = 1, #predator_Addrs do
+			memory.write_int(predator_Addrs[i], joaat("predator"))
 		end
 		for i = 1, #copped_Addrs do
 			memory.write_int(copped_Addrs[i], joaat("s_m_y_cop_01"))
