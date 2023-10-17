@@ -428,6 +428,11 @@ menu.toggle(CopSettingsMenu, "Set Different Cops Random Components", {}, "Outfit
 	RandomCopModelComponents = toggle
 end, RandomCopModelComponents)
 
+local SetNetworkID = false
+menu.toggle(CopSettingsMenu, "Set a Network ID", {}, "To maintain control...", function(toggle)
+	SetNetworkID = toggle
+end, SetNetworkID)
+
 local CopsFollowInVehTask = true
 menu.toggle(AllyCopSettingsMenu, "All Cops In Veh Follow You", {}, "", function(toggle)
 	CopsFollowInVehTask = toggle
@@ -646,9 +651,11 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 										DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31)
 										ENTITY.SET_ENTITY_AS_MISSION_ENTITY(peds, false, true)
 										DecorApplied = true
-										local NetID = NETWORK.PED_TO_NET(peds)
-										if NetID ~= 0 then
-											NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PlayerID, true)
+										if SetNetworkID then
+											local NetID = NETWORK.PED_TO_NET(peds)
+											if NetID ~= 0 then
+												NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PlayerID, true)
+											end
 										end
 									else
 										if CopsForMission then
@@ -706,14 +713,20 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 										local AppliedOutfit = false
 										if RandomCopModelComponents then
 											if IsCopModel then
-												PED.SET_PED_RANDOM_COMPONENT_VARIATION(peds, 0)
+												--PED.SET_PED_DEFAULT_COMPONENT_VARIATION(peds)
+												--PED.SET_PED_RANDOM_COMPONENT_VARIATION(peds, 0)
+												--PED.SET_PED_RANDOM_PROPS(peds)
+												SetPedRandomOutfit(peds)
 												AppliedOutfit = true
 											end
 										end
 										if RandomCopComponents then
 											if not AppliedOutfit then
 												if HaveCopRel then
-													PED.SET_PED_RANDOM_COMPONENT_VARIATION(peds, 0)
+													--PED.SET_PED_DEFAULT_COMPONENT_VARIATION(peds)
+													--PED.SET_PED_RANDOM_COMPONENT_VARIATION(peds, 0)
+													--PED.SET_PED_RANDOM_PROPS(peds)
+													SetPedRandomOutfit(peds)
 												end
 											end
 										end
@@ -836,17 +849,19 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																end
 															end
 														else
-															if IsAHeli then
-																if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
-																	if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																		TASK.TASK_HELI_MISSION(peds, Veh, 0, PlayerPed, 0.0, 0.0, 0.0, 12, 100.0, 70.0, 0, 50.0, 20.0, 50.0, 0)
+															if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 150.0, 150.0, 200.0, false, true, false) then
+																if IsAHeli then
+																	if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+																		if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																			TASK.TASK_HELI_MISSION(peds, Veh, 0, PlayerPed, 0.0, 0.0, 0.0, 4, 100.0, 100.0, 0, 50.0, 20.0, 50.0, 0)
+																		end
 																	end
 																end
-															end
-															if IsAPlane then
-																if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
-																	if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																		TASK.TASK_PLANE_MISSION(peds, Veh, 0, PlayerPed, 0, 0, 0, 12, 100.0, 50.0, 0.0, 50.0, 30.0, true)
+																if IsAPlane then
+																	if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+																		if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																			TASK.TASK_PLANE_MISSION(peds, Veh, 0, PlayerPed, 0, 0, 0, 4, 100.0, 50.0, 0.0, 50.0, 30.0, true)
+																		end
 																	end
 																end
 															end
@@ -1114,17 +1129,19 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																end
 															end
 														else
-															if IsAHeli then
-																if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
-																	if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																		TASK.TASK_HELI_MISSION(peds, Veh, 0, PlayerPed, 0.0, 0.0, 0.0, 12, 100.0, 70.0, 0, 50.0, 20.0, 50.0, 0)
+															if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 150.0, 150.0, 200.0, false, true, false) then
+																if IsAHeli then
+																	if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+																		if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																			TASK.TASK_HELI_MISSION(peds, Veh, 0, PlayerPed, 0.0, 0.0, 0.0, 4, 100.0, 100.0, 0, 50.0, 20.0, 50.0, 0)
+																		end
 																	end
 																end
-															end
-															if IsAPlane then
-																if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
-																	if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																		TASK.TASK_PLANE_MISSION(peds, Veh, 0, PlayerPed, 0, 0, 0, 12, 100.0, 50.0, 0.0, 50.0, 30.0, true)
+																if IsAPlane then
+																	if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+																		if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																			TASK.TASK_PLANE_MISSION(peds, Veh, 0, PlayerPed, 0, 0, 0, 4, 100.0, 50.0, 0.0, 50.0, 30.0, true)
+																		end
 																	end
 																end
 															end
@@ -2142,6 +2159,33 @@ util.on_stop(function()
 		end
 	end
 end)
+
+function SetPedRandomOutfit(Ped)
+	for i = 1, 11 do
+		local Drawables = PED.GET_NUMBER_OF_PED_DRAWABLE_VARIATIONS(Ped, i)
+		if Drawables > 0 then
+			Drawables = Drawables - 1
+		end
+		local RandomDrawable = math.random(0, Drawables)
+		local Textures = PED.GET_NUMBER_OF_PED_TEXTURE_VARIATIONS(Ped, i, RandomDrawable)
+		if Textures > 0 then
+			Textures = Textures-1
+		end
+		PED.SET_PED_COMPONENT_VARIATION(Ped, i, RandomDrawable, math.random(0, Textures), -1)
+	end
+	for i = 0, 8 do
+		local Drawables = PED.GET_NUMBER_OF_PED_PROP_DRAWABLE_VARIATIONS(Ped, i)
+		if Drawables > 0 then
+			Drawables = Drawables - 1
+		end
+		local RandomDrawable = math.random(0, Drawables)
+		local Textures = PED.GET_NUMBER_OF_PED_PROP_TEXTURE_VARIATIONS(Ped, i, RandomDrawable)
+		if Textures > 0 then
+			Textures = Textures-1
+		end
+		PED.SET_PED_PROP_INDEX(Ped, i, RandomDrawable, math.random(0, Textures), false)
+	end
+end
 
 util.create_tick_handler(function()
 	return true
