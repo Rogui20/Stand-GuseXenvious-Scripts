@@ -211,6 +211,10 @@ end
 local VehicleModels = {
 	"polmav",
 	"savage",
+	"annihilator",
+	"valkyrie",
+	"hunter",
+	"buzzard",
 	"khanjali",
 	"rhino",
 	"dune3",
@@ -222,7 +226,6 @@ local VehicleModels = {
 	"elegy2",
 	"caracara2",
 	"tampa3",
-	"buzzard",
 	"nightshark",
 	"technical3",
 	"technical",
@@ -237,8 +240,6 @@ local VehicleModels = {
 	"bruiser3",
 	"barrage",
 	"apc",
-	"valkyrie",
-	"hunter",
 	"cargobob",
 	"cargobob2",
 	"akula",
@@ -282,6 +283,7 @@ local SelectedPedModels = {"mp_m_bogdangoon"}
 
 local CopSettingsMenu = menu.list(menu.my_root(), "Cop Settings", {}, "Which settings apply to cops.")
 local CopModelSettings = nil
+local RandomModels = false
 if CanSetModels then
 	CopModelSettings = menu.list(CopSettingsMenu, "Cop Model Settings", {}, "Change cop ped and vehicles models.")
 	menu.list_select(CopModelSettings, "Police Helicopter", {"polmavmodel"}, "", VehicleModels, 1, function(OnChange)
@@ -351,6 +353,9 @@ if CanSetModels then
 			memory.write_byte(AddrTarget + 1, 0x90)
 		end
 	end)
+	menu.toggle(CopModelSettings, "Set Random Cop Models", {}, "", function(toggle)
+		RandomModels = toggle
+	end, RandomModels)
 end
 local AllyCopSettingsMenu = menu.list(CopSettingsMenu, "Ally Cop Settings", {}, "Which settings apply to ally cops.")
 local HostileCopSettingsMenu = menu.list(CopSettingsMenu, "Hostile Cop Settings", {}, "Which settings apply to hostile cops.")
@@ -584,8 +589,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 	--local FriendlyAll = AiTeam1Hash
 	local DeadPeds = {}
 	local BlipColorToGive = 1
+	local HasAppliedRandomModels = false
 	while ApplyCopSettings do
-		Wait()
 		if ApplyCopSettings then
 			local PlayerPed = PLAYER.PLAYER_PED_ID()
 			local PlayerID = PLAYER.PLAYER_ID()
@@ -595,6 +600,16 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			local PlRel = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PlayerPed)
 			local PlayerVeh = PED.GET_VEHICLE_PED_IS_IN(PlayerPed, false)
 			local CustomRelExists = false
+			if RandomModels then
+				if PLAYER.GET_PLAYER_WANTED_LEVEL(PlayerID) <= 0 then
+					if not HasAppliedRandomModels then
+						HasAppliedRandomModels = true
+						SetRandomModels()
+					end
+				else
+					HasAppliedRandomModels = false
+				end
+			end
 			if CopsCustomRelationship then
 				if PED.DOES_RELATIONSHIP_GROUP_EXIST(joaat(CustomRelText)) then
 					CustomRelExists = true
@@ -650,6 +665,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			for index, peds in pairs(entities.get_all_peds_as_handles()) do
 				if peds ~= PlayerPed then
 					if not PED.IS_PED_A_PLAYER(peds) then
+						if ENTITY.GET_ENTITY_SCRIPT(peds, 0) == "GB_HEADHUNTER" then
+							ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(peds, false)
+						end
 						local CanEditCop = false
 						if OnlyEditOwnedCops then
 							if get_entity_owner(peds) == PlayerID then
@@ -1335,6 +1353,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 				end
 			end
 		end
+		Wait()
 	end
 end)
 
@@ -2192,6 +2211,82 @@ util.on_stop(function()
 		end
 	end
 end)
+
+local VehicleModelsRandom = {
+	"polmav",
+	"savage",
+	"annihilator",
+	"valkyrie",
+	"hunter",
+	"buzzard",
+	"khanjali",
+	"rhino",
+	"dune3",
+	"caracara",
+	"speedo4",
+	"squaddie",
+	"winky",
+	"elegy",
+	"elegy2",
+	"caracara2",
+	"tampa3",
+	"nightshark",
+	"technical3",
+	"technical",
+	"sultan2",
+	"infernus2",
+	"rcbandito",
+	"insurgent3",
+	"riata",
+	"mesa3",
+	"bruiser",
+	"bruiser2",
+	"bruiser3",
+	"barrage",
+	"apc",
+	"cargobob",
+	"cargobob2",
+	"akula",
+	"seasparrow"
+}
+
+function SetRandomModels()
+	local RandomPolice3 = VehicleModelsRandom[math.random(#VehicleModelsRandom)]
+	local RandomSheriff = VehicleModelsRandom[math.random(#VehicleModelsRandom)]
+	local RandomPolmav = VehicleModelsRandom[math.random(#VehicleModelsRandom)]
+	local RandomSheriff2 = VehicleModelsRandom[math.random(#VehicleModelsRandom)]
+	local RandomFBI2 = VehicleModelsRandom[math.random(#VehicleModelsRandom)]
+	local RandomCopPed = PedModels[math.random(#PedModels)]
+	local RandomSheriffPed = PedModels[math.random(#PedModels)]
+	local RandomSWATPed = PedModels[math.random(#PedModels)]
+	for i = 1, #police3_Addrs do
+		memory.write_int(police3_Addrs[i], joaat(RandomPolice3))
+	end
+	for i = 1, #sheriff_Addrs do
+		memory.write_int(sheriff_Addrs[i], joaat(RandomSheriff))
+	end
+	for i = 1, #polmav_Addrs do
+		memory.write_int(polmav_Addrs[i], joaat(RandomPolmav))
+	end
+	for i = 1, #sheriff2_Addrs do
+		memory.write_int(sheriff2_Addrs[i], joaat(RandomSheriff2))
+	end
+	for i = 1, #fbi2_Addrs do
+		memory.write_int(fbi2_Addrs[i], joaat(RandomFBI2))
+	end
+	for i = 1, #copped_Addrs do
+		memory.write_int(copped_Addrs[i], joaat(RandomCopPed))
+	end
+	for i = 1, #sheriffped_Addrs do
+		memory.write_int(sheriffped_Addrs[i], joaat(RandomSheriffPed))
+	end
+	for i = 1, #swatped_Addrs do
+		memory.write_int(swatped_Addrs[i], joaat(RandomSWATPed))
+	end
+	SelectedPedModels[1] = RandomCopPed
+	SelectedPedModels[2] = RandomSheriffPed
+	SelectedPedModels[3] = RandomSWATPed
+end
 
 function SetPedRandomOutfit(Ped)
 	for i = 1, 11 do
