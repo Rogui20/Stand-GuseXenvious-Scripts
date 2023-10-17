@@ -1000,17 +1000,35 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																					local AdjustedX = PPos.x + FVect.x * 100
 																					local AdjustedY = PPos.y + FVect.y * 100
 																					local AdjustedZ = PPos.z + FVect.z * 100
-																					if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ, 1.0, false, true, true, false, false, PlayerPed, true) then
-																						ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX, AdjustedY, AdjustedZ)
+																					local DidHit = memory.alloc(1)
+																					local EndCoords = v3.new()
+																					local Normal = v3.new()
+																					local HitEntity = memory.alloc_int()
+																				
+																					local Handle = SHAPETEST.START_EXPENSIVE_SYNCHRONOUS_SHAPE_TEST_LOS_PROBE(
+																						PPos.x, PPos.y, PPos.z,
+																						AdjustedX, AdjustedY, AdjustedZ,
+																						-1,
+																						PlayerPed, 7
+																					)
+																					SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
+																					if memory.read_byte(DidHit) ~= 0 then
+																						if not MISC.IS_POSITION_OCCUPIED(EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																							ENTITY.SET_ENTITY_COORDS(Veh, EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0)
+																						end
+																					else
+																						if not MISC.IS_POSITION_OCCUPIED(AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																							ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0)
+																						end
 																					end
 																				end
 																			else
 																				if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, 700.0, 700.0, 700.0, false, true, false) then
 																					local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
 																					local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-																					local AdjustedX = PPos.x + FVect.x * 10
-																					local AdjustedY = PPos.y + FVect.y * 10
-																					local AdjustedZ = PPos.z + FVect.z * 10
+																					local AdjustedX = PPos.x + FVect.x * 100
+																					local AdjustedY = PPos.y + FVect.y * 100
+																					local AdjustedZ = PPos.z + FVect.z * 100
 																					if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ + 100.0, 1.0, false, true, true, false, false, PlayerPed, true) then
 																						ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX, AdjustedY, AdjustedZ + 100.0)
 																					end
@@ -1293,8 +1311,26 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																					local AdjustedX = PPos.x + FVect.x * 100
 																					local AdjustedY = PPos.y + FVect.y * 100
 																					local AdjustedZ = PPos.z + FVect.z * 100
-																					if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ, 1.0, false, true, true, false, false, PlayerPed, true) then
-																						ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX, AdjustedY, AdjustedZ)
+																					local DidHit = memory.alloc(1)
+																					local EndCoords = v3.new()
+																					local Normal = v3.new()
+																					local HitEntity = memory.alloc_int()
+																				
+																					local Handle = SHAPETEST.START_EXPENSIVE_SYNCHRONOUS_SHAPE_TEST_LOS_PROBE(
+																						PPos.x, PPos.y, PPos.z,
+																						AdjustedX, AdjustedY, AdjustedZ,
+																						-1,
+																						PlayerPed, 7
+																					)
+																					SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
+																					if memory.read_byte(DidHit) ~= 0 then
+																						if not MISC.IS_POSITION_OCCUPIED(EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																							ENTITY.SET_ENTITY_COORDS(Veh, EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0)
+																						end
+																					else
+																						if not MISC.IS_POSITION_OCCUPIED(AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																							ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0)
+																						end
 																					end
 																				end
 																			else
