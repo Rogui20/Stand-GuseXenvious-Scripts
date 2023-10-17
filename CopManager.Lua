@@ -494,6 +494,11 @@ menu.toggle(AllyCopSettingsMenu, "Auto Bring Far Cops Back To You", {}, "", func
 	BringFarCopsCloser = toggle
 end, BringFarCopsCloser)
 
+local BringIfOutsideOfVehicle = false
+menu.toggle(AllyCopSettingsMenu, "Bring If Im Outside Vehicle", {}, "", function(toggle)
+	BringIfOutsideOfVehicle = toggle
+end, BringIfOutsideOfVehicle)
+
 local CopsCanAttackPlayers = false
 menu.toggle(AllyCopSettingsMenu, "Cops Can Attack Players", {}, "", function(toggle)
 	CopsCanAttackPlayers = toggle
@@ -576,7 +581,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					if CanEditCop then
 						local DecorInt = DECORATOR.DECOR_GET_INT(peds, "Casino_Game_Info_Decorator")
 						if DecorInt == 31 or DecorInt == 32 then
-							while not NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) do
+							local Tick = 0
+							while not NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) and Tick < 1000 do
+								Tick = Tick + 1
 								Wait()
 							end
 							local NetID = NETWORK.PED_TO_NET(peds)
@@ -698,6 +705,10 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 							local EntScript = ENTITY.GET_ENTITY_SCRIPT(peds, 0)
 							if EntScript == "GB_HEADHUNTER" or EntScript == "GB_BIKER_RESCUE_CONTACT" then
 								ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(peds, false)
+								local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+								if Veh ~= 0 then
+									ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(Veh, false)
+								end
 							end
 							local CanEditCop = false
 							if OnlyEditOwnedCops then
@@ -968,35 +979,70 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												end
 											end
 											if BringFarCopsCloser then
-												if not PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false) then
+												local CanGo = true
+												if BringIfOutsideOfVehicle then
+													if PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false) then
+														CanGo = false
+													end
+												end
+												if CanGo then
 													if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
-														NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-														if not RemoveCopsFromVeh then
-															if Veh ~= 0 then
-																NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Veh)
-																if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
-																	local VehClass = VEHICLE.GET_VEHICLE_CLASS(Veh)
-																	if VehClass ~= 15 and VehClass ~= 16 then
-																		if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, 700.0, 700.0, 700.0, false, true, false) then
-																			local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
-																			local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-																			local AdjustedX = PPos.x + FVect.x * 10
-																			local AdjustedY = PPos.y + FVect.y * 10
-																			local AdjustedZ = PPos.z + FVect.z * 10
-																			if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ, 1.0, false, true, true, false, false, PlayerPed, true) then
-																				ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX, AdjustedY, AdjustedZ)
+														if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+															if not RemoveCopsFromVeh then
+																if Veh ~= 0 then
+																	if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Veh) then
+																		if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
+																			local VehClass = VEHICLE.GET_VEHICLE_CLASS(Veh)
+																			if VehClass ~= 15 and VehClass ~= 16 then
+																				if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, 700.0, 700.0, 700.0, false, true, false) then
+																					local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																					local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+																					local AdjustedX = PPos.x + FVect.x * 100
+																					local AdjustedY = PPos.y + FVect.y * 100
+																					local AdjustedZ = PPos.z + FVect.z * 100
+																					if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ, 1.0, false, true, true, false, false, PlayerPed, true) then
+																						ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX, AdjustedY, AdjustedZ)
+																					end
+																				end
+																			else
+																				if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, 700.0, 700.0, 700.0, false, true, false) then
+																					local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																					local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+																					local AdjustedX = PPos.x + FVect.x * 10
+																					local AdjustedY = PPos.y + FVect.y * 10
+																					local AdjustedZ = PPos.z + FVect.z * 10
+																					if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ + 100.0, 1.0, false, true, true, false, false, PlayerPed, true) then
+																						ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX, AdjustedY, AdjustedZ + 100.0)
+																					end
+																				end
 																			end
 																		end
+																	end
+																else
+																	local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																	local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+																	local AdjustedX = PPos.x + FVect.x * 5
+																	local AdjustedY = PPos.y + FVect.y * 5
+																	local AdjustedZ = PPos.z + FVect.z * 5
+																	local DidHit = memory.alloc(1)
+																	local EndCoords = v3.new()
+																	local Normal = v3.new()
+																	local HitEntity = memory.alloc_int()
+																
+																	local Handle = SHAPETEST.START_EXPENSIVE_SYNCHRONOUS_SHAPE_TEST_LOS_PROBE(
+																		PPos.x, PPos.y, PPos.z,
+																		AdjustedX, AdjustedY, AdjustedZ,
+																		-1,
+																		PlayerPed, 7
+																	)
+																	SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
+																	if memory.read_byte(DidHit) ~= 0 then
+																		if not MISC.IS_POSITION_OCCUPIED(EndCoords.x, EndCoords.y, EndCoords.z - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																			ENTITY.SET_ENTITY_COORDS(peds, EndCoords.x, EndCoords.y, EndCoords.z - 1.0)
+																		end
 																	else
-																		if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, 700.0, 700.0, 700.0, false, true, false) then
-																			local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
-																			local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-																			local AdjustedX = PPos.x + FVect.x * 10
-																			local AdjustedY = PPos.y + FVect.y * 10
-																			local AdjustedZ = PPos.z + FVect.z * 10
-																			if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ + 100.0, 1.0, false, true, true, false, false, PlayerPed, true) then
-																				ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX, AdjustedY, AdjustedZ + 100.0)
-																			end
+																		if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																			ENTITY.SET_ENTITY_COORDS(peds, AdjustedX, AdjustedY, AdjustedZ - 1.0)
 																		end
 																	end
 																end
@@ -1026,33 +1072,6 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																	if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
 																		ENTITY.SET_ENTITY_COORDS(peds, AdjustedX, AdjustedY, AdjustedZ - 1.0)
 																	end
-																end
-															end
-														else
-															local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
-															local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-															local AdjustedX = PPos.x + FVect.x * 5
-															local AdjustedY = PPos.y + FVect.y * 5
-															local AdjustedZ = PPos.z + FVect.z * 5
-															local DidHit = memory.alloc(1)
-															local EndCoords = v3.new()
-															local Normal = v3.new()
-															local HitEntity = memory.alloc_int()
-														
-															local Handle = SHAPETEST.START_EXPENSIVE_SYNCHRONOUS_SHAPE_TEST_LOS_PROBE(
-																PPos.x, PPos.y, PPos.z,
-																AdjustedX, AdjustedY, AdjustedZ,
-																-1,
-																PlayerPed, 7
-															)
-															SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
-															if memory.read_byte(DidHit) ~= 0 then
-																if not MISC.IS_POSITION_OCCUPIED(EndCoords.x, EndCoords.y, EndCoords.z - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
-																	ENTITY.SET_ENTITY_COORDS(peds, EndCoords.x, EndCoords.y, EndCoords.z - 1.0)
-																end
-															else
-																if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
-																	ENTITY.SET_ENTITY_COORDS(peds, AdjustedX, AdjustedY, AdjustedZ - 1.0)
 																end
 															end
 														end
@@ -1253,7 +1272,13 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												end
 											end
 											if BringFarCopsCloser then
-												if not PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false) then
+												local CanGo = true
+												if BringIfOutsideOfVehicle then
+													if PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false) then
+														CanGo = false
+													end
+												end
+												if CanGo then
 													if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
 														if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 															if not RemoveCopsFromVeh then
@@ -1265,9 +1290,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																				if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, 700.0, 700.0, 700.0, false, true, false) then
 																					local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
 																					local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-																					local AdjustedX = PPos.x + FVect.x * 10
-																					local AdjustedY = PPos.y + FVect.y * 10
-																					local AdjustedZ = PPos.z + FVect.z * 10
+																					local AdjustedX = PPos.x + FVect.x * 100
+																					local AdjustedY = PPos.y + FVect.y * 100
+																					local AdjustedZ = PPos.z + FVect.z * 100
 																					if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ, 1.0, false, true, true, false, false, PlayerPed, true) then
 																						ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX, AdjustedY, AdjustedZ)
 																					end
@@ -1276,9 +1301,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																				if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, 700.0, 700.0, 700.0, false, true, false) then
 																					local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
 																					local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-																					local AdjustedX = PPos.x + FVect.x * 10
-																					local AdjustedY = PPos.y + FVect.y * 10
-																					local AdjustedZ = PPos.z + FVect.z * 10
+																					local AdjustedX = PPos.x + FVect.x * 100
+																					local AdjustedY = PPos.y + FVect.y * 100
+																					local AdjustedZ = PPos.z + FVect.z * 100
 																					if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ + 100.0, 1.0, false, true, true, false, false, PlayerPed, true) then
 																						ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX, AdjustedY, AdjustedZ + 100.0)
 																					end
