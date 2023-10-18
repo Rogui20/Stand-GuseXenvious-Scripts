@@ -514,6 +514,62 @@ menu.toggle(AllyCopSettingsMenu, "Avoid Attacking Friends", {}, "", function(tog
 	AvoidAttackingFriends = toggle
 end, AvoidAttackingFriends)
 
+local AvoidAttackSpeficPlayers = false
+menu.toggle(AllyCopSettingsMenu, "Avoid Attacking Specific Players", {}, "Works with avoiding attack friends toggled.", function(toggle)
+	AvoidAttackSpeficPlayers = toggle
+end, AvoidAttackSpeficPlayers)
+
+local PlayersToAvoidAttackT = {}
+local PlayersToAvoidAttackMenu = menu.list(AllyCopSettingsMenu, "Which Players Avoid Attack", {}, "Select players to avoid the attack.", function()UpdatePlayersList()end, function()UpdatePlayersList()end)
+
+local AvoidPlayerBits = 0
+for i = 1, 30 do
+    if PlayersToAvoidAttackT[i] == nil then
+		local PlayerID = PLAYER.PLAYER_ID()
+        local PlayerName = "---"
+        if NETWORK.NETWORK_IS_PLAYER_ACTIVE(i-1) then
+            PlayerName = PLAYER.GET_PLAYER_NAME(i-1)
+        end
+        PlayersToAvoidAttackT[i] = {}
+        PlayersToAvoidAttackT[i].Include = PlayerID+1 == i
+        PlayersToAvoidAttackT[i].MenuPTR = menu.toggle(PlayersToAvoidAttackMenu, PlayerName, {}, "", function(OnChange)
+			PlayersToAvoidAttackT[i].Include = OnChange
+			if PlayersToAvoidAttackT[i].Include == true then
+				SetBitsToAvoidAttackPlayers(i)
+			else
+				SetBitsToAvoidAttackPlayers(i)
+			end
+		end, PlayersToAvoidAttackT[i].Include)
+    end
+end
+
+function UpdatePlayersList()
+    for i = 1, 30 do
+        if PlayersToAvoidAttackT[i] ~= nil then
+            local PlayerName = "---"
+            if NETWORK.NETWORK_IS_PLAYER_ACTIVE(i-1) then
+                PlayerName = PLAYER.GET_PLAYER_NAME(i-1)
+            end
+            menu.set_menu_name(PlayersToAvoidAttackT[i].MenuPTR, PlayerName)
+        end
+    end
+end
+
+function SetBitsToAvoidAttackPlayers(Bit)
+	if not is_bit_set(AvoidPlayerBits, Bit) then
+		AvoidPlayerBits = set_bit(AvoidPlayerBits, Bit)
+	else
+		AvoidPlayerBits = clear_bit(AvoidPlayerBits, Bit)
+	end
+end
+
+players.on_leave(function(CallBack)
+	if is_bit_set(AvoidPlayerBits, CallBack + 1) then
+		AvoidPlayerBits = clear_bit(AvoidPlayerBits, CallBack + 1)
+		menu.set_value(PlayersToAvoidAttackT[CallBack + 1].MenuPTR, false)
+	end
+end)
+
 local AddBlipsForAllyCops = true
 menu.toggle(AllyCopSettingsMenu, "Add Blip For Ally Cops", {}, "", function(toggle)
 	AddBlipsForAllyCops = toggle
@@ -651,7 +707,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		--	PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(PlayerID, false)
 		--end
 		local HasSetHate = false
-		
+		local FreemodeBackupHeliAddr = memory.script_local("freemode", 6916)
+		local TriesTick = 0
 		while ApplyCopSettings do
 			if ApplyCopSettings then
 				if SetAllyPedHateToAiHate then
@@ -708,22 +765,43 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 								end
 							end
 						else
+							local CanSetRel = false
 							local RelTarget = joaat("rgFM_Team"..PlayerID)
 							local RelHash = joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]")
-							--local OldValue = memory.read_int(RelAddrs[PlayerID + 1])
-							--local NewValue = set_bit(OldValue)
-							--if not is_bit_set(OldValue, PlayerID+1) then
-							--	memory.write_int(RelAddrs[PlayerID+1], 1)--set_bit(OldValue, PlayerID+1))
-							--end
-							--OldValue = memory.read_int(RelAddrs[1])
-							--if not is_bit_set(OldValue, 1) then
-							--	memory.write_int(RelAddrs[1], 1)--set_bit(OldValue, 1))
-							--end
-							PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, RelHash, RelTarget)
-							PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, RelTarget, RelHash)
+							if not AvoidAttackingFriends then
+								PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, RelHash, RelTarget)
+								PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, RelTarget, RelHash)
+							else
+								if FreemodeBackupHeliAddr ~= 0 then
+									if AvoidAttackSpeficPlayers then
+										if not is_bit_set(AvoidPlayerBits, PlayerID+1) then
+											AvoidPlayerBits = set_bit(AvoidPlayerBits, PlayerID+1)
+										end
+										memory.write_int(FreemodeBackupHeliAddr, AvoidPlayerBits)
+									end
+									if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("am_backup_heli")) == 0 then
+										if TriesTick <= 0 then
+											menu.trigger_commands("helibackup")
+											TriesTick = 50
+										else
+											if TriesTick > 0 then
+												TriesTick = TriesTick - 1
+											end
+										end
+									else
+										TriesTick = 0
+										CanSetRel = true
+									end
+								end
+							end
 							local MyRelTeam = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PlayerPed)
+							if CanSetRel then
+								MyRelTeam = RelHashBackup
+								RelTarget = RelHashBackup
+								RelHash = RelHashBackup
+							end
 							if MyRelTeam ~= RelTarget then
-							--SelectedTeam = joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]")
+								--SelectedTeam = joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]")
 								SelectedTeam = MyRelTeam
 							else
 								SelectedTeam = RelHash
@@ -762,6 +840,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 								local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
 								if Veh ~= 0 then
 									ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(Veh, false)
+								end
+								if RelHashBackup ~= 0 then
+									ENTITY.SET_ENTITY_CAN_BE_DAMAGED_BY_RELATIONSHIP_GROUP(peds, true, RelHashBackup)
 								end
 							end
 							local CanEditCop = false
@@ -959,15 +1040,26 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 											local IsPedInGroup = PED.IS_PED_IN_GROUP(peds)
 											if not IsPedInGroup then
 												if CopsFollowAsBodyguard then
-													if GetPedGroupSize(PlayerGroup) < 7 then
-														if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 30.0, 30.0, 30.0, false, true, false) then
-															if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																PED.SET_PED_AS_GROUP_MEMBER(peds, PlayerGroup)
-																PED.SET_PED_NEVER_LEAVES_GROUP(peds, true)
-																PED.SET_GROUP_SEPARATION_RANGE(PlayerGroup, 9999.0)
-																PED.SET_GROUP_FORMATION_SPACING(PlayerGroup, 1.0, -1.0, -1.0)
-																PED.SET_GROUP_FORMATION(PlayerGroup, 1)
-																TASK.CLEAR_PED_TASKS(peds)
+													local CanSetInGroup = true
+													if Veh ~= 0 then
+														local VehModel = ENTITY.GET_ENTITY_MODEL(Veh)
+														local IsAPlane = VEHICLE.IS_THIS_MODEL_A_PLANE(VehModel)
+														local IsAHeli = VEHICLE.IS_THIS_MODEL_A_HELI(VehModel)
+														if IsAPlane or IsAHeli then
+															CanSetInGroup = false
+														end
+													end
+													if CanSetInGroup then
+														if GetPedGroupSize(PlayerGroup) < 7 then
+															if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 30.0, 30.0, 30.0, false, true, false) then
+																if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																	PED.SET_PED_AS_GROUP_MEMBER(peds, PlayerGroup)
+																	PED.SET_PED_NEVER_LEAVES_GROUP(peds, true)
+																	PED.SET_GROUP_SEPARATION_RANGE(PlayerGroup, 9999.0)
+																	PED.SET_GROUP_FORMATION_SPACING(PlayerGroup, 1.0, -1.0, -1.0)
+																	PED.SET_GROUP_FORMATION(PlayerGroup, 1)
+																	TASK.CLEAR_PED_TASKS(peds)
+																end
 															end
 														end
 													end
@@ -1293,15 +1385,26 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 											local IsPedInGroup = PED.IS_PED_IN_GROUP(peds)
 											if not IsPedInGroup then
 												if CopsFollowAsBodyguard then
-													if GetPedGroupSize(PlayerGroup) < 7 then
-														if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 30.0, 30.0, 30.0, false, true, false) then
-															if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																PED.SET_PED_AS_GROUP_MEMBER(peds, PlayerGroup)
-																PED.SET_PED_NEVER_LEAVES_GROUP(peds, true)
-																PED.SET_GROUP_SEPARATION_RANGE(PlayerGroup, 9999.0)
-																PED.SET_GROUP_FORMATION_SPACING(PlayerGroup, 1.0, -1.0, -1.0)
-																PED.SET_GROUP_FORMATION(PlayerGroup, 1)
-																TASK.CLEAR_PED_TASKS(peds)
+													local CanSetInGroup = true
+													if Veh ~= 0 then
+														local VehModel = ENTITY.GET_ENTITY_MODEL(Veh)
+														local IsAPlane = VEHICLE.IS_THIS_MODEL_A_PLANE(VehModel)
+														local IsAHeli = VEHICLE.IS_THIS_MODEL_A_HELI(VehModel)
+														if IsAPlane or IsAHeli then
+															CanSetInGroup = false
+														end
+													end
+													if CanSetInGroup then
+														if GetPedGroupSize(PlayerGroup) < 7 then
+															if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 30.0, 30.0, 30.0, false, true, false) then
+																if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																	PED.SET_PED_AS_GROUP_MEMBER(peds, PlayerGroup)
+																	PED.SET_PED_NEVER_LEAVES_GROUP(peds, true)
+																	PED.SET_GROUP_SEPARATION_RANGE(PlayerGroup, 9999.0)
+																	PED.SET_GROUP_FORMATION_SPACING(PlayerGroup, 1.0, -1.0, -1.0)
+																	PED.SET_GROUP_FORMATION(PlayerGroup, 1)
+																	TASK.CLEAR_PED_TASKS(peds)
+																end
 															end
 														end
 													end
