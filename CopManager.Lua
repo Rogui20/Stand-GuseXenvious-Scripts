@@ -510,7 +510,7 @@ menu.toggle(AllyCopSettingsMenu, "Cops Can Attack Players", {}, "", function(tog
 end, CopsCanAttackPlayers)
 
 local AvoidAttackingFriends = true
-menu.toggle(AllyCopSettingsMenu, "Avoid Attacking Friends", {}, "", function(toggle)
+menu.toggle(AllyCopSettingsMenu, "Avoid Attacking Friends", {}, "Automatically will avoid attacking people of your CEO or Biker Club.", function(toggle)
 	AvoidAttackingFriends = toggle
 end, AvoidAttackingFriends)
 
