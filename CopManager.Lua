@@ -8,7 +8,42 @@ local NULL <const> = 0
 
 local CayoCopsGlobalAddr = 2657704+1+442 --463
 
-
+function SplitGlobals(GlobalString)
+	local String = GlobalString
+	local Value = String:gsub("%[(.-)]", "+1")
+	local NewValue = Value:gsub("%a", "")
+	local NewValue2 = NewValue:gsub("._", "+")
+	local NewValue3 = NewValue2:gsub("_", "")
+	local _Text, SymbolCount = NewValue3:gsub("+", "")
+	local PatternCount = "(%d+)"
+	for i = 1, SymbolCount do
+		PatternCount = PatternCount .. "+(%d+)"
+	end
+	local Global, Global2, Global3, Global4, Global5, Global6, Global7 = NewValue3:match(PatternCount)
+	local GlobalNumber = 0
+	if Global ~= nil then
+		GlobalNumber = GlobalNumber + tonumber(Global)
+	end
+	if Global2 ~= nil then
+		GlobalNumber = GlobalNumber + tonumber(Global2)
+	end
+	if Global3 ~= nil then
+		GlobalNumber = GlobalNumber + tonumber(Global3)
+	end
+	if Global4 ~= nil then
+		GlobalNumber = GlobalNumber + tonumber(Global4)
+	end
+	if Global5 ~= nil then
+		GlobalNumber = GlobalNumber + tonumber(Global5)
+	end
+	if Global6 ~= nil then
+		GlobalNumber = GlobalNumber + tonumber(Global6)
+	end
+	if Global7 ~= nil then
+		GlobalNumber = GlobalNumber + tonumber(Global7)
+	end
+	return GlobalNumber
+end
 
 local Addr = 0
 local Addr2 = 0
@@ -24,8 +59,13 @@ local copped_Addrs = {}
 local sheriffped_Addrs = {}
 local swatped_Addrs = {}
 local CanSetModels = false
+local RelPlayersBitsAddr = SplitGlobals("Global_2657704[PLAYER::PLAYER_ID() /*463*/].f_253")
+local RelAddrs = {}
 if NETWORK.GET_ONLINE_VERSION() == "1.67" then
 	--Addr = 0x7FF66E4E63F0
+	for i = 0, 29 do
+		RelAddrs[i+1] = memory.script_global(RelPlayersBitsAddr + 463 * i)
+	end
 	Addr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42")
 	--Print(string.format("%X", Addr))
 	--util.copy_to_clipboard(string.format("%X", Addr))
@@ -171,42 +211,7 @@ local GiveWeaponOptions = {
 	"Random Cop Weapon By Chance"
 }
 
-function SplitGlobals(GlobalString)
-	local String = GlobalString
-	local Value = String:gsub("%[(.-)]", "+1")
-	local NewValue = Value:gsub("%a", "")
-	local NewValue2 = NewValue:gsub("._", "+")
-	local NewValue3 = NewValue2:gsub("_", "")
-	local _Text, SymbolCount = NewValue3:gsub("+", "")
-	local PatternCount = "(%d+)"
-	for i = 1, SymbolCount do
-		PatternCount = PatternCount .. "+(%d+)"
-	end
-	local Global, Global2, Global3, Global4, Global5, Global6, Global7 = NewValue3:match(PatternCount)
-	local GlobalNumber = 0
-	if Global ~= nil then
-		GlobalNumber = GlobalNumber + tonumber(Global)
-	end
-	if Global2 ~= nil then
-		GlobalNumber = GlobalNumber + tonumber(Global2)
-	end
-	if Global3 ~= nil then
-		GlobalNumber = GlobalNumber + tonumber(Global3)
-	end
-	if Global4 ~= nil then
-		GlobalNumber = GlobalNumber + tonumber(Global4)
-	end
-	if Global5 ~= nil then
-		GlobalNumber = GlobalNumber + tonumber(Global5)
-	end
-	if Global6 ~= nil then
-		GlobalNumber = GlobalNumber + tonumber(Global6)
-	end
-	if Global7 ~= nil then
-		GlobalNumber = GlobalNumber + tonumber(Global7)
-	end
-	return GlobalNumber
-end
+
 
 local VehicleModels = {
 	"polmav",
@@ -504,6 +509,11 @@ menu.toggle(AllyCopSettingsMenu, "Cops Can Attack Players", {}, "", function(tog
 	CopsCanAttackPlayers = toggle
 end, CopsCanAttackPlayers)
 
+local AvoidAttackingFriends = true
+menu.toggle(AllyCopSettingsMenu, "Avoid Attacking Friends", {}, "", function(toggle)
+	AvoidAttackingFriends = toggle
+end, AvoidAttackingFriends)
+
 local AddBlipsForAllyCops = true
 menu.toggle(AllyCopSettingsMenu, "Add Blip For Ally Cops", {}, "", function(toggle)
 	AddBlipsForAllyCops = toggle
@@ -527,6 +537,11 @@ local DistanceNeededToAttack = 100.0
 menu.slider_float(AllyCopSettingsMenu, "Needed Range To Attack", {"autoattackrange"}, "Distance needed between peds to start the attack.", 10000, 1000000, 10000, 1000, function(OnChange)
 	DistanceNeededToAttack = OnChange / 100
 end)
+
+local SetAllyPedHateToAiHate = true
+menu.toggle(AllyCopSettingsMenu, "Set Ally Ped Hate To Ai Enemy", {}, "Made for missions, if ally sees a enemy ped, will attack.", function(toggle)
+	SetAllyPedHateToAiHate = toggle
+end, SetAllyPedHateToAiHate)
 
 --menu.list_select(AllyCopSettingsMenu, "Cop Relationship Type", {"allycoprelationship"}, "Set if cops will be able to attack players or only npcs.", table<int, table> options, 1, function on_change)
 
@@ -561,10 +576,15 @@ end, CopsCustomRelationship)
 menu.text_input(CopCustomRelMenu, "Custom Relationship Name", {"copcustomrelationship"}, "Write a missing custom relationship name to set.", function(on_change)
 	CustomRelText = on_change
 end)
+--func_18155(&(Global_1837231[5]), Global_2657704[PLAYER::PLAYER_ID() /*463*/].f_253);
 
+local RelHashBackupAddr = SplitGlobals("Global_1837231.f_6")
 local ApplyCopSettings = false
 menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 	ApplyCopSettings = toggle
+	local CopAIMissionRelHash = -1235282855
+	local EnemyAIMissionRelHash = 671184796
+	local FriendlyAll = -607974925
 	if not ApplyCopSettings then
 		for index, peds in pairs(entities.get_all_peds_as_handles()) do
 			if peds ~= PLAYER.PLAYER_PED_ID() then
@@ -606,23 +626,45 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			PED.SET_RELATIONSHIP_BETWEEN_GROUPS(3, joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]"), RelTarget)
 			PED.SET_RELATIONSHIP_BETWEEN_GROUPS(3, RelTarget, joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]"))
 		end
+		if SetAllyPedHateToAiHate then
+			if PED.DOES_RELATIONSHIP_GROUP_EXIST(FriendlyAll) then
+				PED.SET_RELATIONSHIP_BETWEEN_GROUPS(3, FriendlyAll, CopAIMissionRelHash)
+				--PED.SET_RELATIONSHIP_BETWEEN_GROUPS(3, CopAIMissionRelHash, FriendlyAll)
+				PED.SET_RELATIONSHIP_BETWEEN_GROUPS(3, FriendlyAll, EnemyAIMissionRelHash)
+				--PED.SET_RELATIONSHIP_BETWEEN_GROUPS(3, EnemyAIMissionRelHash, FriendlyAll)
+			end
+		end
 	end
 	local AiTeam1Hash = joaat("rgFM_AiPed20000")
 	local SelectedTeam = -607974925
-	local FriendlyAll = -607974925
 	--local FriendlyAll = AiTeam1Hash
 	local DeadPeds = {}
 	local BlipColorToGive = 1
 	if ApplyCopSettings then
 		PlayerID = PLAYER.PLAYER_ID()
+		local RelHashBackup = memory.read_int(memory.script_global(RelHashBackupAddr))
+		--Print(RelHashBackup)
 		--if AutomaticGenCops then
 		--	PLAYER.SET_DISPATCH_COPS_FOR_PLAYER(PlayerID, true)
 		--	PLAYER.SET_MAX_WANTED_LEVEL(5)
 		--	PLAYER.SET_PLAYER_WANTED_LEVEL(PlayerID, 5, false)
 		--	PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(PlayerID, false)
 		--end
+		local HasSetHate = false
+		
 		while ApplyCopSettings do
 			if ApplyCopSettings then
+				if SetAllyPedHateToAiHate then
+					if not HasSetHate then
+						if PED.DOES_RELATIONSHIP_GROUP_EXIST(FriendlyAll) then
+							PED.SET_RELATIONSHIP_BETWEEN_GROUPS(5, FriendlyAll, CopAIMissionRelHash)
+							--PED.SET_RELATIONSHIP_BETWEEN_GROUPS(5, CopAIMissionRelHash, FriendlyAll)
+							PED.SET_RELATIONSHIP_BETWEEN_GROUPS(5, FriendlyAll, EnemyAIMissionRelHash)
+							--PED.SET_RELATIONSHIP_BETWEEN_GROUPS(5, EnemyAIMissionRelHash, FriendlyAll)
+							HasSetHate = true
+						end
+					end
+				end
 				local PlayerPed = PLAYER.PLAYER_PED_ID()
 				PlayerID = PLAYER.PLAYER_ID()
 				local PlayerGroup = PLAYER.GET_PLAYER_GROUP(PlayerID)
@@ -668,6 +710,15 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 						else
 							local RelTarget = joaat("rgFM_Team"..PlayerID)
 							local RelHash = joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]")
+							--local OldValue = memory.read_int(RelAddrs[PlayerID + 1])
+							--local NewValue = set_bit(OldValue)
+							--if not is_bit_set(OldValue, PlayerID+1) then
+							--	memory.write_int(RelAddrs[PlayerID+1], 1)--set_bit(OldValue, PlayerID+1))
+							--end
+							--OldValue = memory.read_int(RelAddrs[1])
+							--if not is_bit_set(OldValue, 1) then
+							--	memory.write_int(RelAddrs[1], 1)--set_bit(OldValue, 1))
+							--end
 							PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, RelHash, RelTarget)
 							PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, RelTarget, RelHash)
 							local MyRelTeam = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PlayerPed)
@@ -690,6 +741,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 							SelectedTeam = joaat("COP")
 						end
 					end
+				end
+				if not PED.DOES_RELATIONSHIP_GROUP_EXIST(FriendlyAll) then
+					HasSetHate = false
 				end
 				for index, peds in pairs(entities.get_all_peds_as_handles()) do
 					if DECORATOR.DECOR_GET_INT(peds, "Casino_Game_Info_Decorator") == 31 then
@@ -1690,7 +1744,8 @@ local ModelsToSet = {
 	"nightshark",
 	"khanjali",
 	"buzzard",
-	"menacer"
+	"menacer",
+	"annihilator"
 }
 function IsArmoredVehModel(Veh)
 	local VehModel = ENTITY.GET_ENTITY_MODEL(Veh)
@@ -1993,9 +2048,12 @@ menu.action(DevMenu, "Addr Get", {}, "", function(toggle)
 	Print(FormatedString)
 end)
 
-menu.action(DevMenu, "Model Test", {}, "", function(toggle)
-	local HasLoaded = STREAMING.HAS_MODEL_LOADED(joaat("police3"))
-	Print(HasLoaded)
+menu.action(DevMenu, "Rel Test", {}, "", function(toggle)
+	local Addr = memory.script_global(SplitGlobals("Global_1837231.f_6"))
+	local Value = memory.read_int(Addr)
+	local RelHash = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PLAYER.PLAYER_PED_ID())
+	local RelBG = PED.GET_RELATIONSHIP_BETWEEN_GROUPS(RelHash, Value)
+	Print(RelBG)
 end)
 
 
