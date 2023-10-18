@@ -1000,10 +1000,10 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																					local Multiplier = 100
 																					if IsInVeh then
 																						FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(PlayerPed)
+																						Multiplier = -100
 																					else
 																						local CamRot = CAM.GET_GAMEPLAY_CAM_ROT(2)
 																						FVect = CamRot:toDir()
-																						Multiplier = -100
 																					end
 																					local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
 																					local AdjustedX = PPos.x + FVect.x * Multiplier
@@ -1334,10 +1334,10 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																					local Multiplier = 100
 																					if IsInVeh then
 																						FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(PlayerPed)
+																						Multiplier = -100
 																					else
 																						local CamRot = CAM.GET_GAMEPLAY_CAM_ROT(2)
 																						FVect = CamRot:toDir()
-																						Multiplier = -100
 																					end
 																					local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
 																					local AdjustedX = PPos.x + FVect.x * Multiplier
