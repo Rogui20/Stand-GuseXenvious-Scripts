@@ -615,12 +615,12 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 	local BlipColorToGive = 1
 	if ApplyCopSettings then
 		PlayerID = PLAYER.PLAYER_ID()
-		if AutomaticGenCops then
-			PLAYER.SET_DISPATCH_COPS_FOR_PLAYER(PlayerID, true)
-			PLAYER.SET_MAX_WANTED_LEVEL(5)
-			PLAYER.SET_PLAYER_WANTED_LEVEL(PlayerID, 5, false)
-			PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(PlayerID, false)
-		end
+		--if AutomaticGenCops then
+		--	PLAYER.SET_DISPATCH_COPS_FOR_PLAYER(PlayerID, true)
+		--	PLAYER.SET_MAX_WANTED_LEVEL(5)
+		--	PLAYER.SET_PLAYER_WANTED_LEVEL(PlayerID, 5, false)
+		--	PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(PlayerID, false)
+		--end
 		while ApplyCopSettings do
 			if ApplyCopSettings then
 				local PlayerPed = PLAYER.PLAYER_PED_ID()
@@ -980,8 +980,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 											end
 											if BringFarCopsCloser then
 												local CanGo = true
+												local IsInVeh = PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false)
 												if BringIfOutsideOfVehicle then
-													if PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false) then
+													if IsInVeh then
 														CanGo = false
 													end
 												end
@@ -995,11 +996,19 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																			local VehClass = VEHICLE.GET_VEHICLE_CLASS(Veh)
 																			if VehClass ~= 15 and VehClass ~= 16 then
 																				if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, 700.0, 700.0, 700.0, false, true, false) then
-																					local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																					local FVect = nil
+																					local Multiplier = 100
+																					if IsInVeh then
+																						FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(PlayerPed)
+																					else
+																						local CamRot = CAM.GET_GAMEPLAY_CAM_ROT(2)
+																						FVect = CamRot:toDir()
+																						Multiplier = -100
+																					end
 																					local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-																					local AdjustedX = PPos.x + FVect.x * 100
-																					local AdjustedY = PPos.y + FVect.y * 100
-																					local AdjustedZ = PPos.z + FVect.z * 100
+																					local AdjustedX = PPos.x + FVect.x * Multiplier
+																					local AdjustedY = PPos.y + FVect.y * Multiplier
+																					local AdjustedZ = PPos.z + FVect.z * Multiplier
 																					local DidHit = memory.alloc(1)
 																					local EndCoords = v3.new()
 																					local Normal = v3.new()
@@ -1013,11 +1022,11 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																					)
 																					SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
 																					if memory.read_byte(DidHit) ~= 0 then
-																						if not MISC.IS_POSITION_OCCUPIED(EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																						if not MISC.IS_POSITION_OCCUPIED(EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0, 1.0, false, true, true, false, false, 0, true) then
 																							ENTITY.SET_ENTITY_COORDS(Veh, EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0)
 																						end
 																					else
-																						if not MISC.IS_POSITION_OCCUPIED(AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																						if not MISC.IS_POSITION_OCCUPIED(AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0, 1.0, false, true, true, false, false, 0, true) then
 																							ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0)
 																						end
 																					end
@@ -1037,7 +1046,12 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																		end
 																	end
 																else
-																	local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																	local FVect = nil
+																	if IsInVeh then
+																		FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(PlayerPed)
+																	else
+																		FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																	end
 																	local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
 																	local AdjustedX = PPos.x + FVect.x * 5
 																	local AdjustedY = PPos.y + FVect.y * 5
@@ -1065,11 +1079,20 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																	end
 																end
 															else
-																local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																local FVect = nil
+																if IsInVeh then
+																	FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(PlayerPed)
+																else
+																	FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																end
 																local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-																local AdjustedX = PPos.x + FVect.x * 5
-																local AdjustedY = PPos.y + FVect.y * 5
-																local AdjustedZ = PPos.z + FVect.z * 5
+																local MultiplierToGive = 5
+																if IsInVeh then
+																	MultiplierToGive = -50
+																end
+																local AdjustedX = PPos.x + FVect.x * MultiplierToGive
+																local AdjustedY = PPos.y + FVect.y * MultiplierToGive
+																local AdjustedZ = PPos.z + FVect.z * MultiplierToGive
 																local DidHit = memory.alloc(1)
 																local EndCoords = v3.new()
 																local Normal = v3.new()
@@ -1291,8 +1314,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 											end
 											if BringFarCopsCloser then
 												local CanGo = true
+												local IsInVeh = PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false)
 												if BringIfOutsideOfVehicle then
-													if PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false) then
+													if IsInVeh then
 														CanGo = false
 													end
 												end
@@ -1306,11 +1330,19 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																			local VehClass = VEHICLE.GET_VEHICLE_CLASS(Veh)
 																			if VehClass ~= 15 and VehClass ~= 16 then
 																				if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, 700.0, 700.0, 700.0, false, true, false) then
-																					local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																					local FVect = nil
+																					local Multiplier = 100
+																					if IsInVeh then
+																						FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(PlayerPed)
+																					else
+																						local CamRot = CAM.GET_GAMEPLAY_CAM_ROT(2)
+																						FVect = CamRot:toDir()
+																						Multiplier = -100
+																					end
 																					local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-																					local AdjustedX = PPos.x + FVect.x * 100
-																					local AdjustedY = PPos.y + FVect.y * 100
-																					local AdjustedZ = PPos.z + FVect.z * 100
+																					local AdjustedX = PPos.x + FVect.x * Multiplier
+																					local AdjustedY = PPos.y + FVect.y * Multiplier
+																					local AdjustedZ = PPos.z + FVect.z * Multiplier
 																					local DidHit = memory.alloc(1)
 																					local EndCoords = v3.new()
 																					local Normal = v3.new()
@@ -1324,11 +1356,11 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																					)
 																					SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
 																					if memory.read_byte(DidHit) ~= 0 then
-																						if not MISC.IS_POSITION_OCCUPIED(EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																						if not MISC.IS_POSITION_OCCUPIED(EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0, 2.0, false, true, true, false, false, 0, true) then
 																							ENTITY.SET_ENTITY_COORDS(Veh, EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0)
 																						end
 																					else
-																						if not MISC.IS_POSITION_OCCUPIED(AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																						if not MISC.IS_POSITION_OCCUPIED(AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0, 2.0, false, true, true, false, false, 0, true) then
 																							ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0)
 																						end
 																					end
@@ -1348,11 +1380,20 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																		end
 																	end
 																else
-																	local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																	local FVect = nil
+																	if IsInVeh then
+																		FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(PlayerPed)
+																	else
+																		FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																	end
 																	local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-																	local AdjustedX = PPos.x + FVect.x * 5
-																	local AdjustedY = PPos.y + FVect.y * 5
-																	local AdjustedZ = PPos.z + FVect.z * 5
+																	local MultiplierToGive = 5
+																	if IsInVeh then
+																		MultiplierToGive = -50
+																	end
+																	local AdjustedX = PPos.x + FVect.x * MultiplierToGive
+																	local AdjustedY = PPos.y + FVect.y * MultiplierToGive
+																	local AdjustedZ = PPos.z + FVect.z * MultiplierToGive
 																	local DidHit = memory.alloc(1)
 																	local EndCoords = v3.new()
 																	local Normal = v3.new()
@@ -1376,7 +1417,12 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																	end
 																end
 															else
-																local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																local FVect = nil
+																if IsInVeh then
+																	FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(PlayerPed)
+																else
+																	FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																end
 																local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
 																local AdjustedX = PPos.x + FVect.x * 5
 																local AdjustedY = PPos.y + FVect.y * 5
