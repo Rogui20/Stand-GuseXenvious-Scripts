@@ -685,11 +685,6 @@ menu.toggle(OptionsMenu, "Only Replace with Drivers", {}, "", function(toggle)
 	ReplaceOnlyWithDrivers = toggle
 end, ReplaceOnlyWithDrivers)
 
-local MoreTraffic = false
-menu.toggle(OptionsMenu, "More Traffic", {}, "", function(toggle)
-	MoreTraffic = toggle
-end, MoreTraffic)
-
 local DeleteOnTurningOff = false
 menu.toggle(OptionsMenu, "Delete if turned off", {}, "Delete all generated vehicles if Set Random Traffic if untoggled.", function(toggle)
 	DeleteOnTurningOff = toggle
@@ -776,9 +771,6 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 									for i = 1, #Peds do
 										if VEHICLE.IS_VEHICLE_SEAT_FREE(NewVeh, SeatIndex, false) then
 											PED.SET_PED_INTO_VEHICLE(Peds[i].Handle, NewVeh, SeatIndex)
-										end
-										if MoreTraffic then
-											ENTITY.SET_ENTITY_AS_MISSION_ENTITY(Peds[i].Handle, false, true)
 										end
 										SeatIndex = SeatIndex + 1
 									end
