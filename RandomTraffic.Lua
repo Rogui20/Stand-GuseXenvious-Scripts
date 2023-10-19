@@ -774,22 +774,27 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 										end
 									end
 									local NewVeh = VEHICLE.CREATE_VEHICLE(ReplacedVehs[vehs].ModelToRequest, Coords.x, Coords.y, Coords.z, Rot.z, true, false, false)
-									ENTITY.SET_ENTITY_ROTATION(NewVeh, Rot.x, Rot.y, Rot.z, 2)
-									ENTITY.SET_ENTITY_VELOCITY(NewVeh, Velocity.x, Velocity.y, Velocity.z)
-									DECORATOR.DECOR_SET_INT(NewVeh, "Casino_Game_Info_Decorator", 31)
-									local SeatIndex = -1
-									for i = 1, #Peds do
-										if VEHICLE.IS_VEHICLE_SEAT_FREE(NewVeh, SeatIndex, false) then
-											PED.SET_PED_INTO_VEHICLE(Peds[i].Handle, NewVeh, SeatIndex)
+									if NewVeh ~= 0 then
+										ENTITY.SET_ENTITY_ROTATION(NewVeh, Rot.x, Rot.y, Rot.z, 2)
+										ENTITY.SET_ENTITY_VELOCITY(NewVeh, Velocity.x, Velocity.y, Velocity.z)
+										DECORATOR.DECOR_SET_INT(NewVeh, "Casino_Game_Info_Decorator", 31)
+										local SeatIndex = -1
+										for i = 1, #Peds do
+											if VEHICLE.IS_VEHICLE_SEAT_FREE(NewVeh, SeatIndex, false) then
+												PED.SET_PED_INTO_VEHICLE(Peds[i].Handle, NewVeh, SeatIndex)
+											end
+											SeatIndex = SeatIndex + 1
 										end
-										SeatIndex = SeatIndex + 1
+										ReplacedVehs[NewVeh] = {}
+										ReplacedVehs[NewVeh].ModelToRequest = 0
+										ReplacedVehs[NewVeh].WasReplaced = 1
+										STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(ReplacedVehs[vehs].ModelToRequest)
+										ReplacedVehs[vehs] = nil
+										UpgradeCar(NewVeh)
+									else
+										STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(ReplacedVehs[vehs].ModelToRequest)
+										ReplacedVehs[vehs] = nil
 									end
-									ReplacedVehs[NewVeh] = {}
-									ReplacedVehs[NewVeh].ModelToRequest = 0
-									ReplacedVehs[NewVeh].WasReplaced = 1
-									STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(ReplacedVehs[vehs].ModelToRequest)
-									ReplacedVehs[vehs] = nil
-									UpgradeCar(NewVeh)
 								end
 							end
 						end
