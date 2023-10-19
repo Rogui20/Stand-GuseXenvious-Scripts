@@ -685,6 +685,11 @@ menu.toggle(OptionsMenu, "Only Replace with Drivers", {}, "", function(toggle)
 	ReplaceOnlyWithDrivers = toggle
 end, ReplaceOnlyWithDrivers)
 
+local ReplaceOnlyIfCloser = true
+menu.toggle(OptionsMenu, "Only Replace Closer Vehicles", {}, "", function(toggle)
+	ReplaceOnlyIfCloser = toggle
+end, ReplaceOnlyIfCloser)
+
 local DeleteOnTurningOff = false
 menu.toggle(OptionsMenu, "Delete if turned off", {}, "Delete all generated vehicles if Set Random Traffic if untoggled.", function(toggle)
 	DeleteOnTurningOff = toggle
@@ -720,23 +725,26 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 				if ReplacedVehs[vehs] == nil then
 					if not ENTITY.IS_ENTITY_DEAD(vehs) then
 						if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(vehs) then
-							--if ENTITY.IS_ENTITY_AT_ENTITY(vehs, PlayerPed, 300.0, 300.0, 900.0, false, true, 0) then
-								local CanEdit = true
-								if ReplaceOnlyWithDrivers then
-									CanEdit = VEHICLE.GET_VEHICLE_NUMBER_OF_PASSENGERS(vehs, true, true) > 0
+							local CanEdit = true
+							if ReplaceOnlyWithDrivers then
+								CanEdit = VEHICLE.GET_VEHICLE_NUMBER_OF_PASSENGERS(vehs, true, true) > 0
+							end
+							if ReplaceOnlyIfCloser then
+								if not ENTITY.IS_ENTITY_AT_ENTITY(vehs, PlayerPed, 300.0, 300.0, 900.0, false, true, 0) then
+									CanEdit = false
 								end
-								local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false)
-								if Ped ~= 0 then
-									if PED.IS_PED_A_PLAYER(Ped) then
-										CanEdit = false
-									end
+							end
+							local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false)
+							if Ped ~= 0 then
+								if PED.IS_PED_A_PLAYER(Ped) then
+									CanEdit = false
 								end
-								if CanEdit then
-									ReplacedVehs[vehs] = {}
-									ReplacedVehs[vehs].ModelToRequest = joaat(AllGameVehs[math.random(#AllGameVehs)])
-									ReplacedVehs[vehs].WasReplaced = 0
-								end
-							--end
+							end
+							if CanEdit then
+								ReplacedVehs[vehs] = {}
+								ReplacedVehs[vehs].ModelToRequest = joaat(AllGameVehs[math.random(#AllGameVehs)])
+								ReplacedVehs[vehs].WasReplaced = 0
+							end
 						end
 					end
 				end
