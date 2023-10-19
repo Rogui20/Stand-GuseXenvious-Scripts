@@ -208,7 +208,8 @@ local GiveWeaponOptions = {
 	"Force Cop Weapon",
 	"Auto Give Cop Weapon",
 	"Random Cop Weapon",
-	"Random Cop Weapon By Chance"
+	"Random Cop Weapon By Chance",
+	"High Chance With Explosive Guns"
 }
 
 
@@ -415,9 +416,14 @@ menu.toggle(CopWeaponsMenu, "Flashlight For All Cop Weapons", {}, "", function(t
 end, FlashlightForAllCopWeapons)
 
 local EnableWeaponSettsForCops = true
-menu.toggle(CopWeaponsMenu, "Enable Weapon Settings", {}, "If this is enabled, wanted level will be set to 5 stars and will set 0 stars when 50 cops is generated.", function(toggle)
+menu.toggle(CopWeaponsMenu, "Enable Weapon Settings", {}, "", function(toggle)
 	EnableWeaponSettsForCops = toggle
 end, EnableWeaponSettsForCops)
+
+local AllowExplosives = false
+menu.toggle(CopWeaponsMenu, "Enable Weapon Explosive Guns", {}, "", function(toggle)
+	AllowExplosives = toggle
+end, AllowExplosives)
 
 local AutomaticGenCops = true
 menu.toggle(CopSettingsMenu, "Automatically Generate Cops", {}, "If this is enabled, wanted level will be set to 5 stars and will set 0 stars when 50 cops is generated.", function(toggle)
@@ -599,6 +605,12 @@ menu.toggle(AllyCopSettingsMenu, "Set Ally Ped Hate To Ai Enemy", {}, "Made for 
 	SetAllyPedHateToAiHate = toggle
 end, SetAllyPedHateToAiHate)
 
+local CustomTasksMenu = menu.list(AllyCopSettingsMenu, "Custom Tasks", {}, "")
+local CopsShootWhereYouShoot = false
+menu.toggle(CustomTasksMenu, "Cops Shoot Where You Shoot", {}, "", function(toggle)
+	CopsShootWhereYouShoot = toggle
+end, CopsShootWhereYouShoot)
+
 --menu.list_select(AllyCopSettingsMenu, "Cop Relationship Type", {"allycoprelationship"}, "Set if cops will be able to attack players or only npcs.", table<int, table> options, 1, function on_change)
 
 local RenderCopCount = false
@@ -657,16 +669,18 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					if CanEditCop then
 						local DecorInt = DECORATOR.DECOR_GET_INT(peds, "Casino_Game_Info_Decorator")
 						if DecorInt == 31 or DecorInt == 32 then
-							local Tick = 0
-							while not NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) and Tick < 1000 do
-								Tick = Tick + 1
-								Wait()
-							end
-							local NetID = NETWORK.PED_TO_NET(peds)
-							if NetID ~= 0 then
-								NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PLAYER.PLAYER_ID(), false)
-							end
-							entities.delete_by_handle(peds)
+							util.create_thread(function ()
+								local Tick = 0
+								while not NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) and Tick < 1000 do
+									Tick = Tick + 1
+									Wait()
+								end
+								local NetID = NETWORK.PED_TO_NET(peds)
+								if NetID ~= 0 then
+									NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PLAYER.PLAYER_ID(), false)
+								end
+								entities.delete_by_handle(peds)
+							end)
 						end
 					end
 				end
@@ -709,6 +723,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		local HasSetHate = false
 		local FreemodeBackupHeliAddr = memory.script_local("freemode", 6916)
 		local TriesTick = 0
+		local TasksT = {}
 		while ApplyCopSettings do
 			if ApplyCopSettings then
 				if SetAllyPedHateToAiHate then
@@ -730,6 +745,47 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 				local PlRel = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PlayerPed)
 				local PlayerVeh = PED.GET_VEHICLE_PED_IS_IN(PlayerPed, false)
 				local CustomRelExists = false
+				local IsPlayerShooting = false
+				local HitCoords = nil
+				local HasHit = false
+				if CopsShootWhereYouShoot then
+					IsPlayerShooting = PED.IS_PED_SHOOTING(PlayerPed)
+					if IsPlayerShooting then
+						HitCoords = v3.new()
+						HasHit = WEAPON.GET_PED_LAST_WEAPON_IMPACT_COORD(PlayerPed, HitCoords)
+						if not HasHit then
+							local CamRot = CAM.GET_GAMEPLAY_CAM_ROT(2)
+							local FVect = CamRot:toDir()
+							local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+							local AdjustedX = PPos.x + FVect.x * 1000
+							local AdjustedY = PPos.y + FVect.y * 1000
+							local AdjustedZ = PPos.z + FVect.z * 1000
+							local DidHit = memory.alloc(1)
+							local EndCoords = v3.new()
+							local Normal = v3.new()
+							local HitEntity = memory.alloc_int()
+						
+							local Handle = SHAPETEST.START_EXPENSIVE_SYNCHRONOUS_SHAPE_TEST_LOS_PROBE(
+								PPos.x, PPos.y, PPos.z,
+								AdjustedX, AdjustedY, AdjustedZ,
+								-1,
+								PlayerPed, 7
+							)
+							SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
+							if memory.read_byte(DidHit) ~= 0 then
+								HitCoords.x = EndCoords.x
+								HitCoords.y = EndCoords.y
+								HitCoords.z = EndCoords.z
+							else
+								HitCoords.x = AdjustedX
+								HitCoords.y = AdjustedY
+								HitCoords.z = AdjustedZ
+							end
+							HasHit = true
+						end
+					end
+				end
+
 				if RandomModels then
 					if PLAYER.GET_PLAYER_WANTED_LEVEL(PlayerID) <= 0 then
 						if not HasAppliedRandomModels then
@@ -919,12 +975,15 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												if EnableWeaponSettsForCops then
 													GiveCorrectWeaponsToPed(peds)
 												end
-												WEAPON.GIVE_WEAPON_TO_PED(peds, joaat("weapon_pistol"), 99999, false, true)
+												WEAPON.GIVE_WEAPON_TO_PED(peds, joaat("weapon_pistol"), 99999, false, false)
 												if RandomWeaponComponents then
 													Set_Weapon_Components(peds)
 												end
 												if IsCopModel then
 													SetPedCombatAbilities(peds)
+													PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
+												end
+												if CopsShootWhereYouShoot then
 													PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
 												end
 											else
@@ -1117,10 +1176,12 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													if CopsFollowTask then
 														if Veh == 0 then
 															if not IsPedInGroup then
-																if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 50.0, 50.0, 50.0, false, true, false) then
-																	if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_FOLLOW_TO_OFFSET_OF_ENTITY")) == 7 then
-																		if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																			TASK.TASK_FOLLOW_TO_OFFSET_OF_ENTITY(peds, PlayerPed, math.random(-10, 10), math.random(-10, 10), math.random(-10, 10), 100.0, -1, 5.0, true)
+																if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_SHOOT_AT_COORD")) == 7 then
+																	if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 50.0, 50.0, 50.0, false, true, false) then
+																		if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_FOLLOW_TO_OFFSET_OF_ENTITY")) == 7 then
+																			if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																				TASK.TASK_FOLLOW_TO_OFFSET_OF_ENTITY(peds, PlayerPed, math.random(-10, 10), math.random(-10, 10), math.random(-10, 10), 100.0, -1, 5.0, true)
+																			end
 																		end
 																	end
 																end
@@ -1269,6 +1330,43 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																	if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
 																		ENTITY.SET_ENTITY_COORDS(peds, AdjustedX, AdjustedY, AdjustedZ - 1.0)
 																	end
+																end
+															end
+														end
+													end
+												end
+											end
+											if CopsShootWhereYouShoot then
+												if IsPlayerShooting then
+													if Veh == 0 then
+														if HasHit then
+															if HitCoords ~= nil then
+																NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																TASK.TASK_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 3000, joaat("FIRING_PATTERN_FULL_AUTO"))
+															end
+														end
+													else
+														if HitCoords ~= nil then
+															NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+															TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
+														end
+													end
+												end
+												if Veh ~= 0 then
+													if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) ~= 7 then
+														if PED.IS_PED_SHOOTING(peds) then
+															if TasksT[peds] == nil then
+																TasksT[peds] = 0
+															end
+															if TasksT[peds] ~= nil then
+																TasksT[peds] = TasksT[peds] + 1
+																if IsPlayerShooting then
+																	TasksT[peds] = 0
+																end
+																if TasksT[peds] > 50 then
+																	NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																	TASK.CLEAR_PED_TASKS(peds)
+																	TasksT[peds] = nil
 																end
 															end
 														end
@@ -1462,10 +1560,12 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													if CopsFollowTask then
 														if Veh == 0 then
 															if not IsPedInGroup then
-																if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 50.0, 50.0, 50.0, false, true, false) then
-																	if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_FOLLOW_TO_OFFSET_OF_ENTITY")) == 7 then
-																		if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																			TASK.TASK_FOLLOW_TO_OFFSET_OF_ENTITY(peds, PlayerPed, math.random(-10, 10), math.random(-10, 10), math.random(-10, 10), 100.0, -1, 5.0, true)
+																if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_SHOOT_AT_COORD")) == 7 then
+																	if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 50.0, 50.0, 50.0, false, true, false) then
+																		if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_FOLLOW_TO_OFFSET_OF_ENTITY")) == 7 then
+																			if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																				TASK.TASK_FOLLOW_TO_OFFSET_OF_ENTITY(peds, PlayerPed, math.random(-10, 10), math.random(-10, 10), math.random(-10, 10), 100.0, -1, 5.0, true)
+																			end
 																		end
 																	end
 																end
@@ -1476,7 +1576,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 											end
 											if AllyAttacksHostiles then
 												if not PED.IS_PED_IN_COMBAT(peds, 0) then
-													TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, 10000.0, 0)
+													TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, DistanceNeededToAttack, 0)
 												end
 											end
 											if BringFarCopsCloser then
@@ -1624,6 +1724,43 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													if MakeCopsAttackEveryone then
 														if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT_HATED_TARGETS_AROUND_PED")) == 7 then
 															TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, 1000.0, 0)
+														end
+													end
+												end
+											end
+											if CopsShootWhereYouShoot then
+												if IsPlayerShooting then
+													if Veh == 0 then
+														if HasHit then
+															if HitCoords ~= nil then
+																NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																TASK.TASK_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 3000, joaat("FIRING_PATTERN_FULL_AUTO"))
+															end
+														end
+													else
+														if HitCoords ~= nil then
+															NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+															TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
+														end
+													end
+												end
+												if Veh ~= 0 then
+													if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) ~= 7 then
+														if PED.IS_PED_SHOOTING(peds) then
+															if TasksT[peds] == nil then
+																TasksT[peds] = 0
+															end
+															if TasksT[peds] ~= nil then
+																TasksT[peds] = TasksT[peds] + 1
+																if IsPlayerShooting then
+																	TasksT[peds] = 0
+																end
+																if TasksT[peds] > 50 then
+																	NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																	TASK.CLEAR_PED_TASKS(peds)
+																	TasksT[peds] = nil
+																end
+															end
 														end
 													end
 												end
@@ -1823,7 +1960,39 @@ function GiveCorrectWeaponsToPed(Ped)
 			if RandomChance > 80 and RandomChance <= 100 then
 				ChosenWeaponHash = joaat(WeaponsLevel5[math.random(#WeaponsLevel5)])
 			end
-			if RandomChance > 100 and RandomChance <= 120 then
+			if AllowExplosives then
+				if RandomChance > 100 and RandomChance <= 120 then
+					ChosenWeaponHash = joaat(WeaponsLevel6[math.random(#WeaponsLevel6)])
+				end
+			else
+				if RandomChance > 100 then
+					ChosenWeaponHash = joaat(WeaponsLevel5[math.random(#WeaponsLevel5)])
+				end
+			end
+			WEAPON.GIVE_WEAPON_TO_PED(Ped, ChosenWeaponHash, 99999, false, true)
+		end
+		if SelectedGiveWeaponType == 5 then
+			local ChosenWeaponHash = 0
+			local RandomChance = math.random(0, 120)
+			if RandomChance <= 40 then
+				local RandomLevel = math.random(1, 5)
+				if RandomLevel == 1 then
+					ChosenWeaponHash = joaat(WeaponsLevel1[math.random(#WeaponsLevel1)])
+				end
+				if RandomLevel == 2 then
+					ChosenWeaponHash = joaat(WeaponsLevel2[math.random(#WeaponsLevel2)])
+				end
+				if RandomLevel == 3 then
+					ChosenWeaponHash = joaat(WeaponsLevel3[math.random(#WeaponsLevel3)])
+				end
+				if RandomLevel == 4 then
+					ChosenWeaponHash = joaat(WeaponsLevel4[math.random(#WeaponsLevel4)])
+				end
+				if RandomLevel == 5 then
+					ChosenWeaponHash = joaat(WeaponsLevel5[math.random(#WeaponsLevel5)])
+				end
+			end
+			if RandomChance > 40 and RandomChance <= 120 then
 				ChosenWeaponHash = joaat(WeaponsLevel6[math.random(#WeaponsLevel6)])
 			end
 			WEAPON.GIVE_WEAPON_TO_PED(Ped, ChosenWeaponHash, 99999, false, true)
@@ -2036,6 +2205,14 @@ menu.action(MiscMenu, "Cargo Plane Takedown Blip", {""}, "am_plane_takedown", fu
 				HUD.SET_PED_AI_BLIP_FORCED_ON(Ped, true)
 			end
 		end
+	end
+end)
+
+menu.action(MiscMenu, "Solo Tutorial Session", {}, "", function(toggle)
+	if NETWORK.NETWORK_IS_IN_TUTORIAL_SESSION() then
+		NETWORK.NETWORK_END_TUTORIAL_SESSION()
+	else
+		NETWORK.NETWORK_START_SOLO_TUTORIAL_SESSION()
 	end
 end)
 
