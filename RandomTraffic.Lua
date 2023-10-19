@@ -756,6 +756,8 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 								if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(vehs) then
 									local Peds = {}
 									local Coords = ENTITY.GET_ENTITY_COORDS(vehs)
+									local Rot = ENTITY.GET_ENTITY_ROTATION(vehs)
+									local Velocity = ENTITY.GET_ENTITY_VELOCITY(vehs)
 									for i = -1, 9 do
 										local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, i, false)
 										if Ped ~= 0 then
@@ -763,9 +765,9 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 											ENTITY.SET_ENTITY_COORDS(Ped, Coords.x, Coords.y, Coords.z + 10.0)
 										end
 									end
-									local Rot = ENTITY.GET_ENTITY_ROTATION(vehs)
 									local NewVeh = VEHICLE.CREATE_VEHICLE(ReplacedVehs[vehs].ModelToRequest, Coords.x, Coords.y, Coords.z, Rot.z, true, false, false)
 									ENTITY.SET_ENTITY_ROTATION(NewVeh, Rot.x, Rot.y, Rot.z, 2)
+									ENTITY.SET_ENTITY_VELOCITY(NewVeh, Velocity.x, Velocity.y, Velocity.z)
 									DECORATOR.DECOR_SET_INT(NewVeh, "Casino_Game_Info_Decorator", 31)
 									local SeatIndex = -1
 									for i = 1, #Peds do
