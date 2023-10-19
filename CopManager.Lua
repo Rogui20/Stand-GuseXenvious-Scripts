@@ -805,6 +805,16 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 								SelectedTeam = MyRelTeam
 							else
 								SelectedTeam = RelHash
+								if AvoidAttackingFriends then
+									if not CanSetRel then
+										if PED.GET_RELATIONSHIP_BETWEEN_GROUPS(SelectedTeam, MyRelTeam) ~= 1 then
+											SelectedTeam = joaat(AiLikeHateAiHateRel)
+											if PED.GET_RELATIONSHIP_BETWEEN_GROUPS(SelectedTeam, MyRelTeam) ~= 1 then
+												SelectedTeam = joaat(AiLikeRel)
+											end
+										end
+									end
+								end
 							end
 						end
 					else
@@ -1089,7 +1099,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																	if IsAHeli then
 																		if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
 																			if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																				TASK.TASK_HELI_MISSION(peds, Veh, 0, PlayerPed, 0.0, 0.0, 0.0, 4, 100.0, 100.0, 0, 50.0, 20.0, 50.0, 0)
+																				TASK.TASK_HELI_MISSION(peds, Veh, 0, PlayerPed, 0.0, 0.0, 50.0, 4, 100.0, 100.0, 0, 50.0, 20.0, 50.0, 0)
 																			end
 																		end
 																	end
@@ -1434,7 +1444,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																	if IsAHeli then
 																		if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
 																			if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																				TASK.TASK_HELI_MISSION(peds, Veh, 0, PlayerPed, 0.0, 0.0, 0.0, 4, 100.0, 100.0, 0, 50.0, 20.0, 50.0, 0)
+																				TASK.TASK_HELI_MISSION(peds, Veh, 0, PlayerPed, 0.0, 0.0, 50.0, 4, 100.0, 100.0, 0, 50.0, 20.0, 50.0, 0)
 																			end
 																		end
 																	end
