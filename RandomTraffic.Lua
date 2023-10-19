@@ -214,6 +214,10 @@ local StreetVehModels = {
 	"zion",
 	"zion2"
 }
+VehicleStreet = {}
+for i = 1, #StreetVehModels do
+	VehicleStreet[StreetVehModels[i]] = {}
+end
 
 local DisabledVehicles = {
 	"avisa",
@@ -676,11 +680,6 @@ end)
 
 local OptionsMenu = menu.list(menu.my_root(), "Options", {}, "To handle with vehicle replacer.")
 
-local SetBlips = false
-menu.toggle(OptionsMenu, "Create Blips For Vehicles", {}, "", function(toggle)
-	SetBlips = toggle
-end)
-
 local ReplaceOnlyWithDrivers = true
 menu.toggle(OptionsMenu, "Only Replace with Drivers", {}, "", function(toggle)
 	ReplaceOnlyWithDrivers = toggle
@@ -691,40 +690,10 @@ menu.toggle(OptionsMenu, "More Traffic", {}, "", function(toggle)
 	MoreTraffic = toggle
 end, MoreTraffic)
 
-local PlaneMode = false
-menu.toggle(OptionsMenu, "Plane Mode", {}, "", function(toggle)
-	PlaneMode = toggle
-end, PlaneMode)
-
-local PlaneModeWithTask = true
-menu.toggle(OptionsMenu, "Plane Mode With Task", {}, "", function(toggle)
-	PlaneModeWithTask = toggle
-end, PlaneModeWithTask)
-
-local PlaneModeSetSpeed = true
-menu.toggle(OptionsMenu, "Plane Mode Set Speed", {}, "", function(toggle)
-	PlaneModeSetSpeed = toggle
-end, PlaneModeSetSpeed)
-
-local DeleteEmptyVehs = true
-menu.toggle(OptionsMenu, "Delete if empty for long", {}, "", function(toggle)
-	DeleteEmptyVehs = toggle
-end, DeleteEmptyVehs)
-
-local ReplaceHeliAndPlanes = true
-menu.toggle(OptionsMenu, "Planes and Helis Correctly", {}, "Replace planes and helicopters to an aircraft.", function(toggle)
-	ReplaceHeliAndPlanes = toggle
-end, ReplaceHeliAndPlanes)
-
-local DeleteNotOnScreen = false
-menu.toggle(OptionsMenu, "Delete if not on Screen", {}, "", function(toggle)
-	DeleteNotOnScreen = toggle
+local DeleteOnTurningOff = false
+menu.toggle(OptionsMenu, "Delete if turned off", {}, "Delete all generated vehicles if Set Random Traffic if untoggled.", function(toggle)
+	DeleteOnTurningOff = toggle
 end)
-
-local Optimise = false
-menu.toggle(OptionsMenu, "Optimise", {}, "", function(toggle)
-	DeleteNotOnScreen = toggle
-end, Optimise)
 
 local CreatedVehs = {}
 local ReplacedVehs = {}
@@ -735,1135 +704,106 @@ local MaxReplacedVehs = 100
 menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 	RandomVehsOn = toggle
 	if not RandomVehsOn then
-		for index, vehs in pairs(entities.get_all_vehicles_as_handles()) do
-			if DECORATOR.DECOR_GET_INT(vehs, "Casino_Game_Info_Decorator") == 31 then
-				for i = -1, 9 do
-					local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, i, false)
-					if Ped ~= 0 then
-						if not PED.IS_PED_A_PLAYER(Ped) and Ped ~= PLAYER.PLAYER_PED_ID() then
-							NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Ped)
-							entities.delete_by_handle(Ped)
-						end
+		if DeleteOnTurningOff then
+			for index, vehs in pairs(entities.get_all_vehicles_as_handles()) do
+				if DECORATOR.DECOR_GET_INT(vehs, "Casino_Game_Info_Decorator") > 0 then
+					while not NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(vehs) do
+						Wait()
 					end
-				end
-				local Blip = HUD.GET_BLIP_FROM_ENTITY(vehs)
-				if Blip ~= 0 then
-					util.remove_blip(Blip)
-				end
-				NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(vehs)
-				entities.delete_by_handle(vehs)
-			end
-		end
-		for index, peds in pairs(entities.get_all_peds_as_handles()) do
-			if peds ~= PLAYER.PLAYER_PED_ID() then
-				if ENTITY.IS_ENTITY_A_MISSION_ENTITY(peds) then
-					NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-					entities.delete_by_handle(peds)
+					entities.delete_by_handle(vehs)
 				end
 			end
 		end
-		if LastRequestedModel ~= 0 then
-			STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(LastRequestedModel)
+		for index, vehs in pairs(ReplacedVehs) do
+			ReplacedVehs[index] = nil
 		end
 	end
-	local DeadPeds = {}
-	while RandomVehsOn do
-		Wait()
-		local VehCount = 0
-		local PlayerPed = PLAYER.PLAYER_PED_ID()
-		local PlayerID = PLAYER.PLAYER_ID()
-		for index, peds in pairs(entities.get_all_peds_as_handles()) do
-			if peds ~= PlayerPed then
-				if ENTITY.IS_ENTITY_A_MISSION_ENTITY(peds) then
-					local DecorInt = DECORATOR.DECOR_GET_INT(peds, "Casino_Game_Info_Decorator")
-					if DecorInt == 31 or DecorInt == 32 then
-						if not DoesValueExistInTable3(DeadPeds, peds) then
-							if ENTITY.IS_ENTITY_DEAD(peds) then
-								util.create_thread(function()
-									DeadPeds[peds] = {}
-									Wait(10000)
-									NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-									DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 32) 
-									entities.delete_by_handle(peds)
-									DeadPeds[peds] = nil
-								end)
-							end
-						end
-						if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PLAYER.PLAYER_PED_ID(), 200.0, 200.0, 500.0, false, true, false) 
-						and not PED.IS_PED_IN_ANY_VEHICLE(peds, false) then
-							NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-							DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 32)
-							entities.delete_by_handle(peds)
-						end
-						if DecorInt == 32 then
-							NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-							entities.delete_by_handle(peds)
-						end
-					end
-				end
-			end
-		end
-		for index, vehs in pairs(entities.get_all_vehicles_as_handles()) do
-			VehCount = VehCount + 1
-			local ReplaceVehCoords = ENTITY.GET_ENTITY_COORDS(vehs)
-			if ENTITY.IS_ENTITY_A_MISSION_ENTITY(vehs)
-			and ENTITY.IS_ENTITY_VISIBLE(vehs) and
-			ENTITY.IS_ENTITY_AT_ENTITY(vehs, PlayerPed, 1000.0, 1000.0, 1000.0, false, true, false)
-			and DECORATOR.DECOR_GET_INT(vehs, "Casino_Game_Info_Decorator") == 31 then
-				if not DoesValueExistInTable(ReplacedVehs, vehs) then
-					ReplacedVehs[1 + #ReplacedVehs] = {Handle = vehs, DeadTick = 0,
-					AwayTick = 0, Count = 0, Tick = 0, CloserCount = 1, Blip = HUD.GET_BLIP_FROM_ENTITY(vehs)}
-				end
-			end
-			if DECORATOR.DECOR_GET_INT(vehs, "Casino_Game_Info_Decorator") == 32 then
-				NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(vehs)
-				entities.delete_by_handle(vehs)
-			end
-			if #CreatedVehs < 100 then
-				if NETWORK.CAN_REGISTER_MISSION_VEHICLES(1) then
-					if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(vehs)
-					and ENTITY.IS_ENTITY_VISIBLE(vehs) and
-					ENTITY.IS_ENTITY_AT_ENTITY(vehs, PlayerPed, 200.0, 200.0, 500.0, false, true, false)
-					and DECORATOR.DECOR_GET_INT(vehs, "Casino_Game_Info_Decorator") ~= 31 and not ENTITY.IS_ENTITY_DEAD(vehs) then
-						if not MISC.IS_POINT_OBSCURED_BY_A_MISSION_ENTITY (ReplaceVehCoords.x, ReplaceVehCoords.y,
-						ReplaceVehCoords.z, 1.0, 1.0, 1.0, 0) then
-							local PedHandle = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false)
-							if not PED.IS_PED_A_PLAYER(PedHandle) or PedHandle == PlayerPed then
-								local CanReplace = false
+	if RandomVehsOn then
+		while RandomVehsOn do
+			local PlayerPed = PLAYER.PLAYER_PED_ID()
+			for index, vehs in pairs(entities.get_all_vehicles_as_handles()) do
+				if ReplacedVehs[vehs] == nil then
+					if not ENTITY.IS_ENTITY_DEAD(vehs) then
+						if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(vehs) then
+							--if ENTITY.IS_ENTITY_AT_ENTITY(vehs, PlayerPed, 300.0, 300.0, 900.0, false, true, 0) then
+								local CanEdit = true
 								if ReplaceOnlyWithDrivers then
-									if VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false) > 0 then
-										CanReplace = true
-									end
-								else
-									CanReplace = true
+									CanEdit = VEHICLE.GET_VEHICLE_NUMBER_OF_PASSENGERS(vehs, true, true) > 0
 								end
-								if CanReplace then
-									if not DoesValueExistInTable2(CreatedVehs, vehs) then
-										local Passengers = {}
-										for i = -1, 9 do
-											local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, i, false)
-											if Ped ~= 0 then
-												NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-												DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31)
-												if not PED.IS_PED_A_PLAYER(Ped) then
-													Passengers[1 + #Passengers] = {Handle = Ped, SeatIndex = i}
-												end
-											end
-										end
-										local OldVehModel = ENTITY.GET_ENTITY_MODEL(vehs)
-										CreatedVehs[1 + #CreatedVehs] = {Handle = 0, Tick = 0, Count = 0, Passengers = Passengers,
-										OldVehicle = vehs, HasDeletedOldVeh = false, HasSetPedsIntoVeh = false, DeadTick = 0,
-										HasRemovedPassengers = false, OutsideVehCount = 0, IsDeletingOldVeh = false,
-										SettedPedsIntoVeh = 0, AwayTick = 0, HasCreatedVeh = false, HandleZeroTick = 0,
-										SetInVehTick = 0, OldModel = OldVehModel, Blip = 0}
-										--Print(ENTITY.GET_ENTITY_MODEL(vehs))
-										--Print("Reached")
+								local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false)
+								if Ped ~= 0 then
+									if PED.IS_PED_A_PLAYER(Ped) then
+										CanEdit = false
 									end
 								end
-							end
+								if CanEdit then
+									ReplacedVehs[vehs] = {}
+									ReplacedVehs[vehs].ModelToRequest = joaat(AllGameVehs[math.random(#AllGameVehs)])
+									ReplacedVehs[vehs].WasReplaced = 0
+								end
+							--end
 						end
 					end
 				end
-			end
-		end
-		--Print(VehCount)
-		for i = 1, #CreatedVehs do
-			if CreatedVehs[i] ~= nil then
-				if not ENTITY.DOES_ENTITY_EXIST(CreatedVehs[i].OldVehicle) then
-					CreatedVehs[i].HasRemovedPassengers = true
-					CreatedVehs[i].HasCreatedVeh = true
-				end
-				if LastRequestedModel == 0 then
-					local RandModel = math.random(#AllGameVehs)
-					if AllGameVehs[RandModel] ~= nil then
-						LastRequestedModel = joaat(AllGameVehs[RandModel])
-						if ReplaceHeliAndPlanes then
-							if VEHICLE.IS_THIS_MODEL_A_HELI(CreatedVehs[i].OldModel) or
-							VEHICLE.IS_THIS_MODEL_A_PLANE(CreatedVehs[i].OldModel) then
-								if not VEHICLE.IS_THIS_MODEL_A_PLANE(LastRequestedModel) and
-								not VEHICLE.IS_THIS_MODEL_A_HELI(LastRequestedModel) then
-									LastRequestedModel = 0
-								end
+				if ReplacedVehs[vehs] ~= nil then
+					if ENTITY.DOES_ENTITY_EXIST(vehs) then
+						if ReplacedVehs[vehs].WasReplaced == 1 then
+							if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(vehs) then
+								ReplacedVehs[vehs].WasReplaced = 2
+								SetEntityAsNoLongerNeeded(vehs)
 							end
 						end
-						if VEHICLE.IS_THIS_MODEL_A_BOAT(CreatedVehs[i].OldModel) then
-							if AllowPlanes then
-								if VEHICLE.IS_THIS_MODEL_A_PLANE(LastRequestedModel) then
-									LastRequestedModel = 0
-								end
+						if ReplacedVehs[vehs].WasReplaced == 0 then
+							if not STREAMING.HAS_MODEL_LOADED(ReplacedVehs[vehs].ModelToRequest) then
+								STREAMING.REQUEST_MODEL(ReplacedVehs[vehs].ModelToRequest)
 							end
-						end
-					end
-				end
-				if LastRequestedModel ~= 0 then
-					if STREAMING.IS_MODEL_VALID(LastRequestedModel) then
-						if not STREAMING.HAS_MODEL_LOADED(LastRequestedModel) then
-							STREAMING.REQUEST_MODEL(LastRequestedModel)
-						end
-					end
-				end
-				if #ReplacedVehs < MaxReplacedVehs and VehCount < MaxVehs then
-					if not CreatedVehs[i].HasRemovedPassengers and LastRequestedModel ~= 0 and
-					STREAMING.HAS_MODEL_LOADED(LastRequestedModel) then
-						if #CreatedVehs[i].Passengers > 0 then
-							local TheVehCoords = ENTITY.GET_ENTITY_COORDS(CreatedVehs[i].OldVehicle)
-							for index, passengers in pairs(CreatedVehs[i].Passengers) do
-								local VehPos = ENTITY.GET_ENTITY_COORDS(CreatedVehs[i].OldVehicle)
-								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(passengers.Handle)
-								if MoreTraffic then
-									ENTITY.SET_ENTITY_AS_MISSION_ENTITY(passengers.Handle, true, false)
-								end
-								DECORATOR.DECOR_SET_INT(passengers.Handle, "Casino_Game_Info_Decorator", 31)
-								TASK.TASK_LEAVE_VEHICLE(passengers.Handle, CreatedVehs[i].OldVehicle, 16)
-								--if PlaneMode then
-									--ENTITY.SET_ENTITY_COORDS(passengers.Handle, VehPos.x, VehPos.y, VehPos.z)
-								--else
-									ENTITY.SET_ENTITY_COORDS(passengers.Handle, VehPos.x, VehPos.y, VehPos.z + 50.0)
-								--end
-								--ENTITY.FREEZE_ENTITY_POSITION(passengers.Handle, true)
-								local ThePedCoords = ENTITY.GET_ENTITY_COORDS(passengers.Handle)
-								if ThePedCoords.z > TheVehCoords.z+40.0 then
-									if not PED.IS_PED_IN_VEHICLE(passengers.Handle, CreatedVehs[i].OldVehicle, false) then
-										CreatedVehs[i].OutsideVehCount = CreatedVehs[i].OutsideVehCount + 1
-									else
-										CreatedVehs[i].OutsideVehCount = 0
-									end
-									if CreatedVehs[i].OutsideVehCount >= #CreatedVehs[i].Passengers then
-										CreatedVehs[i].HasRemovedPassengers = true
-									end
-								end
-							end
-						else
-							CreatedVehs[i].HasRemovedPassengers = true
-						end
-					end
-					if CreatedVehs[i].HasRemovedPassengers and not CreatedVehs[i].IsDeletingOldVeh and not CreatedVehs[i].HasCreatedVeh then
-						if #ReplacedVehs < MaxReplacedVehs and VehCount < MaxVehs then
-							if NETWORK.CAN_REGISTER_MISSION_VEHICLES(1) then
-								if LastRequestedModel ~= 0 then
-									if STREAMING.IS_MODEL_VALID(LastRequestedModel) then
-										if not STREAMING.HAS_MODEL_LOADED(LastRequestedModel) then
-											STREAMING.REQUEST_MODEL(LastRequestedModel)
-										end
-										if STREAMING.HAS_MODEL_LOADED(LastRequestedModel) then
-											local VehPos = ENTITY.GET_ENTITY_COORDS(CreatedVehs[i].OldVehicle)
-											local VehHeading = ENTITY.GET_ENTITY_HEADING(CreatedVehs[i].OldVehicle)
-											local VehHealth = ENTITY.GET_ENTITY_HEALTH(CreatedVehs[i].OldVehicle)
-											local VehMaxHealth = ENTITY.GET_ENTITY_MAX_HEALTH(CreatedVehs[i].OldVehicle)
-											local VehSpeed = ENTITY.GET_ENTITY_SPEED(CreatedVehs[i].OldVehicle)
-											if PlaneMode then
-												VehPos.z = VehPos.z + 50.0
-											end
-										
-											NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].OldVehicle)
-											
-											local NewVeh = entities.create_vehicle(LastRequestedModel, VehPos, VehHeading)
-											--NetworkEntityVeh(NewVeh)
-											DECORATOR.DECOR_SET_INT(NewVeh, "Casino_Game_Info_Decorator", 31)
-											--local EntNetID = NETWORK.VEH_TO_NET(NewVeh)
-											--NETWORK.SET_NETWORK_ID_EXISTS_ON_ALL_MACHINES(EntNetID, true)
-											--NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(EntNetID, PLAYER.PLAYER_ID(), true)
-											ENTITY.SET_ENTITY_MAX_HEALTH(NewVeh, VehMaxHealth)
-											ENTITY.SET_ENTITY_HEALTH(NewVeh, VehHealth)
-											VEHICLE.SET_VEHICLE_FORWARD_SPEED(NewVeh, VehSpeed)
-											ENTITY.SET_ENTITY_SHOULD_FREEZE_WAITING_ON_COLLISION(NewVeh, true)
-											
-											if NewVeh ~= 0 then
-												--Print("New Veh Is ".. NewVeh)
-												CreatedVehs[i].Handle = NewVeh
-												CreatedVehs[i].HasCreatedVeh = true
-												CreatedVehs[i].IsDeletingOldVeh = true
-												STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(LastRequestedModel)
-												LastRequestedModel = 0
-												VEHICLE.SET_VEHICLE_CUSTOM_PRIMARY_COLOUR(NewVeh, math.random(0, 255), math.random(0, 255), math.random(0, 255))
-												VEHICLE.SET_VEHICLE_CUSTOM_SECONDARY_COLOUR(NewVeh, math.random(0, 255), math.random(0, 255), math.random(0, 255))
-												VEHICLE.SET_VEHICLE_COLOURS(NewVeh, math.random(0, 160), math.random(0, 160))
-												if SetBlips then
-													local Blip = HUD.ADD_BLIP_FOR_ENTITY(NewVeh)
-													HUD.SET_BLIP_SPRITE(Blip, 225)
-													HUD.SET_BLIP_COLOUR(Blip, 3)
-													CreatedVehs[i].Blip = Blip
-												end
-												for index, passengers in pairs(CreatedVehs[i].Passengers) do
-													if passengers ~= nil then
-														NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(passengers.Handle)
-														ENTITY.FREEZE_ENTITY_POSITION(passengers.Handle, false)
-														DECORATOR.DECOR_SET_INT(passengers.Handle, "Casino_Game_Info_Decorator", 31)
-														if VEHICLE.IS_VEHICLE_SEAT_FREE(NewVeh, passengers.SeatIndex, false) then
-															PED.SET_PED_INTO_VEHICLE(passengers.Handle, CreatedVehs[i].Handle, passengers.SeatIndex)
-															if passengers.Handle ~= PlayerPed then
-																if PlaneModeWithTask and PlaneMode then
-																	local Coords = ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(NewVeh, math.random(-1000, 1000), 1000.0, 0.0)
-																	TASK.TASK_VEHICLE_DRIVE_TO_COORD(passengers.Handle, NewVeh, Coords.x, Coords.y, Coords.z, 30.0, 0, ENTITY.GET_ENTITY_MODEL(NewVeh), 1, 10.0, 1.0)
-																else
-																	TASK.TASK_VEHICLE_DRIVE_WANDER(passengers.Handle, NewVeh, 30.0, 1)
-																end
-															end
-														else
-															entities.delete_by_handle(passengers.Handle)
-														end
-														if VEHICLE.GET_VEHICLE_NUMBER_OF_PASSENGERS(NewVeh, true, true) == 0 then
-															if CreatedVehs[i].Blip ~= 0 then
-																util.remove_blip(CreatedVehs[i].Blip)
-															end
-															NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(NewVeh)
-															DECORATOR.DECOR_SET_INT(NewVeh, "Casino_Game_Info_Decorator", 32)
-															entities.delete_by_handle(NewVeh)
-															entities.delete_by_handle(passengers.Handle)
-														end
-													end
-												end
-											end
-											if PlaneModeSetSpeed and PlaneMode then
-												VEHICLE.SET_VEHICLE_FORWARD_SPEED(NewVeh, 40.0)
-											end
-											if ENTITY.DOES_ENTITY_EXIST(CreatedVehs[i].OldVehicle) then
-												NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].OldVehicle)
-												entities.delete_by_handle(CreatedVehs[i].OldVehicle)
-											end
-											for k = 0, 48 do
-												local NumMods = entities.get_upgrade_max_value(NewVeh, k)
-												if NumMods > 0 then
-													local Rand = math.random(0, NumMods)
-													if Rand <= -1 then
-														Rand = 0
-													end
-													entities.set_upgrade_value(NewVeh, k, Rand, false)
-												else
-													if math.random(0, 1) == 1 then
-														entities.set_upgrade_value(NewVeh, k, NumMods, false)
-													end
-												end
-											end
-										end
-									else
-										LastRequestedModel = 0
-									end
-								end
-							end
-						end
-					end
-					if CreatedVehs[i].IsDeletingOldVeh and not CreatedVehs[i].HasDeletedOldVeh then
-						if ENTITY.DOES_ENTITY_EXIST(CreatedVehs[i].OldVehicle) then
-							NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].OldVehicle)
-							entities.delete_by_handle(CreatedVehs[i].OldVehicle)
-							if not ENTITY.DOES_ENTITY_EXIST(CreatedVehs[i].OldVehicle) then
-								CreatedVehs[i].HasDeletedOldVeh = true
-							end
-						else
-							CreatedVehs[i].HasDeletedOldVeh = true
-						end
-					end
-					if CreatedVehs[i].HasDeletedOldVeh then
-						if #CreatedVehs[i].Passengers > 0 then
-							if not CreatedVehs[i].HasSetPedsIntoVeh then
-								for index, passengers in pairs(CreatedVehs[i].Passengers) do
-									if passengers ~= nil then
-										if not PED.IS_PED_IN_VEHICLE(passengers.Handle, CreatedVehs[i].Handle, false) then
-											CreatedVehs[i].SetInVehTick = CreatedVehs[i].SetInVehTick + 1
-											NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(passengers.Handle)
-											DECORATOR.DECOR_SET_INT(passengers.Handle, "Casino_Game_Info_Decorator", 31)
-											ENTITY.FREEZE_ENTITY_POSITION(passengers.Handle, false)
-											if VEHICLE.IS_VEHICLE_SEAT_FREE(CreatedVehs[i].Handle, passengers.SeatIndex, false) then
-												PED.SET_PED_INTO_VEHICLE(passengers.Handle, CreatedVehs[i].Handle, passengers.SeatIndex)
-											end
-											if ENTITY.DOES_ENTITY_EXIST(passengers.Handle) then
-												if PED.IS_PED_IN_VEHICLE(passengers.Handle, CreatedVehs[i].Handle, false) then
-													CreatedVehs[i].SettedPedsIntoVeh = CreatedVehs[i].SettedPedsIntoVeh + 1
-												else
-													CreatedVehs[i].SettedPedsIntoVeh = 0
-												end
-											else
-												CreatedVehs[i].SettedPedsIntoVeh = CreatedVehs[i].SettedPedsIntoVeh + 1
-											end
-											if CreatedVehs[i].SettedPedsIntoVeh >= #CreatedVehs[i].Passengers then
-												CreatedVehs[i].HasSetPedsIntoVeh = true
-											end
-											if CreatedVehs[i].SetInVehTick >= 100 then
-												if ENTITY.DOES_ENTITY_EXIST(passengers.Handle) and
-												not PED.IS_PED_IN_VEHICLE(passengers.Handle, CreatedVehs[i].Handle, false) then
-													NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(passengers.Handle)
-													entities.delete_by_handle(passengers.Handle)
-													CreatedVehs[i].HasSetPedsIntoVeh = true
-													if VEHICLE.GET_VEHICLE_NUMBER_OF_PASSENGERS(CreatedVehs[i].Handle, true, true) == 0 then
-														if CreatedVehs[i].Blip ~= 0 then
-															util.remove_blip(CreatedVehs[i].Blip)
-														end
-														NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].Handle)
-														DECORATOR.DECOR_SET_INT(CreatedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
-														entities.delete_by_handle(CreatedVehs[i].Handle)
-													end
-												end
-												CreatedVehs[i].HasSetPedsIntoVeh = true
-											end
-										else
-											CreatedVehs[i].SettedPedsIntoVeh = CreatedVehs[i].SettedPedsIntoVeh + 1
-											if CreatedVehs[i].SettedPedsIntoVeh >= #CreatedVehs[i].Passengers then
-												CreatedVehs[i].HasSetPedsIntoVeh = true
-											end
+							if STREAMING.HAS_MODEL_LOADED(ReplacedVehs[vehs].ModelToRequest) then
+								if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(vehs) then
+									local Peds = {}
+									local Coords = ENTITY.GET_ENTITY_COORDS(vehs)
+									for i = -1, 9 do
+										local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, i, false)
+										if Ped ~= 0 then
+											Peds[#Peds+1] = {Handle = Ped, Seat = i}
+											ENTITY.SET_ENTITY_COORDS(Ped, Coords.x, Coords.y, Coords.z + 10.0)
 										end
 									end
-								end
-							end
-						else
-							CreatedVehs[i].HasSetPedsIntoVeh = true
-						end
-					end
-				end
-				if CreatedVehs[i].HasCreatedVeh or CreatedVehs[i].HandleZeroTick >= 100 and CreatedVehs[i].HasSetPedsIntoVeh then
-					if CreatedVehs[i].Handle ~= 0 then
-						local ShouldDelete = false
-						if #CreatedVehs[i].Passengers > 0 then
-							if VEHICLE.GET_VEHICLE_NUMBER_OF_PASSENGERS(CreatedVehs[i].Handle, true, true) == 0 then
-								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].Handle)
-								DECORATOR.DECOR_SET_INT(CreatedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
-								ShouldDelete = true
-							end
-						end
-						ReplacedVehs[1 + #ReplacedVehs] = {Handle = CreatedVehs[i].Handle, DeadTick = 0,
-						AwayTick = 0, Count = 0, Tick = 0, CloserCount = 0, Blip = CreatedVehs[i].Blip, HavedPassengers = ShouldDelete}
-					end
-					CreatedVehs[i].Handle = nil
-					CreatedVehs[i].Tick = nil
-					CreatedVehs[i].Count = nil
-					for index, passengers in pairs(CreatedVehs[i].Passengers) do
-						passengers.Handle = nil
-						passengers.SeatIndex = nil
-						passengers = nil
-					end
-					CreatedVehs[i].OldVehicle = nil
-					CreatedVehs[i].HasDeletedOldVeh = nil
-					CreatedVehs[i].HasSetPedsIntoVeh = nil
-					CreatedVehs[i].DeadTick = nil
-					CreatedVehs[i].IsDeletingOldVeh = nil
-					CreatedVehs[i].SettedPedsIntoVeh = nil
-					CreatedVehs[i].HasDeletedOldVeh = nil
-					CreatedVehs[i].AwayTick = nil
-					CreatedVehs[i].HandleZeroTick = nil
-					CreatedVehs[i].SetInVehTick = nil
-					CreatedVehs[i].OldModel = nil
-					CreatedVehs[i].Blip = nil
-					CreatedVehs[i] = nil
-				end
-			end
-		end
-		for i = 1, #ReplacedVehs do
-			local CloserCount = 0
-			if ReplacedVehs[i] ~= nil then
-				if ENTITY.DOES_ENTITY_EXIST(ReplacedVehs[i].Handle) and ReplacedVehs[i].Handle ~= 0 then
-					if ReplacedVehs[i] ~= nil then
-						if ENTITY.DOES_ENTITY_EXIST(ReplacedVehs[i].Handle) then
-							for index, player in pairs(players.list()) do
-								local PlayerPedIndex = PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(player)
-								if ENTITY.IS_ENTITY_AT_ENTITY(PlayerPedIndex, ReplacedVehs[i].Handle, 200.0, 200.0, 500.0, false, true, false) then
-									CloserCount = CloserCount + 1
-								end
-								ReplacedVehs[i].CloserCount = CloserCount
-							end
-						end
-					end
-					local PlayerInVehCount = {}
-					for k = -1, 9 do
-						local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(ReplacedVehs[i].Handle, k, false)
-						if Ped ~= 0 then
-							if not PED.IS_PED_A_PLAYER(Ped) then
-								PlayerInVehCount[1 + #PlayerInVehCount] = Ped
-							end
-						end
-					end
-					if ENTITY.IS_ENTITY_DEAD(ReplacedVehs[i].Handle) then
-						if ReplacedVehs[i].Blip ~= 0 then
-							HUD.SET_BLIP_COLOUR(ReplacedVehs[i].Blip, 1)
-						end
-						ReplacedVehs[i].DeadTick = ReplacedVehs[i].DeadTick + 1
-						if ReplacedVehs[i].DeadTick >= 500 then
-							if ReplacedVehs[i].Blip ~= 0 then
-								util.remove_blip(ReplacedVehs[i].Blip)
-							end
-							for k = 1, #PlayerInVehCount do
-								if ENTITY.DOES_ENTITY_EXIST(PlayerInVehCount[k]) then
-									NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(PlayerInVehCount[k])
-									DECORATOR.DECOR_SET_INT(PlayerInVehCount[k], "Casino_Game_Info_Decorator", 32)
-									entities.delete_by_handle(PlayerInVehCount[k])
-								end
-							end
-							NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(ReplacedVehs[i].Handle)
-							DECORATOR.DECOR_SET_INT(ReplacedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
-							entities.delete_by_handle(ReplacedVehs[i].Handle)
-						end
-					end
-					if ReplacedVehs[i].CloserCount <= 0 then
-						if ReplacedVehs[i].Blip ~= 0 then
-							util.remove_blip(ReplacedVehs[i].Blip)
-						end
-						for k = 1, #PlayerInVehCount do
-							if ENTITY.DOES_ENTITY_EXIST(PlayerInVehCount[k]) then
-								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(PlayerInVehCount[k])
-								DECORATOR.DECOR_SET_INT(PlayerInVehCount[k], "Casino_Game_Info_Decorator", 32)
-								entities.delete_by_handle(PlayerInVehCount[k])
-							end
-						end
-						NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(ReplacedVehs[i].Handle)
-						DECORATOR.DECOR_SET_INT(ReplacedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
-						entities.delete_by_handle(ReplacedVehs[i].Handle)
-					end
-					if DeleteEmptyVehs then
-						if VEHICLE.GET_VEHICLE_NUMBER_OF_PASSENGERS(ReplacedVehs[i].Handle, true, true) == 0 then
-							ReplacedVehs[i].Tick = ReplacedVehs[i].Tick + 1
-							if ReplacedVehs[i].Tick >= 3000 then
-								if ReplacedVehs[i].Blip ~= 0 then
-									util.remove_blip(ReplacedVehs[i].Blip)
-								end
-								for k = 1, #PlayerInVehCount do
-									if ENTITY.DOES_ENTITY_EXIST(PlayerInVehCount[k]) then
-										NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(PlayerInVehCount[k])
-										DECORATOR.DECOR_SET_INT(PlayerInVehCount[k], "Casino_Game_Info_Decorator", 32)
-										entities.delete_by_handle(PlayerInVehCount[k])
-									end
-								end
-								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(ReplacedVehs[i].Handle)
-								DECORATOR.DECOR_SET_INT(ReplacedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
-								entities.delete_by_handle(ReplacedVehs[i].Handle)
-							end 
-						else
-							ReplacedVehs[i].Tick = 0
-						end
-					end
-					if ReplacedVehs[i].HavedPassengers then
-						if ReplacedVehs[i].Blip ~= 0 then
-							util.remove_blip(ReplacedVehs[i].Blip)
-						end
-						for k = 1, #PlayerInVehCount do
-							if ENTITY.DOES_ENTITY_EXIST(PlayerInVehCount[k]) then
-								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(PlayerInVehCount[k])
-								DECORATOR.DECOR_SET_INT(PlayerInVehCount[k], "Casino_Game_Info_Decorator", 32)
-								entities.delete_by_handle(PlayerInVehCount[k])
-							end
-						end
-						NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(ReplacedVehs[i].Handle)
-						DECORATOR.DECOR_SET_INT(ReplacedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
-						entities.delete_by_handle(ReplacedVehs[i].Handle)
-					end
-					if #ReplacedVehs > 50 then
-						if DeleteNotOnScreen then
-							if not ENTITY.IS_ENTITY_ON_SCREEN(ReplacedVehs[i].Handle) and
-							VEHICLE.GET_VEHICLE_NUMBER_OF_PASSENGERS(ReplacedVehs[i].Handle, true, true) == 0 then
-								if ReplacedVehs[i].Blip ~= 0 then
-									util.remove_blip(ReplacedVehs[i].Blip)
-								end
-								for k = 1, #PlayerInVehCount do
-									if ENTITY.DOES_ENTITY_EXIST(PlayerInVehCount[k]) then
-										NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(PlayerInVehCount[k])
-										DECORATOR.DECOR_SET_INT(PlayerInVehCount[k], "Casino_Game_Info_Decorator", 32)
-										entities.delete_by_handle(PlayerInVehCount[k])
-									end
-								end
-								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(ReplacedVehs[i].Handle)
-								DECORATOR.DECOR_SET_INT(ReplacedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
-								entities.delete_by_handle(ReplacedVehs[i].Handle)
-							end
-						end
-						if Optimise then
-							if VEHICLE.GET_VEHICLE_NUMBER_OF_PASSENGERS(ReplacedVehs[i].Handle, true, true) == 0 then
-								if ReplacedVehs[i].Blip ~= 0 then
-									util.remove_blip(ReplacedVehs[i].Blip)
-								end
-								for k = 1, #PlayerInVehCount do
-									if ENTITY.DOES_ENTITY_EXIST(PlayerInVehCount[k]) then
-										NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(PlayerInVehCount[k])
-										DECORATOR.DECOR_SET_INT(PlayerInVehCount[k], "Casino_Game_Info_Decorator", 32)
-										entities.delete_by_handle(PlayerInVehCount[k])
-									end
-								end
-								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(ReplacedVehs[i].Handle)
-								DECORATOR.DECOR_SET_INT(ReplacedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
-								entities.delete_by_handle(ReplacedVehs[i].Handle)
-							end
-						end
-					end
-				else
-					table.remove(ReplacedVehs, i)
-					--ReplacedVehs[i].Handle = nil
-					--ReplacedVehs[i].DeadTick = nil
-					--ReplacedVehs[i].AwayTick = nil
-					--ReplacedVehs[i].Count = nil
-					--ReplacedVehs[i].Tick = nil
-					--ReplacedVehs[i].Blip = nil
-					--ReplacedVehs[i].HavedPassengers = nil
-					--ReplacedVehs[i] = nil
-				end
-			end
-		end
-	end
-end)
-
-local RandomCopVehsOn = false
-menu.toggle(menu.my_root(), "Random Cop Vehicles", {}, "", function(toggle)
-	RandomCopVehsOn = toggle
-	if not RandomCopVehsOn then
-		for index, vehs in pairs(entities.get_all_vehicles_as_handles()) do
-			if DECORATOR.DECOR_GET_INT(vehs, "Casino_Game_Info_Decorator") == 31 then
-				for i = -1, 9 do
-					local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, i, false)
-					if Ped ~= 0 then
-						if not PED.IS_PED_A_PLAYER(Ped) and Ped ~= PLAYER.PLAYER_PED_ID() then
-							NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Ped)
-							entities.delete_by_handle(Ped)
-						end
-					end
-				end
-				local Blip = HUD.GET_BLIP_FROM_ENTITY(vehs)
-				if Blip ~= 0 then
-					util.remove_blip(Blip)
-				end
-				NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(vehs)
-				entities.delete_by_handle(vehs)
-			end
-		end
-		for index, peds in pairs(entities.get_all_peds_as_handles()) do
-			if peds ~= PLAYER.PLAYER_PED_ID() then
-				if ENTITY.IS_ENTITY_A_MISSION_ENTITY(peds) then
-					NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-					entities.delete_by_handle(peds)
-				end
-			end
-		end
-		if LastRequestedModel ~= 0 then
-			STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(LastRequestedModel)
-		end
-	end
-	local DeadPeds = {}
-	while RandomCopVehsOn do
-		Wait()
-		local PlayerPed = PLAYER.PLAYER_PED_ID()
-		local PlayerID = PLAYER.PLAYER_ID()
-		local VehCount = 0
-		for index, peds in pairs(entities.get_all_peds_as_handles()) do
-			if peds ~= PlayerPed then
-				if ENTITY.IS_ENTITY_A_MISSION_ENTITY(peds) then
-					local DecorInt = DECORATOR.DECOR_GET_INT(peds, "Casino_Game_Info_Decorator")
-					if DecorInt == 31 or DecorInt == 32 then
-						if not DoesValueExistInTable3(DeadPeds, peds) then
-							if ENTITY.IS_ENTITY_DEAD(peds) then
-								util.create_thread(function()
-									DeadPeds[peds] = {}
-									Wait(10000)
-									NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-									DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 32) 
-									entities.delete_by_handle(peds)
-									DeadPeds[peds] = nil
-								end)
-							end
-						end
-						if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PLAYER.PLAYER_PED_ID(), 200.0, 200.0, 500.0, false, true, false) 
-						and not PED.IS_PED_IN_ANY_VEHICLE(peds, false) then
-							NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-							DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 32)
-							entities.delete_by_handle(peds)
-						end
-						if DecorInt == 32 then
-							NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-							entities.delete_by_handle(peds)
-						end
-					end
-				end
-			end
-		end
-		for index, vehs in pairs(entities.get_all_vehicles_as_handles()) do
-			VehCount = VehCount + 1
-			local ReplaceVehCoords = ENTITY.GET_ENTITY_COORDS(vehs)
-			if ENTITY.IS_ENTITY_A_MISSION_ENTITY(vehs)
-			and ENTITY.IS_ENTITY_VISIBLE(vehs) and
-			ENTITY.IS_ENTITY_AT_ENTITY(vehs, PlayerPed, 1000.0, 1000.0, 1000.0, false, true, false)
-			and DECORATOR.DECOR_GET_INT(vehs, "Casino_Game_Info_Decorator") == 31 then
-				if not DoesValueExistInTable(ReplacedVehs, vehs) then
-					ReplacedVehs[1 + #ReplacedVehs] = {Handle = vehs, DeadTick = 0,
-					AwayTick = 0, Count = 0, Tick = 0, CloserCount = 1, Blip = HUD.GET_BLIP_FROM_ENTITY(vehs)}
-				end
-			end
-			if DECORATOR.DECOR_GET_INT(vehs, "Casino_Game_Info_Decorator") == 32 then
-				NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(vehs)
-				entities.delete_by_handle(vehs)
-			end
-			if #CreatedVehs < 100 then
-				if NETWORK.CAN_REGISTER_MISSION_VEHICLES(1) then
-					local VehModel = ENTITY.GET_ENTITY_MODEL(vehs)
-					if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(vehs)
-					and ENTITY.IS_ENTITY_VISIBLE(vehs) and
-					ENTITY.IS_ENTITY_AT_ENTITY(vehs, PLAYER.PLAYER_PED_ID(), 200.0, 200.0, 500.0, false, true, false)
-					and DECORATOR.DECOR_GET_INT(vehs, "Casino_Game_Info_Decorator") ~= 31 and not ENTITY.IS_ENTITY_DEAD(vehs)
-					and VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false) ~= 0 then
-						if not MISC.IS_POINT_OBSCURED_BY_A_MISSION_ENTITY (ReplaceVehCoords.x, ReplaceVehCoords.y,
-						ReplaceVehCoords.z, 1.0, 1.0, 1.0, 0) then
-							local PedHandle = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false)
-							if not PED.IS_PED_A_PLAYER(PedHandle) or PedHandle == PlayerPed then
-								if VehModel == joaat("police3") or VehModel == joaat("fbi2") or VehModel == joaat("riot") or
-								VehModel == joaat("polmav") or VehModel == joaat("sheriff") or VehModel == joaat("sheriff2")
-								or VehModel == joaat("policet") or VehModel == joaat("barracks") or VehModel == joaat("barracks2")
-								or VehModel == joaat("crusader") or VehModel == joaat("rhino") or VehModel == joaat("cargobob") then
-									local CanReplace = false
-									if ReplaceOnlyWithDrivers then
-										if VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, -1, false) > 0 then
-											CanReplace = true
+									local Rot = ENTITY.GET_ENTITY_ROTATION(vehs)
+									local NewVeh = VEHICLE.CREATE_VEHICLE(ReplacedVehs[vehs].ModelToRequest, Coords.x, Coords.y, Coords.z, Rot.z, true, false, false)
+									ENTITY.SET_ENTITY_ROTATION(NewVeh, Rot.x, Rot.y, Rot.z, 2)
+									DECORATOR.DECOR_SET_INT(NewVeh, "Casino_Game_Info_Decorator", 31)
+									local SeatIndex = -1
+									for i = 1, #Peds do
+										if VEHICLE.IS_VEHICLE_SEAT_FREE(NewVeh, SeatIndex, false) then
+											PED.SET_PED_INTO_VEHICLE(Peds[i].Handle, NewVeh, SeatIndex)
 										end
-									else
-										CanReplace = true
-									end
-									if CanReplace then
-										if not DoesValueExistInTable2(CreatedVehs, vehs) then
-											local Passengers = {}
-											for i = -1, 9 do
-												local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, i, false)
-												if Ped ~= 0 then
-													NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-													DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31)
-													if not PED.IS_PED_A_PLAYER(Ped) then
-														Passengers[1 + #Passengers] = {Handle = Ped, SeatIndex = i}
-													end
-												end
-											end
-											local OldVehModel = ENTITY.GET_ENTITY_MODEL(vehs)
-											CreatedVehs[1 + #CreatedVehs] = {Handle = 0, Tick = 0, Count = 0, Passengers = Passengers,
-											OldVehicle = vehs, HasDeletedOldVeh = false, HasSetPedsIntoVeh = false, DeadTick = 0,
-											HasRemovedPassengers = false, OutsideVehCount = 0, IsDeletingOldVeh = false,
-											SettedPedsIntoVeh = 0, AwayTick = 0, HasCreatedVeh = false, HandleZeroTick = 0,
-											SetInVehTick = 0, OldModel = OldVehModel, Blip = 0}
+										if MoreTraffic then
+											ENTITY.SET_ENTITY_AS_MISSION_ENTITY(Peds[i].Handle, false, true)
 										end
+										SeatIndex = SeatIndex + 1
 									end
+									ReplacedVehs[NewVeh] = {}
+									ReplacedVehs[NewVeh].ModelToRequest = 0
+									ReplacedVehs[NewVeh].WasReplaced = 1
+									STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(ReplacedVehs[vehs].ModelToRequest)
+									ReplacedVehs[vehs] = nil
+									UpgradeCar(NewVeh)
 								end
 							end
 						end
+						if ReplacedVehs[vehs] ~= nil then
+							if ReplacedVehs[vehs].WasReplaced == 2 then
+								if DECORATOR.DECOR_GET_INT(vehs, "Casino_Game_Info_Decorator") == 0 or ENTITY.IS_ENTITY_DEAD(vehs) then
+									ReplacedVehs[vehs] = nil
+								end
+							end
+						end
+					else
+						ReplacedVehs[vehs] = nil
 					end
 				end
 			end
-		end
-		--Print(VehCount)
-		for i = 1, #CreatedVehs do
-			if CreatedVehs[i] ~= nil then
-				if not ENTITY.DOES_ENTITY_EXIST(CreatedVehs[i].OldVehicle) then
-					CreatedVehs[i].HasRemovedPassengers = true
-					CreatedVehs[i].HasCreatedVeh = true
-				end
-				if LastRequestedModel == 0 then
-					local RandModel = math.random(#AllGameVehs)
-					if AllGameVehs[RandModel] ~= nil then
-						LastRequestedModel = joaat(AllGameVehs[RandModel])
-						if ReplaceHeliAndPlanes then
-							if VEHICLE.IS_THIS_MODEL_A_HELI(CreatedVehs[i].OldModel) or
-							VEHICLE.IS_THIS_MODEL_A_PLANE(CreatedVehs[i].OldModel) then
-								if not VEHICLE.IS_THIS_MODEL_A_PLANE(LastRequestedModel) and
-								not VEHICLE.IS_THIS_MODEL_A_HELI(LastRequestedModel) then
-									LastRequestedModel = 0
-								end
-							end
-						end
-						if VEHICLE.IS_THIS_MODEL_A_BOAT(CreatedVehs[i].OldModel) then
-							if AllowPlanes then
-								if VEHICLE.IS_THIS_MODEL_A_PLANE(LastRequestedModel) then
-									LastRequestedModel = 0
-								end
-							end
-						end
-					end
-				end
-				if LastRequestedModel ~= 0 then
-					if STREAMING.IS_MODEL_VALID(LastRequestedModel) then
-						if not STREAMING.HAS_MODEL_LOADED(LastRequestedModel) then
-							STREAMING.REQUEST_MODEL(LastRequestedModel)
-						end
-					end
-				end
-				if #ReplacedVehs < MaxReplacedVehs and VehCount < MaxVehs then
-					if not CreatedVehs[i].HasRemovedPassengers and LastRequestedModel ~= 0 and
-					STREAMING.HAS_MODEL_LOADED(LastRequestedModel) then
-						if #CreatedVehs[i].Passengers > 0 then
-							local TheVehCoords = ENTITY.GET_ENTITY_COORDS(CreatedVehs[i].OldVehicle)
-							for index, passengers in pairs(CreatedVehs[i].Passengers) do
-								local VehPos = ENTITY.GET_ENTITY_COORDS(CreatedVehs[i].OldVehicle)
-								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(passengers.Handle)
-								if MoreTraffic then
-									ENTITY.SET_ENTITY_AS_MISSION_ENTITY(passengers.Handle, true, false)
-								end
-								DECORATOR.DECOR_SET_INT(passengers.Handle, "Casino_Game_Info_Decorator", 31)
-								TASK.TASK_LEAVE_VEHICLE(passengers.Handle, CreatedVehs[i].OldVehicle, 16)
-								--if PlaneMode then
-									--ENTITY.SET_ENTITY_COORDS(passengers.Handle, VehPos.x, VehPos.y, VehPos.z)
-								--else
-									ENTITY.SET_ENTITY_COORDS(passengers.Handle, VehPos.x, VehPos.y, VehPos.z + 50.0)
-								--end
-								--ENTITY.FREEZE_ENTITY_POSITION(passengers.Handle, true)
-								local ThePedCoords = ENTITY.GET_ENTITY_COORDS(passengers.Handle)
-								if ThePedCoords.z > TheVehCoords.z+40.0 then
-									if not PED.IS_PED_IN_VEHICLE(passengers.Handle, CreatedVehs[i].OldVehicle, false) then
-										CreatedVehs[i].OutsideVehCount = CreatedVehs[i].OutsideVehCount + 1
-									else
-										CreatedVehs[i].OutsideVehCount = 0
-									end
-									if CreatedVehs[i].OutsideVehCount >= #CreatedVehs[i].Passengers then
-										CreatedVehs[i].HasRemovedPassengers = true
-									end
-								end
-							end
-						else
-							CreatedVehs[i].HasRemovedPassengers = true
-						end
-					end
-					if CreatedVehs[i].HasRemovedPassengers and not CreatedVehs[i].IsDeletingOldVeh and not CreatedVehs[i].HasCreatedVeh then
-						if #ReplacedVehs < MaxReplacedVehs and VehCount < MaxVehs then
-							if NETWORK.CAN_REGISTER_MISSION_VEHICLES(1) then
-								if LastRequestedModel ~= 0 then
-									if STREAMING.IS_MODEL_VALID(LastRequestedModel) then
-										if not STREAMING.HAS_MODEL_LOADED(LastRequestedModel) then
-											STREAMING.REQUEST_MODEL(LastRequestedModel)
-										end
-										if STREAMING.HAS_MODEL_LOADED(LastRequestedModel) then
-											local VehPos = ENTITY.GET_ENTITY_COORDS(CreatedVehs[i].OldVehicle)
-											local VehHeading = ENTITY.GET_ENTITY_HEADING(CreatedVehs[i].OldVehicle)
-											local VehHealth = ENTITY.GET_ENTITY_HEALTH(CreatedVehs[i].OldVehicle)
-											local VehMaxHealth = ENTITY.GET_ENTITY_MAX_HEALTH(CreatedVehs[i].OldVehicle)
-											local VehSpeed = ENTITY.GET_ENTITY_SPEED(CreatedVehs[i].OldVehicle)
-											if PlaneMode then
-												VehPos.z = VehPos.z + 50.0
-											end
-										
-											NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].OldVehicle)
-											
-											local NewVeh = entities.create_vehicle(LastRequestedModel, VehPos, VehHeading)
-											--NetworkEntityVeh(NewVeh)
-											DECORATOR.DECOR_SET_INT(NewVeh, "Casino_Game_Info_Decorator", 31)
-											--local EntNetID = NETWORK.VEH_TO_NET(NewVeh)
-											--NETWORK.SET_NETWORK_ID_EXISTS_ON_ALL_MACHINES(EntNetID, true)
-											--NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(EntNetID, PLAYER.PLAYER_ID(), true)
-											ENTITY.SET_ENTITY_MAX_HEALTH(NewVeh, VehMaxHealth)
-											ENTITY.SET_ENTITY_HEALTH(NewVeh, VehHealth)
-											VEHICLE.SET_VEHICLE_FORWARD_SPEED(NewVeh, VehSpeed)
-											ENTITY.SET_ENTITY_SHOULD_FREEZE_WAITING_ON_COLLISION(NewVeh, true)
-											
-											if NewVeh ~= 0 then
-												--Print("New Veh Is ".. NewVeh)
-												CreatedVehs[i].Handle = NewVeh
-												CreatedVehs[i].HasCreatedVeh = true
-												CreatedVehs[i].IsDeletingOldVeh = true
-												STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(LastRequestedModel)
-												LastRequestedModel = 0
-												VEHICLE.SET_VEHICLE_CUSTOM_PRIMARY_COLOUR(NewVeh, math.random(0, 255), math.random(0, 255), math.random(0, 255))
-												VEHICLE.SET_VEHICLE_CUSTOM_SECONDARY_COLOUR(NewVeh, math.random(0, 255), math.random(0, 255), math.random(0, 255))
-												VEHICLE.SET_VEHICLE_COLOURS(NewVeh, math.random(0, 160), math.random(0, 160))
-												if SetBlips then
-													local Blip = HUD.ADD_BLIP_FOR_ENTITY(NewVeh)
-													HUD.SET_BLIP_SPRITE(Blip, 225)
-													HUD.SET_BLIP_COLOUR(Blip, 3)
-													CreatedVehs[i].Blip = Blip
-												end
-												for index, passengers in pairs(CreatedVehs[i].Passengers) do
-													if passengers ~= nil then
-														NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(passengers.Handle)
-														ENTITY.FREEZE_ENTITY_POSITION(passengers.Handle, false)
-														DECORATOR.DECOR_SET_INT(passengers.Handle, "Casino_Game_Info_Decorator", 31)
-														if VEHICLE.IS_VEHICLE_SEAT_FREE(NewVeh, passengers.SeatIndex, false) then
-															PED.SET_PED_INTO_VEHICLE(passengers.Handle, CreatedVehs[i].Handle, passengers.SeatIndex)
-															if passengers.Handle ~= PlayerPed then
-																if PlaneModeWithTask and PlaneMode then
-																	local Coords = ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(NewVeh, math.random(-1000, 1000), 1000.0, 0.0)
-																	TASK.TASK_VEHICLE_DRIVE_TO_COORD(passengers.Handle, NewVeh, Coords.x, Coords.y, Coords.z, 30.0, 0, ENTITY.GET_ENTITY_MODEL(NewVeh), 1, 10.0, 1.0)
-																else
-																	TASK.TASK_VEHICLE_DRIVE_WANDER(passengers.Handle, NewVeh, 30.0, 1)
-																end
-															end
-														else
-															entities.delete_by_handle(passengers.Handle)
-														end
-														if VEHICLE.GET_VEHICLE_NUMBER_OF_PASSENGERS(NewVeh, true, true) == 0 then
-															if CreatedVehs[i].Blip ~= 0 then
-																util.remove_blip(CreatedVehs[i].Blip)
-															end
-															NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(NewVeh)
-															DECORATOR.DECOR_SET_INT(NewVeh, "Casino_Game_Info_Decorator", 32)
-															entities.delete_by_handle(NewVeh)
-															entities.delete_by_handle(passengers.Handle)
-														end
-													end
-												end
-											end
-											if PlaneModeSetSpeed and PlaneMode then
-												VEHICLE.SET_VEHICLE_FORWARD_SPEED(NewVeh, 40.0)
-											end
-											if ENTITY.DOES_ENTITY_EXIST(CreatedVehs[i].OldVehicle) then
-												NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].OldVehicle)
-												entities.delete_by_handle(CreatedVehs[i].OldVehicle)
-											end
-											for k = 0, 48 do
-												local NumMods = entities.get_upgrade_max_value(NewVeh, k)
-												if NumMods > 0 then
-													local Rand = math.random(0, NumMods)
-													if Rand <= -1 then
-														Rand = 0
-													end
-													entities.set_upgrade_value(NewVeh, k, Rand, false)
-												else
-													if math.random(0, 1) == 1 then
-														entities.set_upgrade_value(NewVeh, k, NumMods, false)
-													end
-												end
-											end
-										end
-									else
-										LastRequestedModel = 0
-									end
-								end
-							end
-						end
-					end
-					if CreatedVehs[i].IsDeletingOldVeh and not CreatedVehs[i].HasDeletedOldVeh then
-						if ENTITY.DOES_ENTITY_EXIST(CreatedVehs[i].OldVehicle) then
-							NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].OldVehicle)
-							entities.delete_by_handle(CreatedVehs[i].OldVehicle)
-							if not ENTITY.DOES_ENTITY_EXIST(CreatedVehs[i].OldVehicle) then
-								CreatedVehs[i].HasDeletedOldVeh = true
-							end
-						else
-							CreatedVehs[i].HasDeletedOldVeh = true
-						end
-					end
-					if CreatedVehs[i].HasDeletedOldVeh then
-						if #CreatedVehs[i].Passengers > 0 then
-							if not CreatedVehs[i].HasSetPedsIntoVeh then
-								for index, passengers in pairs(CreatedVehs[i].Passengers) do
-									if passengers ~= nil then
-										if not PED.IS_PED_IN_VEHICLE(passengers.Handle, CreatedVehs[i].Handle, false) then
-											CreatedVehs[i].SetInVehTick = CreatedVehs[i].SetInVehTick + 1
-											NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(passengers.Handle)
-											DECORATOR.DECOR_SET_INT(passengers.Handle, "Casino_Game_Info_Decorator", 31)
-											ENTITY.FREEZE_ENTITY_POSITION(passengers.Handle, false)
-											if VEHICLE.IS_VEHICLE_SEAT_FREE(CreatedVehs[i].Handle, passengers.SeatIndex, false) then
-												PED.SET_PED_INTO_VEHICLE(passengers.Handle, CreatedVehs[i].Handle, passengers.SeatIndex)
-											end
-											if ENTITY.DOES_ENTITY_EXIST(passengers.Handle) then
-												if PED.IS_PED_IN_VEHICLE(passengers.Handle, CreatedVehs[i].Handle, false) then
-													CreatedVehs[i].SettedPedsIntoVeh = CreatedVehs[i].SettedPedsIntoVeh + 1
-												else
-													CreatedVehs[i].SettedPedsIntoVeh = 0
-												end
-											else
-												CreatedVehs[i].SettedPedsIntoVeh = CreatedVehs[i].SettedPedsIntoVeh + 1
-											end
-											if CreatedVehs[i].SettedPedsIntoVeh >= #CreatedVehs[i].Passengers then
-												CreatedVehs[i].HasSetPedsIntoVeh = true
-											end
-											if CreatedVehs[i].SetInVehTick >= 100 then
-												if ENTITY.DOES_ENTITY_EXIST(passengers.Handle) and
-												not PED.IS_PED_IN_VEHICLE(passengers.Handle, CreatedVehs[i].Handle, false) then
-													NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(passengers.Handle)
-													entities.delete_by_handle(passengers.Handle)
-													CreatedVehs[i].HasSetPedsIntoVeh = true
-													if VEHICLE.GET_VEHICLE_NUMBER_OF_PASSENGERS(CreatedVehs[i].Handle, true, true) == 0 then
-														if CreatedVehs[i].Blip ~= 0 then
-															util.remove_blip(CreatedVehs[i].Blip)
-														end
-														NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].Handle)
-														DECORATOR.DECOR_SET_INT(CreatedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
-														entities.delete_by_handle(CreatedVehs[i].Handle)
-													end
-												end
-												CreatedVehs[i].HasSetPedsIntoVeh = true
-											end
-										else
-											CreatedVehs[i].SettedPedsIntoVeh = CreatedVehs[i].SettedPedsIntoVeh + 1
-											if CreatedVehs[i].SettedPedsIntoVeh >= #CreatedVehs[i].Passengers then
-												CreatedVehs[i].HasSetPedsIntoVeh = true
-											end
-										end
-									end
-								end
-							end
-						else
-							CreatedVehs[i].HasSetPedsIntoVeh = true
-						end
-					end
-				end
-				if CreatedVehs[i].HasCreatedVeh or CreatedVehs[i].HandleZeroTick >= 100 and CreatedVehs[i].HasSetPedsIntoVeh then
-					if CreatedVehs[i].Handle ~= 0 then
-						local ShouldDelete = false
-						if #CreatedVehs[i].Passengers > 0 then
-							if VEHICLE.GET_VEHICLE_NUMBER_OF_PASSENGERS(CreatedVehs[i].Handle, true, true) == 0 then
-								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CreatedVehs[i].Handle)
-								DECORATOR.DECOR_SET_INT(CreatedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
-								ShouldDelete = true
-							end
-						end
-						ReplacedVehs[1 + #ReplacedVehs] = {Handle = CreatedVehs[i].Handle, DeadTick = 0,
-						AwayTick = 0, Count = 0, Tick = 0, CloserCount = 0, Blip = CreatedVehs[i].Blip, HavedPassengers = ShouldDelete}
-					end
-					CreatedVehs[i].Handle = nil
-					CreatedVehs[i].Tick = nil
-					CreatedVehs[i].Count = nil
-					for index, passengers in pairs(CreatedVehs[i].Passengers) do
-						passengers.Handle = nil
-						passengers.SeatIndex = nil
-						passengers = nil
-					end
-					CreatedVehs[i].OldVehicle = nil
-					CreatedVehs[i].HasDeletedOldVeh = nil
-					CreatedVehs[i].HasSetPedsIntoVeh = nil
-					CreatedVehs[i].DeadTick = nil
-					CreatedVehs[i].IsDeletingOldVeh = nil
-					CreatedVehs[i].SettedPedsIntoVeh = nil
-					CreatedVehs[i].HasDeletedOldVeh = nil
-					CreatedVehs[i].AwayTick = nil
-					CreatedVehs[i].HandleZeroTick = nil
-					CreatedVehs[i].SetInVehTick = nil
-					CreatedVehs[i].OldModel = nil
-					CreatedVehs[i].Blip = nil
-					CreatedVehs[i] = nil
-				end
-			end
-		end
-		for i = 1, #ReplacedVehs do
-			local CloserCount = 0
-			if ReplacedVehs[i] ~= nil then
-				if ENTITY.DOES_ENTITY_EXIST(ReplacedVehs[i].Handle) and ReplacedVehs[i].Handle ~= 0 then
-					if ReplacedVehs[i] ~= nil then
-						if ENTITY.DOES_ENTITY_EXIST(ReplacedVehs[i].Handle) then
-							for index, player in pairs(players.list()) do
-								local PlayerPedIndex = PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(player)
-								if ENTITY.IS_ENTITY_AT_ENTITY(PlayerPedIndex, ReplacedVehs[i].Handle, 200.0, 200.0, 500.0, false, true, false) then
-									CloserCount = CloserCount + 1
-								end
-								ReplacedVehs[i].CloserCount = CloserCount
-							end
-						end
-					end
-					local PlayerInVehCount = {}
-					for k = -1, 9 do
-						local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(ReplacedVehs[i].Handle, k, false)
-						if Ped ~= 0 then
-							if not PED.IS_PED_A_PLAYER(Ped) then
-								PlayerInVehCount[1 + #PlayerInVehCount] = Ped
-							end
-						end
-					end
-					if ENTITY.IS_ENTITY_DEAD(ReplacedVehs[i].Handle) then
-						if ReplacedVehs[i].Blip ~= 0 then
-							HUD.SET_BLIP_COLOUR(ReplacedVehs[i].Blip, 1)
-						end
-						ReplacedVehs[i].DeadTick = ReplacedVehs[i].DeadTick + 1
-						if ReplacedVehs[i].DeadTick >= 500 then
-							if ReplacedVehs[i].Blip ~= 0 then
-								util.remove_blip(ReplacedVehs[i].Blip)
-							end
-							for k = 1, #PlayerInVehCount do
-								if ENTITY.DOES_ENTITY_EXIST(PlayerInVehCount[k]) then
-									NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(PlayerInVehCount[k])
-									DECORATOR.DECOR_SET_INT(PlayerInVehCount[k], "Casino_Game_Info_Decorator", 32)
-									entities.delete_by_handle(PlayerInVehCount[k])
-								end
-							end
-							NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(ReplacedVehs[i].Handle)
-							DECORATOR.DECOR_SET_INT(ReplacedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
-							entities.delete_by_handle(ReplacedVehs[i].Handle)
-						end
-					end
-					if ReplacedVehs[i].CloserCount <= 0 then
-						if ReplacedVehs[i].Blip ~= 0 then
-							util.remove_blip(ReplacedVehs[i].Blip)
-						end
-						for k = 1, #PlayerInVehCount do
-							if ENTITY.DOES_ENTITY_EXIST(PlayerInVehCount[k]) then
-								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(PlayerInVehCount[k])
-								DECORATOR.DECOR_SET_INT(PlayerInVehCount[k], "Casino_Game_Info_Decorator", 32)
-								entities.delete_by_handle(PlayerInVehCount[k])
-							end
-						end
-						NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(ReplacedVehs[i].Handle)
-						DECORATOR.DECOR_SET_INT(ReplacedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
-						entities.delete_by_handle(ReplacedVehs[i].Handle)
-					end
-					if DeleteEmptyVehs then
-						if VEHICLE.GET_VEHICLE_NUMBER_OF_PASSENGERS(ReplacedVehs[i].Handle, true, true) == 0 then
-							ReplacedVehs[i].Tick = ReplacedVehs[i].Tick + 1
-							if ReplacedVehs[i].Tick >= 3000 then
-								if ReplacedVehs[i].Blip ~= 0 then
-									util.remove_blip(ReplacedVehs[i].Blip)
-								end
-								for k = 1, #PlayerInVehCount do
-									if ENTITY.DOES_ENTITY_EXIST(PlayerInVehCount[k]) then
-										NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(PlayerInVehCount[k])
-										DECORATOR.DECOR_SET_INT(PlayerInVehCount[k], "Casino_Game_Info_Decorator", 32)
-										entities.delete_by_handle(PlayerInVehCount[k])
-									end
-								end
-								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(ReplacedVehs[i].Handle)
-								DECORATOR.DECOR_SET_INT(ReplacedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
-								entities.delete_by_handle(ReplacedVehs[i].Handle)
-							end 
-						else
-							ReplacedVehs[i].Tick = 0
-						end
-					end
-					if ReplacedVehs[i].HavedPassengers then
-						if ReplacedVehs[i].Blip ~= 0 then
-							util.remove_blip(ReplacedVehs[i].Blip)
-						end
-						for k = 1, #PlayerInVehCount do
-							if ENTITY.DOES_ENTITY_EXIST(PlayerInVehCount[k]) then
-								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(PlayerInVehCount[k])
-								DECORATOR.DECOR_SET_INT(PlayerInVehCount[k], "Casino_Game_Info_Decorator", 32)
-								entities.delete_by_handle(PlayerInVehCount[k])
-							end
-						end
-						NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(ReplacedVehs[i].Handle)
-						DECORATOR.DECOR_SET_INT(ReplacedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
-						entities.delete_by_handle(ReplacedVehs[i].Handle)
-					end
-					if #ReplacedVehs > 50 then
-						if DeleteNotOnScreen then
-							if not ENTITY.IS_ENTITY_ON_SCREEN(ReplacedVehs[i].Handle) and
-							VEHICLE.GET_VEHICLE_NUMBER_OF_PASSENGERS(ReplacedVehs[i].Handle, true, true) == 0 then
-								if ReplacedVehs[i].Blip ~= 0 then
-									util.remove_blip(ReplacedVehs[i].Blip)
-								end
-								for k = 1, #PlayerInVehCount do
-									if ENTITY.DOES_ENTITY_EXIST(PlayerInVehCount[k]) then
-										NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(PlayerInVehCount[k])
-										DECORATOR.DECOR_SET_INT(PlayerInVehCount[k], "Casino_Game_Info_Decorator", 32)
-										entities.delete_by_handle(PlayerInVehCount[k])
-									end
-								end
-								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(ReplacedVehs[i].Handle)
-								DECORATOR.DECOR_SET_INT(ReplacedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
-								entities.delete_by_handle(ReplacedVehs[i].Handle)
-							end
-						end
-						if Optimise then
-							if VEHICLE.GET_VEHICLE_NUMBER_OF_PASSENGERS(ReplacedVehs[i].Handle, true, true) == 0 then
-								if ReplacedVehs[i].Blip ~= 0 then
-									util.remove_blip(ReplacedVehs[i].Blip)
-								end
-								for k = 1, #PlayerInVehCount do
-									if ENTITY.DOES_ENTITY_EXIST(PlayerInVehCount[k]) then
-										NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(PlayerInVehCount[k])
-										DECORATOR.DECOR_SET_INT(PlayerInVehCount[k], "Casino_Game_Info_Decorator", 32)
-										entities.delete_by_handle(PlayerInVehCount[k])
-									end
-								end
-								NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(ReplacedVehs[i].Handle)
-								DECORATOR.DECOR_SET_INT(ReplacedVehs[i].Handle, "Casino_Game_Info_Decorator", 32)
-								entities.delete_by_handle(ReplacedVehs[i].Handle)
-							end
-						end
-					end
-				else
-					table.remove(ReplacedVehs, i)
-					--ReplacedVehs[i].Handle = nil
-					--ReplacedVehs[i].DeadTick = nil
-					--ReplacedVehs[i].AwayTick = nil
-					--ReplacedVehs[i].Count = nil
-					--ReplacedVehs[i].Tick = nil
-					--ReplacedVehs[i].Blip = nil
-					--ReplacedVehs[i].HavedPassengers = nil
-					--ReplacedVehs[i] = nil
-				end
-			end
+			Wait()
 		end
 	end
 end)
@@ -2205,6 +1145,29 @@ menu.action(UtilsMenu, "Delete Empty Vehicles", {}, "", function()
 	end
 end)
 
+function UpgradeCar(Veh)
+	for k = 0, 48 do
+		local NumMods = entities.get_upgrade_max_value(Veh, k)
+		if NumMods > 0 then
+			local Rand = math.random(0, NumMods)
+			if Rand <= -1 then
+				Rand = 0
+			end
+			entities.set_upgrade_value(Veh, k, Rand, false)
+		else
+			if math.random(0, 1) == 1 then
+				entities.set_upgrade_value(Veh, k, NumMods, false)
+			end
+		end
+	end
+	if math.random(0, 1) == 1 then
+		VEHICLE.SET_VEHICLE_TYRES_CAN_BURST(Veh, false)
+	end
+	VEHICLE.SET_VEHICLE_CUSTOM_PRIMARY_COLOUR(Veh, math.random(0, 255), math.random(0, 255), math.random(0, 255))
+	VEHICLE.SET_VEHICLE_CUSTOM_SECONDARY_COLOUR(Veh, math.random(0, 255), math.random(0, 255), math.random(0, 255))
+	VEHICLE.SET_VEHICLE_COLOURS(Veh, math.random(0, 160), math.random(0, 160))
+end
+
 
 local DEVTools = menu.list(menu.my_root(), "DEV Tools", {}, "")
 
@@ -2252,6 +1215,10 @@ menu.action(DEVTools, "Handle 0 Count", {}, "", function()
 		end
 	end
 	Print(Count)
+end)
+
+menu.action(DEVTools, "Table Index Value", {}, "", function()
+	Print(VehicleStreet["tornado"] ~= nil)
 end)
 
 menu.toggle_loop(DEVTools, "Get All Vehicles Count", {}, "", function()
@@ -2327,9 +1294,9 @@ function DoesValueExistInTable3(T, Value)
 	return false
 end
 
-function set_entity_as_no_longer_needed(entity)
+function SetEntityAsNoLongerNeeded(Entity)
 	local pHandle = memory.alloc_int()
-	memory.write_int(pHandle, entity)
+	memory.write_int(pHandle, Entity)
 	ENTITY.SET_ENTITY_AS_NO_LONGER_NEEDED(pHandle)
 end
 
