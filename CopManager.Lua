@@ -1379,15 +1379,15 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												end
 											end
 											if CopsShootWhereYouShoot or CopsShootWhereYouAim then
-												if not WEAPON.IS_PED_ARMED(peds, 4) then
-													local BestWeapon = WEAPON.GET_BEST_PED_WEAPON(peds, false)
-													WEAPON.SET_CURRENT_PED_WEAPON(peds, BestWeapon, true)
-												end
 												if Veh == 0 then
-													if HitCoords ~= nil then
-														if HasHit then
-															if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																if ShootsT[peds] == nil then
+													if not WEAPON.IS_PED_ARMED(peds, 4) then
+														local BestWeapon = WEAPON.GET_BEST_PED_WEAPON(peds, false)
+														WEAPON.SET_CURRENT_PED_WEAPON(peds, BestWeapon, true)
+													end
+													if HasHit then
+														if HitCoords ~= nil then
+															if ShootsT[peds] == nil then
+																if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 																	TASK.TASK_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 3000, joaat("FIRING_PATTERN_FULL_AUTO"))
 																	ShootsT[peds] = 0
 																end
@@ -1397,32 +1397,30 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												else
 													if HitCoords ~= nil then
 														if HasHit then
-															if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																local VehWeapHash = memory.alloc(8)
-																local HaveVehWeapon = WEAPON.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehWeapHash)
-																if HaveVehWeapon then
-																	TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
+															if TasksT[peds] == nil then
+																if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																	local VehWeapHash = memory.alloc(8)
+																	local HaveVehWeapon = WEAPON.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehWeapHash)
+																	if HaveVehWeapon then
+																		TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
+																		TasksT[peds] = 0
+																	end
 																end
 															end
 														end
 													end
 												end
-												if Veh ~= 0 then
-													if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) ~= 7 then
-														if PED.IS_PED_SHOOTING(peds) then
-															if TasksT[peds] == nil then
+												if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) ~= 7 then
+													if PED.IS_PED_SHOOTING(peds) then
+														if TasksT[peds] ~= nil then
+															TasksT[peds] = TasksT[peds] + 1
+															if IsPlayerShooting then
 																TasksT[peds] = 0
 															end
-															if TasksT[peds] ~= nil then
-																TasksT[peds] = TasksT[peds] + 1
-																if IsPlayerShooting then
-																	TasksT[peds] = 0
-																end
-																if TasksT[peds] > 20 then
-																	NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-																	TASK.CLEAR_PED_TASKS(peds)
-																	TasksT[peds] = nil
-																end
+															if TasksT[peds] > 10 then
+																NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																TASK.CLEAR_PED_TASKS(peds)
+																TasksT[peds] = nil
 															end
 														end
 													end
@@ -1778,15 +1776,15 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												end
 											end
 											if CopsShootWhereYouShoot or CopsShootWhereYouAim then
-												if not WEAPON.IS_PED_ARMED(peds, 4) then
-													local BestWeapon = WEAPON.GET_BEST_PED_WEAPON(peds, false)
-													WEAPON.SET_CURRENT_PED_WEAPON(peds, BestWeapon, true)
-												end
 												if Veh == 0 then
+													if not WEAPON.IS_PED_ARMED(peds, 4) then
+														local BestWeapon = WEAPON.GET_BEST_PED_WEAPON(peds, false)
+														WEAPON.SET_CURRENT_PED_WEAPON(peds, BestWeapon, true)
+													end
 													if HasHit then
 														if HitCoords ~= nil then
-															if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																if ShootsT[peds] == nil then
+															if ShootsT[peds] == nil then
+																if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 																	TASK.TASK_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 3000, joaat("FIRING_PATTERN_FULL_AUTO"))
 																	ShootsT[peds] = 0
 																end
@@ -1796,32 +1794,30 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												else
 													if HitCoords ~= nil then
 														if HasHit then
-															if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																local VehWeapHash = memory.alloc(8)
-																local HaveVehWeapon = WEAPON.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehWeapHash)
-																if HaveVehWeapon then
-																	TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
+															if TasksT[peds] == nil then
+																if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																	local VehWeapHash = memory.alloc(8)
+																	local HaveVehWeapon = WEAPON.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehWeapHash)
+																	if HaveVehWeapon then
+																		TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
+																		TasksT[peds] = 0
+																	end
 																end
 															end
 														end
 													end
 												end
-												if Veh ~= 0 then
-													if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) ~= 7 then
-														if PED.IS_PED_SHOOTING(peds) then
-															if TasksT[peds] == nil then
+												if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) ~= 7 then
+													if PED.IS_PED_SHOOTING(peds) then
+														if TasksT[peds] ~= nil then
+															TasksT[peds] = TasksT[peds] + 1
+															if IsPlayerShooting then
 																TasksT[peds] = 0
 															end
-															if TasksT[peds] ~= nil then
-																TasksT[peds] = TasksT[peds] + 1
-																if IsPlayerShooting then
-																	TasksT[peds] = 0
-																end
-																if TasksT[peds] > 20 then
-																	NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-																	TASK.CLEAR_PED_TASKS(peds)
-																	TasksT[peds] = nil
-																end
+															if TasksT[peds] > 10 then
+																NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																TASK.CLEAR_PED_TASKS(peds)
+																TasksT[peds] = nil
 															end
 														end
 													end
