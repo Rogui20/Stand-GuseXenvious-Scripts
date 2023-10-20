@@ -146,6 +146,8 @@ local AiHateAiHateRel = "rgFM_HateAiHate"
 local AiHateEveryone = "rgFM_HateEveryOne"
 
 local WeaponsForCops = {
+	"weapon_pistol",
+	"weapon_pistol_mk2",
 	"weapon_appistol",
 	"weapon_pistol50",
 	"weapon_navyrevolver",
@@ -1025,6 +1027,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												if CopsShootWhereYouShoot or CopsShootWhereYouAim then
 													PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
 													PED.SET_PED_CONFIG_FLAG(peds, 113, false)
+													PED.SET_PED_COMBAT_ATTRIBUTES(peds, 2, true)
 												end
 											else
 												ENTITY.SET_ENTITY_PROOFS(peds, false, false, false, false, true, false, false, false)
@@ -1399,26 +1402,29 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 														if HasHit then
 															if TasksT[peds] == nil then
 																if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																	local VehWeapHash = memory.alloc(8)
-																	local HaveVehWeapon = WEAPON.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehWeapHash)
-																	if HaveVehWeapon then
+																	local VehicleWeap = memory.alloc(8)
+																	if VEHICLE.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehicleWeap) then
 																		TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
 																		TasksT[peds] = 0
+																	else
+																		if SetPedVehicleWeapon(peds) then
+																			TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
+																			TasksT[peds] = 9
+																		end
 																	end
 																end
 															end
 														end
 													end
 												end
-												if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) ~= 7 then
-													if PED.IS_PED_SHOOTING(peds) then
-														if TasksT[peds] ~= nil then
-															TasksT[peds] = TasksT[peds] + 1
-															if IsPlayerShooting then
-																TasksT[peds] = 0
-															end
-															if TasksT[peds] > 10 then
-																NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+												if PED.IS_PED_SHOOTING(peds) then
+													if TasksT[peds] ~= nil then
+														TasksT[peds] = TasksT[peds] + 1
+														if IsPlayerShooting then
+															TasksT[peds] = 0
+														end
+														if TasksT[peds] > 10 then
+															if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 																TASK.CLEAR_PED_TASKS(peds)
 																TasksT[peds] = nil
 															end
@@ -1796,26 +1802,29 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 														if HasHit then
 															if TasksT[peds] == nil then
 																if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																	local VehWeapHash = memory.alloc(8)
-																	local HaveVehWeapon = WEAPON.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehWeapHash)
-																	if HaveVehWeapon then
+																	local VehicleWeap = memory.alloc(8)
+																	if VEHICLE.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehicleWeap) then
 																		TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
 																		TasksT[peds] = 0
+																	else
+																		if SetPedVehicleWeapon(peds) then
+																			TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
+																			TasksT[peds] = 9
+																		end
 																	end
 																end
 															end
 														end
 													end
 												end
-												if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) ~= 7 then
-													if PED.IS_PED_SHOOTING(peds) then
-														if TasksT[peds] ~= nil then
-															TasksT[peds] = TasksT[peds] + 1
-															if IsPlayerShooting then
-																TasksT[peds] = 0
-															end
-															if TasksT[peds] > 10 then
-																NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+												if PED.IS_PED_SHOOTING(peds) then
+													if TasksT[peds] ~= nil then
+														TasksT[peds] = TasksT[peds] + 1
+														if IsPlayerShooting then
+															TasksT[peds] = 0
+														end
+														if TasksT[peds] > 10 then
+															if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 																TASK.CLEAR_PED_TASKS(peds)
 																TasksT[peds] = nil
 															end
@@ -2412,12 +2421,11 @@ menu.action(DevMenu, "Addr Get", {}, "", function(toggle)
 	Print(FormatedString)
 end)
 
-menu.action(DevMenu, "Rel Test", {}, "", function(toggle)
-	local Addr = memory.script_global(SplitGlobals("Global_1837231.f_6"))
-	local Value = memory.read_int(Addr)
-	local RelHash = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PLAYER.PLAYER_PED_ID())
-	local RelBG = PED.GET_RELATIONSHIP_BETWEEN_GROUPS(RelHash, Value)
-	Print(RelBG)
+menu.action(DevMenu, "Is Armed", {}, "", function(toggle)
+	local WeapHash = memory.alloc(8)
+	WEAPON.SET_CURRENT_PED_WEAPON(PLAYER.PLAYER_PED_ID(), joaat("weapon_pistol"), true)
+	local HaveWeapon = WEAPON.GET_CURRENT_PED_VEHICLE_WEAPON(PLAYER.PLAYER_PED_ID(), WeapHash)
+	Print(memory.read_int(WeapHash) == joaat("weapon_pistol"))
 end)
 
 
@@ -2887,6 +2895,39 @@ function SetPedRandomOutfit(Ped)
 			end
 		end
 	end
+end
+
+
+local LightWeapons = {
+	"weapon_appistol",
+	"weapon_pistol50",
+	"weapon_navyrevolver",
+	"weapon_stungun_mp",
+	"weapon_flaregun",
+	"weapon_heavypistol",
+	"weapon_raypistol",
+	"weapon_gadgetpistol",
+	"weapon_microsmg",
+	"weapon_machinepistol",
+	"weapon_minismg",
+	"weapon_tecpistol"
+}
+
+function SetPedVehicleWeapon(Ped)
+	for i = 1, #WeaponsForCops do
+		local WeapHash = joaat(WeaponsForCops[i])
+		if WEAPON.HAS_PED_GOT_WEAPON(Ped, WeapHash, 0) then
+			local WeapHashAddr = memory.alloc(8)
+			WEAPON.GET_CURRENT_PED_WEAPON(Ped, WeapHashAddr, true)
+			if memory.read_int(WeapHashAddr) == WeapHash then
+				return true
+			else
+				WEAPON.SET_CURRENT_PED_WEAPON(Ped, WeapHash, true)
+				WEAPON.SET_CURRENT_PED_VEHICLE_WEAPON(Ped, WeapHash)
+			end
+		end
+	end
+	return false
 end
 
 util.create_tick_handler(function()
