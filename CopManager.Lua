@@ -1392,7 +1392,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															if ShootsT[peds] == nil then
 																if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 																	TASK.TASK_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 3000, joaat("FIRING_PATTERN_FULL_AUTO"))
-																	ShootsT[peds] = 0
+																	if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_SHOOT_AT_COORD")) ~= 7 then
+																		ShootsT[peds] = 0
+																	end	
 																end
 															end
 														end
@@ -1405,11 +1407,15 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																	local VehicleWeap = memory.alloc(8)
 																	if WEAPON.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehicleWeap) then
 																		TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
-																		TasksT[peds] = 9
+																		if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) ~= 7 then
+																			TasksT[peds] = 9
+																		end
 																	else
 																		if SetPedVehicleWeapon(peds) then
 																			TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
-																			TasksT[peds] = 9
+																			if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) ~= 7 then
+																				TasksT[peds] = 9
+																			end
 																		end
 																	end
 																end
@@ -1789,7 +1795,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															if ShootsT[peds] == nil then
 																if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 																	TASK.TASK_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 3000, joaat("FIRING_PATTERN_FULL_AUTO"))
-																	ShootsT[peds] = 0
+																	if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_SHOOT_AT_COORD")) ~= 7 then
+																		ShootsT[peds] = 0
+																	end	
 																end
 															end
 														end
@@ -1802,11 +1810,15 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																	local VehicleWeap = memory.alloc(8)
 																	if WEAPON.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehicleWeap) then
 																		TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
-																		TasksT[peds] = 9
+																		if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) ~= 7 then
+																			TasksT[peds] = 9
+																		end
 																	else
 																		if SetPedVehicleWeapon(peds) then
 																			TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
-																			TasksT[peds] = 9
+																			if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) ~= 7 then
+																				TasksT[peds] = 9
+																			end
 																		end
 																	end
 																end
