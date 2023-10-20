@@ -1403,7 +1403,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															if TasksT[peds] == nil then
 																if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 																	local VehicleWeap = memory.alloc(8)
-																	if VEHICLE.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehicleWeap) then
+																	if WEAPON.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehicleWeap) then
 																		TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
 																		TasksT[peds] = 0
 																	else
@@ -1803,7 +1803,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															if TasksT[peds] == nil then
 																if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 																	local VehicleWeap = memory.alloc(8)
-																	if VEHICLE.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehicleWeap) then
+																	if WEAPON.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehicleWeap) then
 																		TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
 																		TasksT[peds] = 0
 																	else
