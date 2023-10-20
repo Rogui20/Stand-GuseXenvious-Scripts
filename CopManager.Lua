@@ -1405,7 +1405,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																	local VehicleWeap = memory.alloc(8)
 																	if WEAPON.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehicleWeap) then
 																		TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
-																		TasksT[peds] = 0
+																		TasksT[peds] = 9
 																	else
 																		if SetPedVehicleWeapon(peds) then
 																			TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
@@ -1420,9 +1420,6 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												if PED.IS_PED_SHOOTING(peds) then
 													if TasksT[peds] ~= nil then
 														TasksT[peds] = TasksT[peds] + 1
-														if IsPlayerShooting then
-															TasksT[peds] = 0
-														end
 														if TasksT[peds] > 10 then
 															if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 																TASK.CLEAR_PED_TASKS(peds)
@@ -1805,7 +1802,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																	local VehicleWeap = memory.alloc(8)
 																	if WEAPON.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehicleWeap) then
 																		TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
-																		TasksT[peds] = 0
+																		TasksT[peds] = 9
 																	else
 																		if SetPedVehicleWeapon(peds) then
 																			TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, HitCoords.x, HitCoords.y, HitCoords.z, 20.0)
@@ -1820,9 +1817,6 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												if PED.IS_PED_SHOOTING(peds) then
 													if TasksT[peds] ~= nil then
 														TasksT[peds] = TasksT[peds] + 1
-														if IsPlayerShooting then
-															TasksT[peds] = 0
-														end
 														if TasksT[peds] > 10 then
 															if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 																TASK.CLEAR_PED_TASKS(peds)
