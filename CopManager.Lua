@@ -559,6 +559,12 @@ menu.toggle(AdvancedSettingsMenu, "Only Edit Owned Cops", {}, "", function(toggl
 	OnlyEditOwnedCops = toggle
 end, OnlyEditOwnedCops)
 
+local CopAttributesSettingsMenu = menu.list(CopSettingsMenu, "Cop Attributes Settings", {}, "Like HP and whatever.")
+local EliteCops = true
+menu.toggle(CopAttributesSettingsMenu, "Set Elite Cops", {}, "More HP, no ragdoll and no critical hits.", function(toggle)
+	EliteCops = toggle
+end, EliteCops)
+
 local RandomCopComponents = false
 menu.toggle(CopSettingsMenu, "Set Cops Random Components", {}, "Outfit.", function(toggle)
 	RandomCopComponents = toggle
@@ -1564,6 +1570,13 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													SetPedCombatAbilities(peds)
 													PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
 												end
+												if EliteCops then
+													ENTITY.SET_ENTITY_MAX_HEALTH(peds, 300)
+													PED.SET_PED_MAX_HEALTH(peds, 300)
+													ENTITY.SET_ENTITY_HEALTH(peds, 300)
+													PED.SET_PED_SUFFERS_CRITICAL_HITS(peds, false)
+													PED.SET_RAGDOLL_BLOCKING_FLAGS(peds, 1)
+												end
 												if CopsShootWhereYouShoot or CopsShootWhereYouAim or UseCustomsTasksKeys then
 													PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
 													PED.SET_PED_CONFIG_FLAG(peds, 113, false)
@@ -2480,7 +2493,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																	PED.SET_PED_STRAFE_CLIPSET(peds, "move_ped_crouched_strafing")
 																	ENTITY.ATTACH_ENTITY_TO_ENTITY(peds, PlayerVeh, 0, TaskArgs.OffsetsAttach[TaskArgs.AttachedNum+1].x, TaskArgs.OffsetsAttach[TaskArgs.AttachedNum+1].y,
 																	TaskArgs.OffsetsAttach[TaskArgs.AttachedNum+1].z, TaskArgs.RotsAttach[TaskArgs.AttachedNum+1].x,
-																	TaskArgs.RotsAttach[TaskArgs.AttachedNum+1].y, TaskArgs.RotsAttach[TaskArgs.AttachedNum+1].z, false, true, false, false, 2, true, false)
+																	TaskArgs.RotsAttach[TaskArgs.AttachedNum+1].y, TaskArgs.RotsAttach[TaskArgs.AttachedNum+1].z, false, false, false, false, 2, true, false)
 																	TaskArgs.AttachedNum = TaskArgs.AttachedNum + 1
 																	OperationT[peds].TaskStatus = 100
 																end
@@ -3079,17 +3092,16 @@ menu.action(DevMenu, "Addr Get", {}, "", function(toggle)
 	Print(FormatedString)
 end)
 
-menu.toggle_loop(DevMenu, "Test Dir", {}, "", function(toggle)
-	local CamRot = CAM.GET_GAMEPLAY_CAM_ROT(2)
-	local CamCoords = CAM.GET_GAMEPLAY_CAM_COORD()
-	local Dir = v3.toDir(CamRot)
-	local DirX = Dir.x
-	local DirY = Dir.y
-	local DirZ = Dir.z
-	Dir.x = (DirX - DirY)
-	Dir.y = (DirY + DirX)
-	Dir.z = (DirZ - DirY)
-	GRAPHICS.DRAW_LINE(CamCoords.x, CamCoords.y, CamCoords.z - 1.0, CamCoords.x + Dir.x * 100, CamCoords.y + Dir.y * 100, (CamCoords.z - 1.0) + Dir.z * 100, 0, 0, 255, 255)
+menu.action(DevMenu, "Spectator", {}, "", function(toggle)
+	NETWORK.NETWORK_SET_ACTIVITY_SPECTATOR(false)
+	Print(NETWORK.NETWORK_IS_ACTIVITY_SPECTATOR())
+	NETWORK.NETWORK_SET_IN_SPECTATOR_MODE(false, PLAYER.PLAYER_PED_ID())
+	ENTITY.SET_ENTITY_VISIBLE(PLAYER.PLAYER_PED_ID(), true, false)
+	ENTITY.FREEZE_ENTITY_POSITION(PLAYER.PLAYER_PED_ID(), false)
+	ENTITY.SET_ENTITY_ALPHA(PLAYER.PLAYER_PED_ID(), 255, false)
+	if ENTITY.IS_ENTITY_DEAD(PLAYER.PLAYER_PED_ID()) then
+		NETWORK.NETWORK_RESURRECT_LOCAL_PLAYER(0.0, 0.0, 0.0, 0.0, false, false, false, 0, 0)
+	end
 end)
 
 local MissionFinisher = false
