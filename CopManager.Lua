@@ -335,7 +335,8 @@ local SelectedVehicleModels = {"nightshark"}
 local SelectedPedModels = {"mp_m_bogdangoon"}
 local ModelPresetsT = {
 	"Bogdan Army",
-	"Cops Super Cars"
+	"Cops Super Cars",
+	"Cops Armored Cars"
 }
 
 local CopSettingsMenu = menu.list(menu.my_root(), "Cop Settings", {}, "Which settings apply to cops.")
@@ -421,6 +422,9 @@ if CanSetModels then
 		end
 		if OnChange == 2 then
 			SetCopModels("police2", "s_m_y_cop_01", "fbi", "buzzard", "s_m_y_swat_01", "s_m_y_cop_01", "police2", "fbi")
+		end
+		if OnChange == 3 then
+			SetCopModels("tampa3", "s_m_y_cop_01", "speedo4", "buzzard", "s_m_y_swat_01", "s_m_y_cop_01", "tampa3", "speedo4")
 		end
 	end)
 end
@@ -842,9 +846,12 @@ local CustomTasksFunctions = {
 						if not PED.IS_PED_DEAD_OR_DYING(peds, true) then
 							if ENTITY.IS_ENTITY_ON_SCREEN(peds) then
 								if not DECORATOR.DECOR_EXIST_ON(peds, "Casino_Game_Info_Decorator") then
-									local PedCoords = ENTITY.GET_ENTITY_COORDS(peds)
-									local Distance = MISC.GET_DISTANCE_BETWEEN_COORDS(PlayerPos.x, PlayerPos.y, PlayerPos.z, PedCoords.x, PedCoords.y, PedCoords.z, true)
-									ClosestPeds[#ClosestPeds+1] = {Handle = peds, Distance = Distance}
+									local TargetRelHash = PED.GET_PED_RELATIONSHIP_GROUP_HASH(peds)
+									if PED.GET_RELATIONSHIP_BETWEEN_GROUPS(Args.RelHash, TargetRelHash) ~= 1 then
+										local PedCoords = ENTITY.GET_ENTITY_COORDS(peds)
+										local Distance = MISC.GET_DISTANCE_BETWEEN_COORDS(PlayerPos.x, PlayerPos.y, PlayerPos.z, PedCoords.x, PedCoords.y, PedCoords.z, true)
+										ClosestPeds[#ClosestPeds+1] = {Handle = peds, Distance = Distance}
+									end
 								end
 							end
 						end
@@ -1170,7 +1177,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			OffsetsAttach = nil,
 			RotsAttach = nil,
 			AttachedNum = 0,
-			MaxAttachs = 0
+			MaxAttachs = 0,
+			RelHash = 0
 		}
 		local NavsT = {}
 		while ApplyCopSettings do
@@ -1394,6 +1402,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					end
 				end
 			end
+			TaskArgs.RelHash = SelectedTeam
 			if not PED.DOES_RELATIONSHIP_GROUP_EXIST(FriendlyAll) then
 				HasSetHate = false
 			end
@@ -1537,26 +1546,10 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													end
 												end
 											end
-											if UpgradeCopCars then
-												local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
-												if Veh ~= 0 then
-													if Veh ~= PlayerVeh then
-														if SetCopPassengersIntoTurretSeat then
-															local HasSetInTurretSeat = false
-															if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) ~= peds then
-																for i = -1, 9 do
-																	if not HasSetInTurretSeat then
-																		if VEHICLE.IS_TURRET_SEAT(Veh, i) then
-																			if VEHICLE.IS_VEHICLE_SEAT_FREE(Veh, i, true) then
-																				HasSetInTurretSeat = true
-																				NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-																				PED.SET_PED_INTO_VEHICLE(peds, Veh, i)
-																			end
-																		end
-																	end
-																end
-															end
-														end
+											local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+											if Veh ~= 0 then
+												if Veh ~= PlayerVeh then
+													if UpgradeCopCars then
 														if DECORATOR.DECOR_GET_INT(Veh, "Casino_Game_Info_Decorator") ~= 31 then
 															NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Veh)
 															VEHICLE.SET_VEHICLE_WHEEL_TYPE(Veh, math.random(0, 12))
@@ -1590,6 +1583,22 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																VEHICLE.SET_VEHICLE_CUSTOM_SECONDARY_COLOUR(Veh, SRed, SGreen, SBlue)
 																VEHICLE.SET_VEHICLE_COLOURS(Veh, math.random(0, 160), math.random(0, 160))
 																DECORATOR.DECOR_SET_INT(Veh, "Casino_Game_Info_Decorator", 31)
+															end
+														end
+													end
+													if SetCopPassengersIntoTurretSeat then
+														local HasSetInTurretSeat = false
+														if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) ~= peds then
+															for i = -1, 9 do
+																if not HasSetInTurretSeat then
+																	if VEHICLE.IS_TURRET_SEAT(Veh, i) then
+																		if VEHICLE.IS_VEHICLE_SEAT_FREE(Veh, i, true) then
+																			HasSetInTurretSeat = true
+																			NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																			PED.SET_PED_INTO_VEHICLE(peds, Veh, i)
+																		end
+																	end
+																end
 															end
 														end
 													end
@@ -1801,6 +1810,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																						Multiplier = -100
 																					else
 																						local CamRot = CAM.GET_GAMEPLAY_CAM_ROT(2)
+																						CamRot.z = -CamRot.z
 																						FVect = CamRot:toDir()
 																					end
 																					local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
@@ -2694,7 +2704,8 @@ local ModelsToSet = {
 	"khanjali",
 	"buzzard",
 	"menacer",
-	"annihilator"
+	"annihilator",
+	"speedo4"
 }
 function IsArmoredVehModel(Veh)
 	local VehModel = ENTITY.GET_ENTITY_MODEL(Veh)
