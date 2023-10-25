@@ -752,7 +752,9 @@ local SelectedTaskTXT = {
 	{TXT = "Make half go to pointed area", ColourG = 255},
 	{TXT = "Closer cops exit vehicle", ColourG = 255},
 	{TXT = "Attack nearest ped in screen", ColourG = 255},
-	{TXT = "Call to stay above veh", ColourG = 255}
+	{TXT = "Call to stay above veh", ColourG = 255},
+	{TXT = "Rushed combat mode", ColourG = 255},
+	{TXT = "TP all cops to me", ColourG = 255},
 }
 
 local CustomTasksFunctions = {
@@ -927,6 +929,27 @@ local CustomTasksFunctions = {
 			SelectedTaskTXT[8].ColourG = 255
 		end
 	end,
+	function(Args, PlayerPed, TableT, HitCoords, FVect, RVect, UpVect, Vect)
+		if Args.OperationButton then
+			TableT[9] = TableT[9] + 1
+		end
+		if TableT[9] == 1 then
+			SelectedTaskTXT[9].ColourG = 20
+		else
+			SelectedTaskTXT[9].ColourG = 255
+		end
+	end,
+	function(Args, PlayerPed, TableT, HitCoords, FVect, RVect, UpVect, Vect)
+		if Args.OperationButton then
+			TableT[10] = 1
+		end
+		if TableT[10] == 1 then
+			SelectedTaskTXT[10].ColourG = 20
+			TableT[10] = 0
+		else
+			SelectedTaskTXT[10].ColourG = 255
+		end
+	end
 }
 
 local CustomTasksArgsFunctions = {
@@ -1076,6 +1099,38 @@ local CustomTasksArgsFunctions = {
 				}
 			end
 		end
+	end,
+	function(Args, OperationsTable, OperationT, peds, Veh, FVect, RVect, UpVect, Vect)
+		if OperationsTable[9] < 2 then
+			if Args.OperationButton then
+				local IsPilot = false
+				if Veh ~= 0 then
+					IsPilot = VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds
+				end
+				OperationT[peds] = {
+					Handle = peds, XOffset = 0.0, YOffset = 0,
+					X = 0.0, Y = 0.0, Z = 0.0, Heading = 0,
+					TaskStatus = 25, VehHandle = Veh, FVect = FVect, RVect = RVect, UpVect = UpVect,
+					Vect = Vect, IsPilot = IsPilot
+				}
+			end
+		end
+	end,
+	function(Args, OperationsTable, OperationT, peds, Veh, FVect, RVect, UpVect, Vect)
+		if OperationsTable[9] < 2 then
+			if Args.OperationButton then
+				local IsPilot = false
+				if Veh ~= 0 then
+					IsPilot = VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds
+				end
+				OperationT[peds] = {
+					Handle = peds, XOffset = 0.0, YOffset = 0,
+					X = 0.0, Y = 0.0, Z = 0.0, Heading = 0,
+					TaskStatus = 27, VehHandle = Veh, FVect = FVect, RVect = RVect, UpVect = UpVect,
+					Vect = Vect, IsPilot = IsPilot
+				}
+			end
+		end
 	end
 }
 
@@ -1157,10 +1212,11 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		local OperationT = {}
 		local SelectedTask = 1
 		local OperationsTable = {}
-		local NumCreatedTasks = 8
+		local NumCreatedTasks = 10
 		local PedsToPointedArea = {}
 		local PointedAreaSet = 0
 		local PointedPeds = 0
+		local OffsetBringedPeds = 0
 		for i = 1, NumCreatedTasks do
 			OperationsTable[i] = 0
 		end
@@ -2441,6 +2497,102 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 											OperationT[peds].TaskStatus = 100
 										end
 									end
+									if OperationT[peds].TaskStatus == 25 then
+										local Target = 0
+										if OperationT[peds].Target ~= nil then
+											Target = OperationT[peds].Target
+										else
+											Target = PED.GET_PED_TARGET_FROM_COMBAT_PED(peds, 0)
+										end
+										if Target ~= 0 then
+											OperationT[peds].Target = Target
+											if not ENTITY.IS_ENTITY_DEAD(Target) and not PED.IS_PED_DEAD_OR_DYING(Target) and ENTITY.DOES_ENTITY_EXIST(Target) then
+												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+													local VehHandle = OperationT[peds].VehHandle
+													if VehHandle == 0 then
+														local BonePos = PED.GET_PED_BONE_COORDS(Target, 0x322C --[[head]], 0.0, 0.0, 0.0)
+														TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_COORD(peds, Target, BonePos.x, BonePos.y, BonePos.z, 3.0, true, 2.0, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+														PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
+														OperationT[peds].TaskStatus = 26
+													end
+												end
+											else
+												OperationT[peds].Target = nil
+											end
+										end
+									end
+									if OperationT[peds].TaskStatus == 26 then
+										if OperationT[peds].Target ~= 0 then
+											if not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) and not PED.IS_PED_DEAD_OR_DYING(OperationT[peds].Target) and ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target) then
+												if PED.IS_PED_SHOOTING(peds) then
+													OperationT[peds].TaskStatus = 25
+												end
+											else
+												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+													OperationT[peds].TaskStatus = 25
+													TASK.CLEAR_PED_TASKS(peds)
+													PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+												end
+											end
+										end
+									end
+									if OperationT[peds].TaskStatus == 27 then
+										if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 30.0, 30.0, 30.0, false, true, false) then
+											if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+												local IsInVeh = PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, true)
+												local FVect = nil
+												if IsInVeh then
+													FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(PlayerPed)
+												else
+													FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+												end
+												local MultiplierToGive = 5
+												if IsInVeh then
+													MultiplierToGive = -50
+												end
+												local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+												local AdjustedX = PPos.x + FVect.x * (MultiplierToGive + OffsetBringedPeds)
+												local AdjustedY = PPos.y + FVect.y * (MultiplierToGive + OffsetBringedPeds)
+												local AdjustedZ = PPos.z + FVect.z * (MultiplierToGive + OffsetBringedPeds)
+												local DidHit = memory.alloc(1)
+												local EndCoords = v3.new()
+												local Normal = v3.new()
+												local HitEntity = memory.alloc_int()
+												
+												local Handle = SHAPETEST.START_EXPENSIVE_SYNCHRONOUS_SHAPE_TEST_LOS_PROBE(
+													PPos.x, PPos.y, PPos.z,
+													AdjustedX, AdjustedY, AdjustedZ,
+													-1,
+													PlayerPed, 7
+												)
+												SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
+												if memory.read_byte(DidHit) ~= 0 then
+													if not MISC.IS_POSITION_OCCUPIED(EndCoords.x, EndCoords.y, EndCoords.z - 1.0, 1.0, false, true, true, false, false, PlayerPed, true) then
+														ENTITY.SET_ENTITY_COORDS(peds, EndCoords.x, EndCoords.y, EndCoords.z - 1.0)
+														OperationT[peds].TaskStatus = 100
+													else
+														OffsetBringedPeds = OffsetBringedPeds + 1
+													end
+												else
+													if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ - 1.0, 1.0, false, true, true, false, false, PlayerPed, true) then
+														ENTITY.SET_ENTITY_COORDS(peds, AdjustedX, AdjustedY, AdjustedZ - 1.0)
+														OperationT[peds].TaskStatus = 100
+													else
+														OffsetBringedPeds = OffsetBringedPeds + 1
+													end
+												end
+												if OperationT[peds].TPAttempts == nil then
+													OperationT[peds].TPAttempts = 0
+												end
+												OperationT[peds].TPAttempts = OperationT[peds].TPAttempts + 1
+												if OperationT[peds].TPAttempts > 100 then
+													OperationT[peds].TaskStatus = 100
+												end
+											end
+										else
+											OperationT[peds].TaskStatus = 100
+										end
+									end
 									if OperationT[peds].TaskStatus == 100 then
 										OperationT[peds] = nil
 									end
@@ -2469,6 +2621,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			TaskArgs.TargetPed = 0
 			TaskArgs.OffsetsAttach = nil
 			TaskArgs.RotsAttach = nil
+			OffsetBringedPeds = 0
 			if ApplyCopSettings then
 				if AutomaticGenCops then
 					if MissionCopCount >= MaxCopsToEdit then
@@ -2937,6 +3090,93 @@ menu.toggle_loop(DevMenu, "Test Dir", {}, "", function(toggle)
 	Dir.y = (DirY + DirX)
 	Dir.z = (DirZ - DirY)
 	GRAPHICS.DRAW_LINE(CamCoords.x, CamCoords.y, CamCoords.z - 1.0, CamCoords.x + Dir.x * 100, CamCoords.y + Dir.y * 100, (CamCoords.z - 1.0) + Dir.z * 100, 0, 0, 255, 255)
+end)
+
+local MissionFinisher = false
+menu.toggle(MiscMenu, "Mission Finisher", {}, "", function(toggle)
+	MissionFinisher = toggle
+	if MissionFinisher then
+		local nrl_Addrs = {}
+		for i = 0, 3 do
+			local Addr = memory.script_global(SplitGlobals("Global_4718592.f_1816[iVar0 /*24279*/].f_60") + 24279 * i)
+			nrl_Addrs[i+1] = Addr
+		end
+		local goto_sz_Addrs = {}
+		local drpr_addrs = {}
+		local jtop_Addrs = {}
+		for k = 0, 3 do
+			jtop_Addrs[k+1] = {}
+			jtop_Addrs[k+1].TeamAddrs = {}
+			for i = 0, 19 do
+				local Addr = memory.script_global(SplitGlobals("Global_4980736.f_5[bVar0 /*295*/].f_126[iVar1]") + ((k) + (295 * i)))
+				jtop_Addrs[k+1].TeamAddrs[#jtop_Addrs[k+1].TeamAddrs+1] = Addr
+				if k == 0 then
+					local Addr2 = memory.script_global(SplitGlobals("Global_4980736.f_5[bVar0 /*295*/].f_14[0]") + 295 * i)
+					goto_sz_Addrs[#goto_sz_Addrs+1] = Addr2
+				end
+			end
+			for i = 0, 31 do
+				local Addr = memory.script_global(SplitGlobals("Global_4980736.f_6204[bVar0 /*546*/].f_195[iVar2]") + ((k) + (546 * i)))
+				jtop_Addrs[k+1].TeamAddrs[#jtop_Addrs[k+1].TeamAddrs+1] = Addr
+			end
+			for i = 0, 31 do
+				local Addr = memory.script_global(SplitGlobals("Global_4980736.f_91874[bVar0 /*529*/].f_211[iVar1]") + ((k) + (529 * i)))
+				jtop_Addrs[k+1].TeamAddrs[#jtop_Addrs[k+1].TeamAddrs+1] = Addr
+			end
+			for i = 0, 79 do
+				local Addr = memory.script_global(SplitGlobals("Global_4980736.f_110349[bVar3 /*1098*/].f_636[iVar2]") + ((k) + (1098 * i)))
+				jtop_Addrs[k+1].TeamAddrs[#jtop_Addrs[k+1].TeamAddrs+1] = Addr
+			end
+			for i = 0, 16 do
+				local Addr = memory.script_global(SplitGlobals("Global_4718592.f_1816[bVar0 /*24279*/].f_6956[bVar1]") + ((24279 * k) + (i)))
+				drpr_addrs[#drpr_addrs+1] = Addr
+			end
+		end
+		local HasSetValues = false
+		while MissionFinisher do
+			if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller")) > 0
+			or SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller_2020")) > 0 then
+				util.spoof_script("fm_mission_controller", function()
+					if not NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+						NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+					end
+					if NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+						NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
+					end
+				end)
+				util.spoof_script("fm_mission_controller_2020", function()
+					if not NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+						NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+					end
+					if NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+						NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
+					end
+				end)
+				if not HasSetValues then
+					local nrl_Values = {}
+					for i = 1, 4 do
+						local nrl_Value = memory.read_int(nrl_Addrs[i])
+						if nrl_Value > 0 then
+							nrl_Value = nrl_Value - 1
+						end
+						for k = 1, #jtop_Addrs[i].TeamAddrs do
+							memory.write_int(jtop_Addrs[i].TeamAddrs[k], nrl_Value)
+						end
+					end
+					for i = 1, 20 do
+						memory.write_float(goto_sz_Addrs[i], 30000.0)
+					end
+					for i = 1, 17 do
+						memory.write_float(drpr_addrs[i], 30000.0)
+					end
+					HasSetValues = true
+				end
+			else
+				HasSetValues = false
+			end
+			Wait()
+		end
+	end
 end)
 
 local CrouchAim = false
