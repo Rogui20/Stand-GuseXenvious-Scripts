@@ -2577,16 +2577,14 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 											if not ENTITY.IS_ENTITY_DEAD(Target) and not PED.IS_PED_DEAD_OR_DYING(Target) and ENTITY.DOES_ENTITY_EXIST(Target) then
 												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 													local VehHandle = OperationT[peds].VehHandle
-													if VehHandle == 0 then
+													if not PED.IS_PED_IN_ANY_VEHICLE(peds, false) then
 														local BonePos = PED.GET_PED_BONE_COORDS(Target, 0x322C --[[head]], 0.0, 0.0, 0.0)
 														TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_COORD(peds, Target, BonePos.x, BonePos.y, BonePos.z, 3.0, true, 2.0, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 														PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
 														OperationT[peds].TaskStatus = 26
 													else
-														if OperationT[peds].IsPilot then
-															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
-																TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
-															end
+														if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
+															TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
 														end
 													end
 												end
@@ -2684,7 +2682,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 											if not ENTITY.IS_ENTITY_DEAD(Target) and not PED.IS_PED_DEAD_OR_DYING(Target) and ENTITY.DOES_ENTITY_EXIST(Target) then
 												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 													local VehHandle = OperationT[peds].VehHandle
-													if VehHandle == 0 then
+													if not PED.IS_PED_IN_ANY_VEHICLE(peds, false) then
 														if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, Target, 17) then
 															local BonePos = PED.GET_PED_BONE_COORDS(Target, 0x322C --[[head]], 0.0, 0.0, 0.0)
 															TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_COORD(peds, Target, BonePos.x, BonePos.y, BonePos.z, 3.0, true, 2.0, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
@@ -2696,10 +2694,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															OperationT[peds].TaskStatus = 30
 														end
 													else
-														if OperationT[peds].IsPilot then
-															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
-																TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
-															end
+														if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
+															TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
 														end
 													end
 												end
