@@ -609,7 +609,6 @@ TaskStatusFunctionsT[28+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 			Target = PED.GET_PED_TARGET_FROM_COMBAT_PED(peds, 0)
 		end
 		if Target ~= 0 then
-			OperationT[peds].Target = Target
 			if not ENTITY.IS_ENTITY_DEAD(Target) and not PED.IS_PED_DEAD_OR_DYING(Target) and ENTITY.DOES_ENTITY_EXIST(Target) then
 				if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 					local VehHandle = OperationT[peds].VehHandle
@@ -644,6 +643,7 @@ TaskStatusFunctionsT[28+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 							TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
 						end
 					end
+					OperationT[peds].Target = Target
 				end
 			else
 				if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
@@ -693,6 +693,7 @@ TaskStatusFunctionsT[30+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 					if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 						OperationT[peds].TaskStatus = 28
 						PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+						TASK.CLEAR_PED_TASKS(peds)
 					end
 				end
 			else
@@ -727,6 +728,7 @@ TaskStatusFunctionsT[31+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 					if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 						OperationT[peds].TaskStatus = 28
 						PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+						TASK.CLEAR_PED_TASKS(peds)
 					end
 				end
 			else
@@ -3460,6 +3462,16 @@ menu.toggle_loop(DevMenu, "Normal Surface", {}, "", function(toggle)
 		local NewAdjusted = {x = EndCoords.x + SurfaceNormal.x * 100, y = EndCoords.y + SurfaceNormal.y * 100, z = EndCoords.z + SurfaceNormal.z * 100}
 		GRAPHICS.DRAW_LINE(EndCoords.x, EndCoords.y, EndCoords.z, NewAdjusted.x, NewAdjusted.y, NewAdjusted.z, 0, 0, 255, 255)
 	end
+end)
+
+menu.action(DevMenu, "B Battle2 Args", {}, "", function(Toggle)
+    memory.write_int(memory.script_global(SplitGlobals("Global_2756336.f_183")), 1)
+    memory.write_int(memory.script_global(SplitGlobals("Global_2756336.f_184")), 2)
+end)
+
+menu.action(DevMenu, "B Battle2 Args Solo", {}, "", function(Toggle)
+    memory.write_int(memory.script_global(SplitGlobals("Global_2756336.f_183")), -1)
+    memory.write_int(memory.script_global(SplitGlobals("Global_2756336.f_184")), 2)
 end)
 
 local MissionFinisher = false
