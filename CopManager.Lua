@@ -18,6 +18,7 @@ function LoadJSONFile(Path)
     end
     return nil
 end
+local CopsAimAtHead = true
 
 local TaskStatusFunctionsT = {}
 	
@@ -464,7 +465,7 @@ TaskStatusFunctionsT[24+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 		end
 	end
 end
-local MinRadius = 1.0
+local MinRadius = 0.5
 TaskStatusFunctionsT[25+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	if OperationT[peds].TaskStatus == 25 then
 		local Target = 0
@@ -620,7 +621,7 @@ TaskStatusFunctionsT[28+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 								PED.SET_PED_RESET_FLAG(Target, 108, true)
 							end
 							if not ENTITY.IS_ENTITY_AT_ENTITY(peds, Target, MinRadius, MinRadius, MinRadius, false, true, false) then
-								TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 0.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+								TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 0.15, 1.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 							else
 								if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
 									PED.SET_PED_RESET_FLAG(Target, 108, true)
@@ -679,7 +680,14 @@ TaskStatusFunctionsT[29+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 end
 TaskStatusFunctionsT[30+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	if OperationT[peds].TaskStatus == 30 then
-		if OperationT[peds].Target ~= 0 then
+		if OperationT[peds].TaskAttempts == nil then
+			OperationT[peds].TaskAttempts = 0
+		else
+			if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_GO_TO_ENTITY")) == 7 then
+				OperationT[peds].TaskAttempts = OperationT[peds].TaskAttempts + 1
+			end
+		end
+		if OperationT[peds].Target ~= 0 and OperationT[peds].TaskAttempts < 10 then
 			if not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) and not PED.IS_PED_DEAD_OR_DYING(OperationT[peds].Target) and ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target) then
 				if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) then
 					if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
@@ -693,7 +701,16 @@ TaskStatusFunctionsT[30+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 					PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
 					TASK.CLEAR_PED_TASKS(peds)
 					OperationT[peds].Target = nil
+					OperationT[peds].TaskAttempts = nil
 				end
+			end
+		else
+			if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+				OperationT[peds].TaskStatus = 28
+				PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+				TASK.CLEAR_PED_TASKS(peds)
+				OperationT[peds].Target = nil
+				OperationT[peds].TaskAttempts = nil
 			end
 		end
 	end
@@ -1421,7 +1438,6 @@ local CopsRushToNearestTarget = true
 menu.toggle(AllyCopSettingsMenu, "Cops Rush To Nearest Enemy", {}, "Works with custom tasks keys.", function(toggle)
 	CopsRushToNearestTarget = toggle
 end, CopsRushToNearestTarget)
-local CopsAimAtHead = true
 menu.toggle(AllyCopSettingsMenu, "Set Cops Aim At Head", {}, "One hit kill.", function(toggle)
 	CopsAimAtHead = toggle
 end, CopsAimAtHead)
@@ -2237,7 +2253,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					if peds ~= PlayerPed then
 						if not PED.IS_PED_A_PLAYER(peds) then
 							if SelectedTask == 9 or SelectedTask == 11 then
-								if not ENTITY.IS_ENTITY_DEAD(peds) then
+								if not ENTITY.IS_ENTITY_DEAD(peds) and not PED.IS_PED_DEAD_OR_DYING(peds) then
 									local RelType = PED.GET_RELATIONSHIP_BETWEEN_PEDS(peds, PlayerPed)
 									local CombatTarget = PED.GET_PED_TARGET_FROM_COMBAT_PED(peds, 0)
 									if RelType == 5 or CombatTarget == PlayerPed then
