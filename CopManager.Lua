@@ -1247,7 +1247,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		local TasksT = {}
 		local ShootsT = {}
 		local OperationT = {}
-		local SelectedTask = 1
+		local SelectedTask = 2
 		local OperationsTable = {}
 		local NumCreatedTasks = 11
 		local PedsToPointedArea = {}
@@ -1530,9 +1530,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 										local RelType = PED.GET_RELATIONSHIP_BETWEEN_PEDS(peds, PlayerPed)
 										if RelType == 5 then
 											if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 200.0, 200.0, 3000.0, false, true, false) then
-												if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, PlayerPed, 17) then
+												--if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, PlayerPed, 17) then
 													FoundHostile = peds
-												end
+												--end
 											end
 										end
 									end
