@@ -2667,10 +2667,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												if CopsAimAtHead then
 													PED.SET_PED_RESET_FLAG(OperationT[peds].Target, 108, true)
 												end
-												--if PED.IS_PED_SHOOTING(peds) then
-												if not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) or 
-												ENTITY.IS_ENTITY_AT_ENTITY(peds, OperationT[peds].Target, 2.5, 2.5, 2.5, false, true, false)
-												or PED.IS_PED_SHOOTING(peds) then
+												if PED.IS_PED_SHOOTING(peds) then
+												--if not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) or 
+												--ENTITY.IS_ENTITY_AT_ENTITY(peds, OperationT[peds].Target, 2.5, 2.5, 2.5, false, true, false) then
 													OperationT[peds].TaskStatus = 25
 												end
 											else
