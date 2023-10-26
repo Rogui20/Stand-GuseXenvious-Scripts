@@ -1292,6 +1292,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					end
 				end
 			end
+			local FoundHostiles = {}
 			TaskArgs.HitCoords = nil
 			TaskArgs.HasHit = false
 			local FVect, RVect, UpVect, Vect = v3.new(), v3.new(), v3.new(), v3.new()
@@ -1509,6 +1510,27 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 				if DECORATOR.DECOR_GET_INT(peds, "Casino_Game_Info_Decorator") == 31 then
 					MissionCopCount = MissionCopCount + 1
 				end
+				if CopsRushToNearestTarget then
+					if peds ~= PlayerPed then
+						if not PED.IS_PED_A_PLAYER(peds) then
+							if SelectedTask == 9 or SelectedTask == 11 then
+								if FoundHostile == 0 then
+									if not ENTITY.IS_ENTITY_DEAD(peds) then
+										local RelType = PED.GET_RELATIONSHIP_BETWEEN_PEDS(peds, PlayerPed)
+										local CombatTarget = PED.GET_PED_TARGET_FROM_COMBAT_PED(peds, 0)
+										if RelType == 5 or CombatTarget == PlayerPed then
+											if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 200.0, 200.0, 3000.0, false, true, false) then
+												--if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, PlayerPed, 17) then
+													FoundHostiles[#FoundHostiles+1] = peds
+												--end
+											end
+										end
+									end
+								end
+							end
+						end
+					end
+				end
 			end
 			if RenderCopCount then
 				directx.draw_text(0.7, 0.7, "Cops "..MissionCopCount, ALIGN_CENTRE, 1.0, {r = 0, g = 255 , b = 255, a = 200}, false)
@@ -1528,26 +1550,10 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 							end
 						end
 						if CopsRushToNearestTarget then
-							if SelectedTask == 9 or SelectedTask == 11 then
-								if FoundHostile == 0 then
-									if not ENTITY.IS_ENTITY_DEAD(peds) then
-										local RelType = PED.GET_RELATIONSHIP_BETWEEN_PEDS(peds, PlayerPed)
-										local CombatTarget = PED.GET_PED_TARGET_FROM_COMBAT_PED(peds, 0)
-										if RelType == 5 or CombatTarget == PlayerPed then
-											if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 200.0, 200.0, 3000.0, false, true, false) then
-												--if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, PlayerPed, 17) then
-													FoundHostile = peds
-												--end
-											end
-										end
-									end
-								end
-								if FoundHostile ~= 0 then
-									if OperationT[peds] ~= nil then
-										if OperationT[peds].Target == nil then
-											OperationT[peds].Target = FoundHostile
-											FoundHostile = 0
-										end
+							if FoundHostile ~= 0 then
+								if OperationT[peds] ~= nil then
+									if OperationT[peds].Target == nil then
+										OperationT[peds].Target = FoundHostiles[math.random(#FoundHostiles)]
 									end
 								end
 							end
@@ -2588,7 +2594,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 														if CopsAimAtHead then
 															PED.SET_PED_RESET_FLAG(Target, 108, true)
 														end
-														TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 0.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+														TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 5.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 														--TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_COORD(peds, Target, BonePos.x, BonePos.y, BonePos.z, 3.0, true, 2.0, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 														PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
 														OperationT[peds].TaskStatus = 26
@@ -2703,12 +2709,12 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															if CopsAimAtHead then
 																PED.SET_PED_RESET_FLAG(Target, 108, true)
 															end
-															TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 0.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+															TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 5.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 															PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
 															--OperationT[peds].TaskStatus = 29
 															OperationT[peds].TaskStatus = 31
 														else
-															TASK.TASK_GO_TO_ENTITY(peds, Target, -1, 1.0, 3.0, 2.0, 0)
+															TASK.TASK_GO_TO_ENTITY(peds, Target, -1, 4.0, 3.0, 2.0, 0)
 															PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
 															OperationT[peds].TaskStatus = 30
 														end
