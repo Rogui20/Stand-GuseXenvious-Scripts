@@ -2939,7 +2939,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 							end
 						end
 						if TaskArgs.ShootsT[peds] ~= nil then
-							TaskArgs.ShootsT[peds] = ShootsT[peds] + 1
+							TaskArgs.ShootsT[peds] = TaskArgs.ShootsT[peds] + 1
 							if PED.IS_PED_SHOOTING(peds) or TaskArgs.ShootsT[peds] > 100 then
 								TaskArgs.ShootsT[peds] = nil
 							end
