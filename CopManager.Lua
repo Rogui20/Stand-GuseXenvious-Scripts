@@ -1514,16 +1514,14 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					if peds ~= PlayerPed then
 						if not PED.IS_PED_A_PLAYER(peds) then
 							if SelectedTask == 9 or SelectedTask == 11 then
-								if FoundHostile == 0 then
-									if not ENTITY.IS_ENTITY_DEAD(peds) then
-										local RelType = PED.GET_RELATIONSHIP_BETWEEN_PEDS(peds, PlayerPed)
-										local CombatTarget = PED.GET_PED_TARGET_FROM_COMBAT_PED(peds, 0)
-										if RelType == 5 or CombatTarget == PlayerPed then
-											if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 200.0, 200.0, 3000.0, false, true, false) then
-												--if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, PlayerPed, 17) then
-													FoundHostiles[#FoundHostiles+1] = peds
-												--end
-											end
+								if not ENTITY.IS_ENTITY_DEAD(peds) then
+									local RelType = PED.GET_RELATIONSHIP_BETWEEN_PEDS(peds, PlayerPed)
+									local CombatTarget = PED.GET_PED_TARGET_FROM_COMBAT_PED(peds, 0)
+									if RelType == 5 or CombatTarget == PlayerPed then
+										if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 200.0, 200.0, 3000.0, false, true, false) then
+											--if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, PlayerPed, 17) then
+												FoundHostiles[#FoundHostiles+1] = peds
+											--end
 										end
 									end
 								end
@@ -1550,7 +1548,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 							end
 						end
 						if CopsRushToNearestTarget then
-							if FoundHostile ~= 0 then
+							if #FoundHostiles > 0 then
 								if OperationT[peds] ~= nil then
 									if OperationT[peds].Target == nil then
 										OperationT[peds].Target = FoundHostiles[math.random(#FoundHostiles)]
