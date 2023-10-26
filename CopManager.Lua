@@ -2623,12 +2623,13 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 													local VehHandle = OperationT[peds].VehHandle
 													if not PED.IS_PED_IN_ANY_VEHICLE(peds, false) then
-														--local BonePos = PED.GET_PED_BONE_COORDS(Target, 0x322C --[[head]], 0.0, 0.0, 0.0)
+														local BonePos = PED.GET_PED_BONE_COORDS(Target, 0x322C --[[head]], 0.0, 0.0, 0.0)
 														if CopsAimAtHead then
 															PED.SET_PED_RESET_FLAG(Target, 108, true)
 														end
-														if not ENTITY.IS_ENTITY_AT_ENTITY(peds, Target, 1.5, 1.5, 1.5, false, true, false) then
-															TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 5.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+														if not ENTITY.IS_ENTITY_AT_ENTITY(peds, Target, 2.5, 2.5, 2.5, false, true, false) then
+															--TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 5.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+															TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_COORD(peds, Target, BonePos.x, BonePos.y, BonePos.z, 3.0, true, 2.0, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 														else
 															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
 																TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
@@ -2647,13 +2648,17 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													end
 												end
 											else
-												OperationT[peds].Target = nil
-												TASK.CLEAR_PED_TASKS(peds)
-												PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+													OperationT[peds].Target = nil
+													PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+													TASK.CLEAR_PED_TASKS(peds)
+												end
 											end
 										else
-											OperationT[peds].Target = nil
-											PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+											if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+												OperationT[peds].Target = nil
+												PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+											end
 										end
 									end
 									if OperationT[peds].TaskStatus == 26 then
@@ -2664,7 +2669,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												end
 												--if PED.IS_PED_SHOOTING(peds) then
 												if not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) or 
-												ENTITY.IS_ENTITY_AT_ENTITY(peds, OperationT[peds].Target, 1.5, 1.5, 1.5, false, true, false) then
+												ENTITY.IS_ENTITY_AT_ENTITY(peds, OperationT[peds].Target, 2.5, 2.5, 2.5, false, true, false)
+												or PED.IS_PED_SHOOTING(peds) then
 													OperationT[peds].TaskStatus = 25
 												end
 											else
@@ -2752,7 +2758,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															if CopsAimAtHead then
 																PED.SET_PED_RESET_FLAG(Target, 108, true)
 															end
-															if not ENTITY.IS_ENTITY_AT_ENTITY(peds, Target, 1.5, 1.5, 1.5, false, true, false) then
+															if not ENTITY.IS_ENTITY_AT_ENTITY(peds, Target, 2.5, 2.5, 2.5, false, true, false) then
 																TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 5.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 															else
 																if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
@@ -2780,12 +2786,15 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 											else
 												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 													OperationT[peds].Target = nil
-													TASK.CLEAR_PED_TASKS(peds)
 													PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+													TASK.CLEAR_PED_TASKS(peds)
 												end
 											end
 										else
-											OperationT[peds].Target = nil
+											if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+												OperationT[peds].Target = nil
+												PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+											end
 										end
 									end
 									if OperationT[peds].TaskStatus == 29 then
@@ -2797,8 +2806,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 											else
 												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 													OperationT[peds].TaskStatus = 28
-													TASK.CLEAR_PED_TASKS(peds)
 													PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+													TASK.CLEAR_PED_TASKS(peds)
 													OperationT[peds].Target = nil
 												end
 											end
@@ -2816,8 +2825,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 											else
 												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 													OperationT[peds].TaskStatus = 28
-													TASK.CLEAR_PED_TASKS(peds)
 													PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+													TASK.CLEAR_PED_TASKS(peds)
 													OperationT[peds].Target = nil
 												end
 											end
@@ -2830,7 +2839,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													PED.SET_PED_RESET_FLAG(OperationT[peds].Target, 108, true)
 												end
 												if not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) or
-												ENTITY.IS_ENTITY_AT_ENTITY(peds, OperationT[peds].Target, 1.5, 1.5, 1.5, false, true, false) then
+												ENTITY.IS_ENTITY_AT_ENTITY(peds, OperationT[peds].Target, 2.5, 2.5, 2.5, false, true, false) then
 													if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 														OperationT[peds].TaskStatus = 28
 														PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
@@ -2839,8 +2848,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 											else
 												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 													OperationT[peds].TaskStatus = 28
-													TASK.CLEAR_PED_TASKS(peds)
 													PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+													TASK.CLEAR_PED_TASKS(peds)
 													OperationT[peds].Target = nil
 												end
 											end
