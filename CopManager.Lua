@@ -680,6 +680,10 @@ local RemoveCopsFromVeh = false
 menu.toggle(AllyCopSettingsMenu, "Remove Cops From Vehicle", {}, "", function(toggle)
 	RemoveCopsFromVeh = toggle
 end, RemoveCopsFromVeh)
+local TPIfImInAInterior = false
+menu.toggle(AllyCopSettingsMenu, "TP Cops To Me If Interior", {}, "", function(toggle)
+	TPIfImInAInterior = toggle
+end, TPIfImInAInterior)
 
 local PutCopsIntoPlayerVeh = false
 menu.toggle(AllyCopSettingsMenu, "Put Cops Into Your Vehicle", {}, "", function(toggle)
@@ -1242,6 +1246,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 	--local FriendlyAll = AiTeam1Hash
 	local DeadPeds = {}
 	local BlipColorToGive = 1
+	local EditedDamageEnts = {}
 	if ApplyCopSettings then
 		PlayerID = PLAYER.PLAYER_ID()
 		local RelHashBackup = memory.read_int(memory.script_global(RelHashBackupAddr))
@@ -1506,6 +1511,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 				HasSetHate = false
 			end
 			local PedsT = entities.get_all_peds_as_handles()
+			local InteriorPlayerPed = INTERIOR.GET_INTERIOR_FROM_ENTITY(PlayerPed)
 			for index, peds in pairs(PedsT) do
 				if DECORATOR.DECOR_GET_INT(peds, "Casino_Game_Info_Decorator") == 31 then
 					MissionCopCount = MissionCopCount + 1
@@ -1535,16 +1541,30 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			end
 			for index, peds in pairs(PedsT) do
 				if peds ~= PlayerPed then
+					if EditedDamageEnts[peds] ~= nil then
+						if ENTITY.IS_ENTITY_DEAD(peds) or PED.IS_PED_A_PLAYER(peds) or PED.IS_PED_DEAD_OR_DYING(peds) then
+							EditedDamageEnts[peds] = nil
+						end
+					end
 					if not PED.IS_PED_A_PLAYER(peds) then
 						local EntScript = ENTITY.GET_ENTITY_SCRIPT(peds, 0)
-						if EntScript == "GB_HEADHUNTER" or EntScript == "GB_BIKER_RESCUE_CONTACT" then
-							ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(peds, false)
-							local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
-							if Veh ~= 0 then
-								ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(Veh, false)
-							end
-							if RelHashBackup ~= 0 then
-								ENTITY.SET_ENTITY_CAN_BE_DAMAGED_BY_RELATIONSHIP_GROUP(peds, true, RelHashBackup)
+						if EntScript == "GB_HEADHUNTER" or EntScript == "GB_BIKER_RESCUE_CONTACT" or "FM_Mission_Controller"
+						or "FM_Mission_Controller_2020" then
+							if EditedDamageEnts[peds] == nil then
+								if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+									ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(peds, false)
+									local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+									if Veh ~= 0 then
+										ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(Veh, false)
+										ENTITY.SET_ENTITY_CAN_ONLY_BE_DAMAGED_BY_SCRIPT_PARTICIPANTS(Veh, false)
+									end
+									if RelHashBackup ~= 0 then
+										ENTITY.SET_ENTITY_CAN_BE_DAMAGED_BY_RELATIONSHIP_GROUP(peds, true, RelHashBackup)
+									end
+									ENTITY.SET_ENTITY_CAN_BE_DAMAGED_BY_RELATIONSHIP_GROUP(peds, true, SelectedTeam)
+									ENTITY.SET_ENTITY_CAN_ONLY_BE_DAMAGED_BY_SCRIPT_PARTICIPANTS(peds, false)
+									EditedDamageEnts[peds] = peds
+								end
 							end
 						end
 						if CopsRushToNearestTarget then
@@ -1933,11 +1953,17 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 														if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 															if not RemoveCopsFromVeh then
 																if Veh ~= 0 then
+																	local CheckRadius = 700.0
+																	if TPIfImInAInterior then
+																		if InteriorPlayerPed ~= 0 then
+																			CheckRadius = 100.0
+																		end
+																	end
 																	if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Veh) then
 																		if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
 																			local VehClass = VEHICLE.GET_VEHICLE_CLASS(Veh)
 																			if VehClass ~= 15 and VehClass ~= 16 then
-																				if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, 700.0, 700.0, 700.0, false, true, false) then
+																				if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, CheckRadius, CheckRadius, CheckRadius, false, true, false) then
 																					local FVect = nil
 																					local Multiplier = 100
 																					if IsInVeh then
@@ -1964,13 +1990,21 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																						PlayerPed, 7
 																					)
 																					SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
+																					local EntTarget = Veh
+																					local CheckSz = 2.0
+																					if TPIfImInAInterior then
+																						if InteriorPlayerPed ~= 0 then
+																							EntTarget = peds
+																							CheckSz = 0.5
+																						end
+																					end
 																					if memory.read_byte(DidHit) ~= 0 then
-																						if not MISC.IS_POSITION_OCCUPIED(EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0, 2.0, false, true, true, false, false, 0, true) then
-																							ENTITY.SET_ENTITY_COORDS(Veh, EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0)
+																						if not MISC.IS_POSITION_OCCUPIED(EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0, CheckSz, false, true, true, false, false, 0, true) then
+																							ENTITY.SET_ENTITY_COORDS(EntTarget, EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0)
 																						end
 																					else
-																						if not MISC.IS_POSITION_OCCUPIED(AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0, 2.0, false, true, true, false, false, 0, true) then
-																							ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0)
+																						if not MISC.IS_POSITION_OCCUPIED(AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0, CheckSz, false, true, true, false, false, 0, true) then
+																							ENTITY.SET_ENTITY_COORDS(EntTarget, AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0)
 																						end
 																					end
 																				end
