@@ -464,6 +464,7 @@ TaskStatusFunctionsT[24+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 		end
 	end
 end
+local MinRadius = 1.0
 TaskStatusFunctionsT[25+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	if OperationT[peds].TaskStatus == 25 then
 		local Target = 0
@@ -482,7 +483,7 @@ TaskStatusFunctionsT[25+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 						if CopsAimAtHead then
 							PED.SET_PED_RESET_FLAG(Target, 108, true)
 						end
-						if not ENTITY.IS_ENTITY_AT_ENTITY(peds, Target, 2.5, 2.5, 2.5, false, true, false) then
+						if not ENTITY.IS_ENTITY_AT_ENTITY(peds, Target, MinRadius, MinRadius, MinRadius, false, true, false) then
 							--TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 5.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 							TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_COORD(peds, Target, BonePos.x, BonePos.y, BonePos.z, 3.0, true, 2.0, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 						else
@@ -618,8 +619,8 @@ TaskStatusFunctionsT[28+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 							if CopsAimAtHead then
 								PED.SET_PED_RESET_FLAG(Target, 108, true)
 							end
-							if not ENTITY.IS_ENTITY_AT_ENTITY(peds, Target, 2.5, 2.5, 2.5, false, true, false) then
-								TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 5.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+							if not ENTITY.IS_ENTITY_AT_ENTITY(peds, Target, MinRadius, MinRadius, MinRadius, false, true, false) then
+								TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 0.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 							else
 								if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
 									PED.SET_PED_RESET_FLAG(Target, 108, true)
@@ -705,7 +706,7 @@ TaskStatusFunctionsT[31+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 					PED.SET_PED_RESET_FLAG(OperationT[peds].Target, 108, true)
 				end
 				if not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) or
-				ENTITY.IS_ENTITY_AT_ENTITY(peds, OperationT[peds].Target, 2.5, 2.5, 2.5, false, true, false) then
+				ENTITY.IS_ENTITY_AT_ENTITY(peds, OperationT[peds].Target, MinRadius, MinRadius, MinRadius, false, true, false) then
 					if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 						OperationT[peds].TaskStatus = 28
 						PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
