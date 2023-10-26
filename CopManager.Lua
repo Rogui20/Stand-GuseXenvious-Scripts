@@ -2592,12 +2592,21 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 														if CopsAimAtHead then
 															PED.SET_PED_RESET_FLAG(Target, 108, true)
 														end
-														TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 5.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+														if not ENTITY.IS_ENTITY_AT_ENTITY(peds, Target, 1.5, 1.5, 1.5, false, true, false) then
+															TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 5.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+														else
+															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
+																TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
+															end
+														end
 														--TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_COORD(peds, Target, BonePos.x, BonePos.y, BonePos.z, 3.0, true, 2.0, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 														PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
 														OperationT[peds].TaskStatus = 26
 													else
 														if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
+															if CopsAimAtHead then
+																PED.SET_PED_RESET_FLAG(Target, 108, true)
+															end
 															TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
 														end
 													end
@@ -2619,7 +2628,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													PED.SET_PED_RESET_FLAG(OperationT[peds].Target, 108, true)
 												end
 												--if PED.IS_PED_SHOOTING(peds) then
-												if not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) then
+												if not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) or 
+												ENTITY.IS_ENTITY_AT_ENTITY(peds, OperationT[peds].Target, 1.5, 1.5, 1.5, false, true, false) then
 													OperationT[peds].TaskStatus = 25
 												end
 											else
@@ -2707,18 +2717,27 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															if CopsAimAtHead then
 																PED.SET_PED_RESET_FLAG(Target, 108, true)
 															end
-															TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 5.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+															if not ENTITY.IS_ENTITY_AT_ENTITY(peds, Target, 1.5, 1.5, 1.5, false, true, false) then
+																TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 5.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+															else
+																if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
+																	PED.SET_PED_RESET_FLAG(Target, 108, true)
+																	TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
+																end
+															end
 															PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
 															--OperationT[peds].TaskStatus = 29
 															OperationT[peds].TaskStatus = 31
 														else
-															TASK.TASK_GO_TO_ENTITY(peds, Target, -1, 4.0, 3.0, 2.0, 0)
+															TASK.TASK_GO_TO_ENTITY(peds, Target, -1, 1.0, 3.0, 2.0, 0)
 															PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
 															OperationT[peds].TaskStatus = 30
 														end
 													else
 														if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
-															PED.SET_PED_RESET_FLAG(Target, 108, true)
+															if CopsAimAtHead then
+																PED.SET_PED_RESET_FLAG(Target, 108, true)
+															end
 															TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
 														end
 													end
@@ -2775,7 +2794,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												if CopsAimAtHead then
 													PED.SET_PED_RESET_FLAG(OperationT[peds].Target, 108, true)
 												end
-												if not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) then
+												if not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) or
+												ENTITY.IS_ENTITY_AT_ENTITY(peds, OperationT[peds].Target, 1.5, 1.5, 1.5, false, true, false) then
 													if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 														OperationT[peds].TaskStatus = 28
 														PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
