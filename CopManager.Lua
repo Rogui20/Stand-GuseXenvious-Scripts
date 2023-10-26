@@ -1589,13 +1589,14 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 										end
 										if CanApplyDecor and MakeCopsAsMissionEntities then
 											if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-												DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31)
-												ENTITY.SET_ENTITY_AS_MISSION_ENTITY(peds, false, true)
-												DecorApplied = true
-												if SetNetworkID then
-													local NetID = NETWORK.PED_TO_NET(peds)
-													if NetID ~= 0 then
-														NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PlayerID, true)
+												if DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31) then
+													ENTITY.SET_ENTITY_AS_MISSION_ENTITY(peds, false, true)
+													DecorApplied = true
+													if SetNetworkID then
+														local NetID = NETWORK.PED_TO_NET(peds)
+														if NetID ~= 0 then
+															NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PlayerID, true)
+														end
 													end
 												end
 											end
