@@ -705,6 +705,10 @@ local CopsRushToNearestTarget = true
 menu.toggle(AllyCopSettingsMenu, "Cops Rush To Nearest Enemy", {}, "Works with custom tasks keys.", function(toggle)
 	CopsRushToNearestTarget = toggle
 end, CopsRushToNearestTarget)
+local CopsAimAtHead = true
+menu.toggle(AllyCopSettingsMenu, "Set Cops Aim At Head", {}, "One hit kill.", function(toggle)
+	CopsAimAtHead = toggle
+end, CopsAimAtHead)
 --[[
 local CustomTasksMenu = menu.list(AllyCopSettingsMenu, "Set Custom Tasks To Appear In Menu", {}, "")
 local SWATOperationTask = true
@@ -1542,6 +1546,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 									if OperationT[peds] ~= nil then
 										if OperationT[peds].Target == nil then
 											OperationT[peds].Target = FoundHostile
+											FoundHostile = 0
 										end
 									end
 								end
@@ -2579,8 +2584,12 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 													local VehHandle = OperationT[peds].VehHandle
 													if not PED.IS_PED_IN_ANY_VEHICLE(peds, false) then
-														local BonePos = PED.GET_PED_BONE_COORDS(Target, 0x322C --[[head]], 0.0, 0.0, 0.0)
-														TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_COORD(peds, Target, BonePos.x, BonePos.y, BonePos.z, 3.0, true, 2.0, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+														--local BonePos = PED.GET_PED_BONE_COORDS(Target, 0x322C --[[head]], 0.0, 0.0, 0.0)
+														if CopsAimAtHead then
+															PED.SET_PED_RESET_FLAG(Target, 108, true)
+														end
+														TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 0.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+														--TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_COORD(peds, Target, BonePos.x, BonePos.y, BonePos.z, 3.0, true, 2.0, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 														PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
 														OperationT[peds].TaskStatus = 26
 													else
@@ -2602,7 +2611,11 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 									if OperationT[peds].TaskStatus == 26 then
 										if OperationT[peds].Target ~= 0 then
 											if not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) and not PED.IS_PED_DEAD_OR_DYING(OperationT[peds].Target) and ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target) then
-												if PED.IS_PED_SHOOTING(peds) then
+												if CopsAimAtHead then
+													PED.SET_PED_RESET_FLAG(OperationT[peds].Target, 108, true)
+												end
+												--if PED.IS_PED_SHOOTING(peds) then
+												if not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) then
 													OperationT[peds].TaskStatus = 25
 												end
 											else
@@ -2685,10 +2698,15 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													local VehHandle = OperationT[peds].VehHandle
 													if not PED.IS_PED_IN_ANY_VEHICLE(peds, false) then
 														if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, Target, 17) then
-															local BonePos = PED.GET_PED_BONE_COORDS(Target, 0x322C --[[head]], 0.0, 0.0, 0.0)
-															TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_COORD(peds, Target, BonePos.x, BonePos.y, BonePos.z, 3.0, true, 2.0, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+															--local BonePos = PED.GET_PED_BONE_COORDS(Target, 0x322C --[[head]], 0.0, 0.0, 0.0)
+															--TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_COORD(peds, Target, BonePos.x, BonePos.y, BonePos.z, 3.0, true, 2.0, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+															if CopsAimAtHead then
+																PED.SET_PED_RESET_FLAG(Target, 108, true)
+															end
+															TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 0.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 															PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
-															OperationT[peds].TaskStatus = 29
+															--OperationT[peds].TaskStatus = 29
+															OperationT[peds].TaskStatus = 31
 														else
 															TASK.TASK_GO_TO_ENTITY(peds, Target, -1, 1.0, 3.0, 2.0, 0)
 															PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
@@ -2696,6 +2714,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 														end
 													else
 														if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
+															PED.SET_PED_RESET_FLAG(Target, 108, true)
 															TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
 														end
 													end
@@ -2746,6 +2765,28 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 											end
 										end
 									end
+									if OperationT[peds].TaskStatus == 31 then
+										if OperationT[peds].Target ~= 0 then
+											if not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) and not PED.IS_PED_DEAD_OR_DYING(OperationT[peds].Target) and ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target) then
+												if CopsAimAtHead then
+													PED.SET_PED_RESET_FLAG(OperationT[peds].Target, 108, true)
+												end
+												if not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) then
+													if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+														OperationT[peds].TaskStatus = 28
+														PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+													end
+												end
+											else
+												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+													OperationT[peds].TaskStatus = 28
+													TASK.CLEAR_PED_TASKS(peds)
+													PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+													OperationT[peds].Target = nil
+												end
+											end
+										end
+									end
 									if OperationT[peds].TaskStatus == 100 then
 										OperationT[peds] = nil
 									end
@@ -2759,7 +2800,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					end
 				end
 			end
-			FoundHostile = 0
+			--FoundHostile = 0
 			for i = 1, NumCreatedTasks do
 				if OperationsTable[i] > 1 then
 					OperationsTable[i] = 0
