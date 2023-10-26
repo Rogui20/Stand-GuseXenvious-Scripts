@@ -1528,7 +1528,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 								if FoundHostile == 0 then
 									if not ENTITY.IS_ENTITY_DEAD(peds) then
 										local RelType = PED.GET_RELATIONSHIP_BETWEEN_PEDS(peds, PlayerPed)
-										if RelType == 5 then
+										local CombatTarget = PED.GET_PED_TARGET_FROM_COMBAT_PED(peds, 0)
+										if RelType == 5 or CombatTarget == PlayerPed then
 											if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 200.0, 200.0, 3000.0, false, true, false) then
 												--if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, PlayerPed, 17) then
 													FoundHostile = peds
