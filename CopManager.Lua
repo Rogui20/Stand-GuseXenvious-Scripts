@@ -701,6 +701,10 @@ local UseCustomsTasksKeys = true
 menu.toggle(AllyCopSettingsMenu, "Set Custom Tasks To Use With Keys", {}, "A menu with commands will appear and you will be able to leade cops.", function(toggle)
 	UseCustomsTasksKeys = toggle
 end, UseCustomsTasksKeys)
+local CopsRushToNearestTarget = true
+menu.toggle(AllyCopSettingsMenu, "Cops Rush To Nearest Enemy", {}, "Works with custom tasks keys.", function(toggle)
+	CopsRushToNearestTarget = toggle
+end, CopsRushToNearestTarget)
 --[[
 local CustomTasksMenu = menu.list(AllyCopSettingsMenu, "Set Custom Tasks To Appear In Menu", {}, "")
 local SWATOperationTask = true
@@ -1270,6 +1274,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			RelHash = 0
 		}
 		local NavsT = {}
+		local FoundHostile = 0
 		while ApplyCopSettings do
 			local PlayerPed = PLAYER.PLAYER_PED_ID()
 			TaskArgs.IsPlayerShooting = PED.IS_PED_SHOOTING(PlayerPed)
@@ -1516,6 +1521,29 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 							end
 							if RelHashBackup ~= 0 then
 								ENTITY.SET_ENTITY_CAN_BE_DAMAGED_BY_RELATIONSHIP_GROUP(peds, true, RelHashBackup)
+							end
+						end
+						if CopsRushToNearestTarget then
+							if SelectedTask == 9 or SelectedTask == 11 then
+								if FoundHostile == 0 then
+									if not ENTITY.IS_ENTITY_DEAD(peds) then
+										local RelType = PED.GET_RELATIONSHIP_BETWEEN_PEDS(peds, PlayerPed)
+										if RelType == 5 then
+											if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 200.0, 200.0, 3000.0, false, true, false) then
+												if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, PlayerPed, 17) then
+													FoundHostile = peds
+												end
+											end
+										end
+									end
+								end
+								if FoundHostile ~= 0 then
+									if OperationT[peds] ~= nil then
+										if OperationT[peds].Target == nil then
+											OperationT[peds].Target = FoundHostile
+										end
+									end
+								end
 							end
 						end
 						local CanEditCop = false
@@ -2554,6 +2582,12 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 														TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_COORD(peds, Target, BonePos.x, BonePos.y, BonePos.z, 3.0, true, 2.0, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 														PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
 														OperationT[peds].TaskStatus = 26
+													else
+														if OperationT[peds].IsPilot then
+															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
+																TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
+															end
+														end
 													end
 												end
 											else
@@ -2661,6 +2695,12 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
 															OperationT[peds].TaskStatus = 30
 														end
+													else
+														if OperationT[peds].IsPilot then
+															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
+																TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
+															end
+														end
 													end
 												end
 											else
@@ -2722,6 +2762,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					end
 				end
 			end
+			FoundHostile = 0
 			for i = 1, NumCreatedTasks do
 				if OperationsTable[i] > 1 then
 					OperationsTable[i] = 0
