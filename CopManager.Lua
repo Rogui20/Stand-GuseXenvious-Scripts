@@ -761,6 +761,7 @@ local SelectedTaskTXT = {
 	{TXT = "Call to stay above veh", ColourG = 255},
 	{TXT = "Rushed combat mode", ColourG = 255},
 	{TXT = "TP all cops to me", ColourG = 255},
+	{TXT = "Super rushed combat mode", ColourG = 255},
 }
 
 local CustomTasksFunctions = {
@@ -955,6 +956,16 @@ local CustomTasksFunctions = {
 		else
 			SelectedTaskTXT[10].ColourG = 255
 		end
+	end,
+	function(Args, PlayerPed, TableT, HitCoords, FVect, RVect, UpVect, Vect)
+		if Args.OperationButton then
+			TableT[11] = TableT[11] + 1
+		end
+		if TableT[11] == 1 then
+			SelectedTaskTXT[11].ColourG = 20
+		else
+			SelectedTaskTXT[11].ColourG = 255
+		end
 	end
 }
 
@@ -1123,7 +1134,7 @@ local CustomTasksArgsFunctions = {
 		end
 	end,
 	function(Args, OperationsTable, OperationT, peds, Veh, FVect, RVect, UpVect, Vect)
-		if OperationsTable[9] < 2 then
+		if OperationsTable[10] < 2 then
 			if Args.OperationButton then
 				local IsPilot = false
 				if Veh ~= 0 then
@@ -1133,6 +1144,22 @@ local CustomTasksArgsFunctions = {
 					Handle = peds, XOffset = 0.0, YOffset = 0,
 					X = 0.0, Y = 0.0, Z = 0.0, Heading = 0,
 					TaskStatus = 27, VehHandle = Veh, FVect = FVect, RVect = RVect, UpVect = UpVect,
+					Vect = Vect, IsPilot = IsPilot
+				}
+			end
+		end
+	end,
+	function(Args, OperationsTable, OperationT, peds, Veh, FVect, RVect, UpVect, Vect)
+		if OperationsTable[11] < 2 then
+			if Args.OperationButton then
+				local IsPilot = false
+				if Veh ~= 0 then
+					IsPilot = VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds
+				end
+				OperationT[peds] = {
+					Handle = peds, XOffset = 0.0, YOffset = 0,
+					X = 0.0, Y = 0.0, Z = 0.0, Heading = 0,
+					TaskStatus = 28, VehHandle = Veh, FVect = FVect, RVect = RVect, UpVect = UpVect,
 					Vect = Vect, IsPilot = IsPilot
 				}
 			end
@@ -1218,7 +1245,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		local OperationT = {}
 		local SelectedTask = 1
 		local OperationsTable = {}
-		local NumCreatedTasks = 10
+		local NumCreatedTasks = 11
 		local PedsToPointedArea = {}
 		local PointedAreaSet = 0
 		local PointedPeds = 0
@@ -2531,7 +2558,12 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												end
 											else
 												OperationT[peds].Target = nil
+												TASK.CLEAR_PED_TASKS(peds)
+												PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
 											end
+										else
+											OperationT[peds].Target = nil
+											PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
 										end
 									end
 									if OperationT[peds].TaskStatus == 26 then
@@ -2604,6 +2636,77 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 											end
 										else
 											OperationT[peds].TaskStatus = 100
+										end
+									end
+									if OperationT[peds].TaskStatus == 28 then
+										local Target = 0
+										if OperationT[peds].Target ~= nil then
+											Target = OperationT[peds].Target
+										else
+											Target = PED.GET_PED_TARGET_FROM_COMBAT_PED(peds, 0)
+										end
+										if Target ~= 0 then
+											OperationT[peds].Target = Target
+											if not ENTITY.IS_ENTITY_DEAD(Target) and not PED.IS_PED_DEAD_OR_DYING(Target) and ENTITY.DOES_ENTITY_EXIST(Target) then
+												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+													local VehHandle = OperationT[peds].VehHandle
+													if VehHandle == 0 then
+														if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, Target, 17) then
+															local BonePos = PED.GET_PED_BONE_COORDS(Target, 0x322C --[[head]], 0.0, 0.0, 0.0)
+															TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_COORD(peds, Target, BonePos.x, BonePos.y, BonePos.z, 3.0, true, 2.0, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+															PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
+															OperationT[peds].TaskStatus = 29
+														else
+															TASK.TASK_GO_TO_ENTITY(peds, Target, -1, 1.0, 3.0, 2.0, 0)
+															PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
+															OperationT[peds].TaskStatus = 30
+														end
+													end
+												end
+											else
+												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+													OperationT[peds].Target = nil
+													TASK.CLEAR_PED_TASKS(peds)
+													PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+												end
+											end
+										else
+											OperationT[peds].Target = nil
+										end
+									end
+									if OperationT[peds].TaskStatus == 29 then
+										if OperationT[peds].Target ~= 0 then
+											if not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) and not PED.IS_PED_DEAD_OR_DYING(OperationT[peds].Target) and ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target) then
+												if PED.IS_PED_SHOOTING(peds) then
+													OperationT[peds].TaskStatus = 28
+												end
+											else
+												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+													OperationT[peds].TaskStatus = 28
+													TASK.CLEAR_PED_TASKS(peds)
+													PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+													OperationT[peds].Target = nil
+												end
+											end
+										end
+									end
+									if OperationT[peds].TaskStatus == 30 then
+										if OperationT[peds].Target ~= 0 then
+											if not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) and not PED.IS_PED_DEAD_OR_DYING(OperationT[peds].Target) and ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target) then
+												if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) then
+													if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+														OperationT[peds].TaskStatus = 28
+														PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+													end
+												end
+											else
+												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+													OperationT[peds].TaskStatus = 28
+													TASK.CLEAR_PED_TASKS(peds)
+													PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+													OperationT[peds].Target = nil
+												end
+											end
 										end
 									end
 									if OperationT[peds].TaskStatus == 100 then
@@ -3092,15 +3195,16 @@ menu.action(DevMenu, "Addr Get", {}, "", function(toggle)
 	Print(FormatedString)
 end)
 
-menu.action(DevMenu, "Spectator", {}, "", function(toggle)
-	NETWORK.NETWORK_SET_ACTIVITY_SPECTATOR(false)
-	Print(NETWORK.NETWORK_IS_ACTIVITY_SPECTATOR())
-	NETWORK.NETWORK_SET_IN_SPECTATOR_MODE(false, PLAYER.PLAYER_PED_ID())
-	ENTITY.SET_ENTITY_VISIBLE(PLAYER.PLAYER_PED_ID(), true, false)
-	ENTITY.FREEZE_ENTITY_POSITION(PLAYER.PLAYER_PED_ID(), false)
-	ENTITY.SET_ENTITY_ALPHA(PLAYER.PLAYER_PED_ID(), 255, false)
-	if ENTITY.IS_ENTITY_DEAD(PLAYER.PLAYER_PED_ID()) then
-		NETWORK.NETWORK_RESURRECT_LOCAL_PLAYER(0.0, 0.0, 0.0, 0.0, false, false, false, 0, 0)
+menu.toggle_loop(DevMenu, "Normal Surface", {}, "", function(toggle)
+	local PlayerPed = PLAYER.PLAYER_PED_ID()
+	local Pos = CAM.GET_GAMEPLAY_CAM_COORD()
+	local Rot = CAM.GET_GAMEPLAY_CAM_ROT(2)
+	local Dir = Rot:toDir()
+	local AdjustedPos = {x = Pos.x + Dir.x * 100, y = Pos.y + Dir.y * 100, z = Pos.z + Dir.z * 100}
+	local EndCoords, DidHit, EntityHit, SurfaceNormal = ShapeTestNav(PlayerPed, Pos, AdjustedPos)
+	if DidHit then
+		local NewAdjusted = {x = EndCoords.x + SurfaceNormal.x * 100, y = EndCoords.y + SurfaceNormal.y * 100, z = EndCoords.z + SurfaceNormal.z * 100}
+		GRAPHICS.DRAW_LINE(EndCoords.x, EndCoords.y, EndCoords.z, NewAdjusted.x, NewAdjusted.y, NewAdjusted.z, 0, 0, 255, 255)
 	end
 end)
 
@@ -3975,172 +4079,5 @@ util.create_tick_handler(function()
 end)
 
 --[[
-									if NavTest then
-										if not PED.IS_PED_IN_ANY_VEHICLE(peds, true) then
-											if NavsT[peds] == nil then
-												NavsT[peds] = {}
-												NavsT[peds].SearchN = 0
-												NavsT[peds].TaskN = 1
-												NavsT[peds].RoutesT = {}
-												NavsT[peds].RayType = 0
-												NavsT[peds].TaskStatus = 0
-												NavsT[peds].DirStatus = 0
-												NavsT[peds].TimeOut = 0
-											end
-											if NavsT[peds].SearchN == 0 then
-												if NavsT[peds].RoutesT == nil then
-													NavsT[peds].RoutesT = {}
-												end
-												if #NavsT[peds].RoutesT <= 0 then
-													local PlayerPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-													local PedCoords = ENTITY.GET_ENTITY_COORDS(peds)
-													PedCoords.z = PedCoords.z - NavZ
-													PlayerPos.z = PlayerPos.z - NavZ
-													local Rot = v3.lookAt(PedCoords, PlayerPos)
-													local Dir = Rot:toDir()
-													local EndCoords, DidHit, EntityHit, Normal = ShapeTestNav(peds, PedCoords, PlayerPos)
-													local FoundPlayer = false
-													if DidHit then
-														if EntityHit ~= 0 then
-															if EntityHit == PlayerPed then
-																NavsT[peds].SearchN = 1
-																FoundPlayer = true
-																EndCoords.x = EndCoords.x - Dir.x * 2.5
-																EndCoords.y = EndCoords.y - Dir.y * 2.5
-																EndCoords.z = EndCoords.z - Dir.z * 2.5
-																NavsT[peds].RoutesT[#NavsT[peds].RoutesT+1] = {EndPos = EndCoords}
-															end
-														end
-														if not FoundPlayer then
-															local OldEndCoords = v3.new(EndCoords)
-															EndCoords.x = PedCoords.x - Dir.x * 10.0
-															EndCoords.y = PedCoords.y - Dir.y * 10.0
-															EndCoords.z = (PedCoords.z - Dir.z * 10.0) - 10.0
-															local EndCoords2, DidHit2, EntityHit2, Normal2 = ShapeTestNav(peds, OldEndCoords, EndCoords)
-															NavsT[peds].RoutesT[#NavsT[peds].RoutesT+1] = {EndPos = EndCoords2}
-														end
-													else
-														EndCoords.x = EndCoords.x - Dir.x * 2.5
-														EndCoords.y = EndCoords.y - Dir.y * 2.5
-														EndCoords.z = EndCoords.z - Dir.z * 2.5
-														NavsT[peds].RoutesT[#NavsT[peds].RoutesT+1] = {EndPos = EndCoords}
-													end
-												else
-													if NavsT[peds].RayType == 0 then
-														local PlayerPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-														local Position = NavsT[peds].RoutesT[#NavsT[peds].RoutesT].EndPos
-														PlayerPos.z = Position.z
-														local Rot = v3.lookAt(Position, PlayerPos)
-														local RotToGive = 90.0
-														if NavsT[peds].DirStatus == 1 then
-															RotToGive = -90
-														end
-														Rot.z = Rot.z + RotToGive
-														local Dir = Rot:toDir()
-														local AdjustedVect = {x = Position.x + Dir.x * NavRightOffset, y = Position.y + Dir.y * NavRightOffset, z = (Position.z + Dir.z * NavRightOffset)}
-														local EndCoords, DidHit, EntityHit, Normal = ShapeTestNav(peds, Position, AdjustedVect)
-														if DidHit then
-															EndCoords.x = EndCoords.x - Dir.x * 2.5
-															EndCoords.y = EndCoords.y - Dir.y * 2.5
-															EndCoords.z = EndCoords.z - Dir.z * 2.5
-															NavsT[peds].RayType = 1
-														else
-															NavsT[peds].RayType = 0
-														end
-														NavsT[peds].RoutesT[#NavsT[peds].RoutesT+1] = {EndPos = EndCoords}
-													elseif NavsT[peds].RayType == 1 then
-														local PlayerPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-														local Position = NavsT[peds].RoutesT[#NavsT[peds].RoutesT].EndPos
-														PlayerPos.z = PlayerPos.z - NavZ
-														local Rot = v3.lookAt(Position, PlayerPos)
-														local Dir = Rot:toDir()
-														local EndCoords, DidHit, EntityHit, Normal = ShapeTestNav(peds, Position, PlayerPos)
-														local FoundPlayer = false
-														if DidHit then
-															if EntityHit ~= 0 then
-																if EntityHit == PlayerPed then
-																	NavsT[peds].SearchN = 1
-																	FoundPlayer = true
-																	EndCoords.x = EndCoords.x - Dir.x * 2.5
-																	EndCoords.y = EndCoords.y - Dir.y * 2.5
-																	EndCoords.z = EndCoords.z - Dir.z * 2.5
-																	NavsT[peds].RoutesT[#NavsT[peds].RoutesT+1] = {EndPos = EndCoords}
-																end
-															end
-															if not FoundPlayer then
-																local OldEndCoords = v3.new(EndCoords)
-																EndCoords.x = Position.x - Dir.x * 10.0
-																EndCoords.y = Position.y - Dir.y * 10.0
-																EndCoords.z = (Position.z - Dir.z * 10.0) - 10.0
-																local EndCoords2, DidHit2, EntityHit2, Normal2 = ShapeTestNav(peds, OldEndCoords, EndCoords)
-																NavsT[peds].RoutesT[#NavsT[peds].RoutesT+1] = {EndPos = EndCoords2}
-															end
-															NavsT[peds].RayType = 0
-														else
-															EndCoords.x = EndCoords.x - Dir.x * 2.5
-															EndCoords.y = EndCoords.y - Dir.y * 2.5
-															EndCoords.z = EndCoords.z - Dir.z * 2.5
-															NavsT[peds].RoutesT[#NavsT[peds].RoutesT+1] = {EndPos = EndCoords}
-														end
-													elseif NavsT[peds].RayType == 2 then
-
-													end
-												end
-												if #NavsT[peds].RoutesT >= 100 then
-													NavsT[peds].RoutesT = nil
-													if NavsT[peds].DirStatus == 0 then
-														NavsT[peds].DirStatus = 1
-													else
-														NavsT[peds].DirStatus = 0
-													end
-												end
-											end
-											if NavsT[peds].SearchN == 1 then
-												if NavsT[peds].RoutesT ~= nil then
-													local Position = NavsT[peds].RoutesT[NavsT[peds].TaskN].EndPos
-													for k = 1, #NavsT[peds].RoutesT do
-														local Position2 = NavsT[peds].RoutesT[k].EndPos
-														local Position3 = nil
-														if NavsT[peds].RoutesT[k+1] ~= nil then
-															Position3 = NavsT[peds].RoutesT[k+1].EndPos
-														else
-															Position3 = Position
-														end
-														local PedCoords = ENTITY.GET_ENTITY_COORDS(peds)
-														GRAPHICS.DRAW_LINE(Position2.x, Position2.y, Position2.z, Position3.x, Position3.y, Position3.z, 0, 0, 255, 255)
-													end
-													if NavsT[peds].TaskStatus == 0 then
-														if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-															TASK.TASK_GO_STRAIGHT_TO_COORD(peds, Position.x, Position.y, Position.z, 3.0, -1, ENTITY.GET_ENTITY_HEADING(peds), 0.25)
-															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_GO_STRAIGHT_TO_COORD")) ~= 7 then
-																NavsT[peds].TimeOut = 0
-																NavsT[peds].TaskStatus = 1
-															end
-														end
-													else
-														if ENTITY.IS_ENTITY_AT_COORD(peds, Position.x, Position.y, Position.z, 1.0, 1.0, 1.0, false, true, 0) then
-															NavsT[peds].TaskN = NavsT[peds].TaskN + 1
-															NavsT[peds].TaskStatus = 0
-															if NavsT[peds].TaskN > #NavsT[peds].RoutesT then
-																NavsT[peds] = nil
-															end
-														else
-															local PedCoords = ENTITY.GET_ENTITY_COORDS(peds)
-															PedCoords.z = PedCoords.z - 0.5
-															local PedFVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
-															local NewPos = {x = PedCoords.x + PedFVect.x, y = PedCoords.y + PedFVect.y, z = PedCoords.z + PedFVect.z}
-															local EndCoords, DidHit, EntityHit, Normal = ShapeTestNav(peds, Position, NewPos)
-															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_GO_STRAIGHT_TO_COORD")) == 7 or DidHit then
-																NavsT[peds].TaskN = NavsT[peds].TaskN + 1
-																NavsT[peds].TaskStatus = 0
-																if NavsT[peds].TaskN > #NavsT[peds].RoutesT then
-																	NavsT[peds] = nil
-																end
-															end
-														end
-													end
-												end
-											end
-										end
-									end
+									
 ]]
