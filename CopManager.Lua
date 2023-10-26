@@ -2313,165 +2313,167 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 						local HaveCopRel = IsWithCopRel(peds)
 						local CanAddBlip = false
 						if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(peds) then
-							if CanEditCop then
-								if MissionCopCount < MaxCopsToEdit then
-									if EntScript == nil then
-										local CanApplyDecor = false
-										local DecorApplied = false
-										if CopsModelForMission then
-											if IsCopModel then
-												CanApplyDecor = true
-											end
-										end
-										if CopsForMission then
-											if HaveCopRel then
-												CanApplyDecor = true
-											end
-										end
-										if CanApplyDecor and MakeCopsAsMissionEntities then
-											if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-												if DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31) then
-													ENTITY.SET_ENTITY_AS_MISSION_ENTITY(peds, false, true)
-													DecorApplied = true
-													if SetNetworkID then
-														local NetID = NETWORK.PED_TO_NET(peds)
-														if NetID ~= 0 then
-															NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PlayerID, true)
-														end
-													end
-												end
-											end
-										else
-											if CopsForMission then
-												if HaveCopRel then
-													CanApplyDecor = true
-												end
-											end
+							if not ENTITY.IS_ENTITY_DEAD(peds) then
+								if CanEditCop then
+									if MissionCopCount < MaxCopsToEdit then
+										if EntScript == nil then
+											local CanApplyDecor = false
+											local DecorApplied = false
 											if CopsModelForMission then
 												if IsCopModel then
 													CanApplyDecor = true
 												end
 											end
-											if CanApplyDecor then
-												if not DECORATOR.DECOR_EXIST_ON(peds, "Casino_Game_Info_Decorator") then
-													if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-														DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31)
+											if CopsForMission then
+												if HaveCopRel then
+													CanApplyDecor = true
+												end
+											end
+											if CanApplyDecor and MakeCopsAsMissionEntities then
+												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+													if DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31) then
+														ENTITY.SET_ENTITY_AS_MISSION_ENTITY(peds, false, true)
 														DecorApplied = true
-													end
-												end
-											end
-										end
-										if DecorApplied then
-											NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-											PED.SET_PED_RELATIONSHIP_GROUP_HASH(peds, SelectedTeam)
-											--PED.SET_PED_FLEE_ATTRIBUTES(peds, 512, true)
-											if not ZombieMode then
-												WEAPON.GIVE_WEAPON_TO_PED(peds, joaat("weapon_pistol"), 99999, false, false)
-												if EnableWeaponSettsForCops then
-													GiveCorrectWeaponsToPed(peds)
-												end
-												if RandomWeaponComponents then
-													Set_Weapon_Components(peds)
-												end
-												if IsCopModel then
-													SetPedCombatAbilities(peds)
-													PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
-												end
-												if EliteCops then
-													ENTITY.SET_ENTITY_MAX_HEALTH(peds, 300)
-													PED.SET_PED_MAX_HEALTH(peds, 300)
-													ENTITY.SET_ENTITY_HEALTH(peds, 300)
-													PED.SET_PED_SUFFERS_CRITICAL_HITS(peds, false)
-													PED.SET_RAGDOLL_BLOCKING_FLAGS(peds, 1)
-												end
-												if CopsShootWhereYouShoot or CopsShootWhereYouAim or UseCustomsTasksKeys then
-													PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
-													PED.SET_PED_CONFIG_FLAG(peds, 113, false)
-													PED.SET_PED_CONFIG_FLAG(peds, 208, true)
-													PED.SET_PED_COMBAT_ATTRIBUTES(peds, 2, true)
-												end
-											else
-												ENTITY.SET_ENTITY_PROOFS(peds, false, false, false, false, true, false, false, false)
-												WEAPON.REMOVE_ALL_PED_WEAPONS(peds, false)
-												SetPedCombatAbilities(peds)
-												PED.SET_PED_SUFFERS_CRITICAL_HITS(peds, false)
-												PED.SET_RAGDOLL_BLOCKING_FLAGS(peds, 1)
-												SetPedHealth(peds, 400)
-												WEAPON.GIVE_WEAPON_TO_PED(peds, joaat("weapon_knife"), 99999, false, false)
-											end
-											local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
-											if Veh ~= 0 then
-												if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
-													if IsArmoredVehModel(Veh) then
-														PED.SET_PED_COMBAT_ATTRIBUTES(peds, 52, true)
-														PED.SET_PED_COMBAT_ATTRIBUTES(peds, 53, true)
-													end
-												end
-											end
-											local AppliedOutfit = false
-											if RandomCopModelComponents then
-												if IsCopModel then
-													SetPedRandomOutfit(peds)
-													AppliedOutfit = true
-												end
-											end
-											if RandomCopComponents then
-												if not AppliedOutfit then
-													if HaveCopRel then
-														SetPedRandomOutfit(peds)
-													end
-												end
-											end
-											local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
-											if Veh ~= 0 then
-												if Veh ~= PlayerVeh then
-													if UpgradeCopCars then
-														if DECORATOR.DECOR_GET_INT(Veh, "Casino_Game_Info_Decorator") ~= 31 then
-															NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Veh)
-															VEHICLE.SET_VEHICLE_WHEEL_TYPE(Veh, math.random(0, 12))
-															VEHICLE.SET_VEHICLE_MOD_KIT(Veh, 0)
-															for k = 0, 48 do
-																local NumMods = entities.get_upgrade_max_value(Veh, k)
-																if NumMods > 0 then
-																	local Rand = math.random(0, NumMods)
-																	if Rand <= -1 then
-																		Rand = 0
-																	end
-																	entities.set_upgrade_value(Veh, k, Rand, true)
-																else
-																	if math.random(0, 1) == 1 then
-																		entities.set_upgrade_value(Veh, k, NumMods, true)
-																	end
-																end
-															end
-															local CanSetColours = true
-															if not SetCopCarsColours then
-																if VEHICLE.GET_VEHICLE_CLASS(Veh) == 18 then
-																	CanSetColours = false
-																end
-															end
-															if CanSetColours then
-																local PRed, PGreen, PBlue, SRed, SGreen, SBlue = math.random(0, 255), math.random(0, 255), math.random(0, 255), math.random(0, 255), math.random(0, 255), math.random(0, 255)  
-																if SetDefaultColours then
-																	PRed, PGreen, PBlue, SRed, SGreen, SBlue = PR, PG, PB, SR, SG, SB
-																end
-																VEHICLE.SET_VEHICLE_CUSTOM_PRIMARY_COLOUR(Veh, PRed, PGreen, PBlue)
-																VEHICLE.SET_VEHICLE_CUSTOM_SECONDARY_COLOUR(Veh, SRed, SGreen, SBlue)
-																VEHICLE.SET_VEHICLE_COLOURS(Veh, math.random(0, 160), math.random(0, 160))
-																DECORATOR.DECOR_SET_INT(Veh, "Casino_Game_Info_Decorator", 31)
+														if SetNetworkID then
+															local NetID = NETWORK.PED_TO_NET(peds)
+															if NetID ~= 0 then
+																NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PlayerID, true)
 															end
 														end
 													end
-													if SetCopPassengersIntoTurretSeat then
-														local HasSetInTurretSeat = false
-														if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) ~= peds then
-															for i = -1, 9 do
-																if not HasSetInTurretSeat then
-																	if VEHICLE.IS_TURRET_SEAT(Veh, i) then
-																		if VEHICLE.IS_VEHICLE_SEAT_FREE(Veh, i, true) then
-																			HasSetInTurretSeat = true
-																			NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-																			PED.SET_PED_INTO_VEHICLE(peds, Veh, i)
+												end
+											else
+												if CopsForMission then
+													if HaveCopRel then
+														CanApplyDecor = true
+													end
+												end
+												if CopsModelForMission then
+													if IsCopModel then
+														CanApplyDecor = true
+													end
+												end
+												if CanApplyDecor then
+													if not DECORATOR.DECOR_EXIST_ON(peds, "Casino_Game_Info_Decorator") then
+														if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+															DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31)
+															DecorApplied = true
+														end
+													end
+												end
+											end
+											if DecorApplied then
+												NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+												PED.SET_PED_RELATIONSHIP_GROUP_HASH(peds, SelectedTeam)
+												--PED.SET_PED_FLEE_ATTRIBUTES(peds, 512, true)
+												if not ZombieMode then
+													WEAPON.GIVE_WEAPON_TO_PED(peds, joaat("weapon_pistol"), 99999, false, false)
+													if EnableWeaponSettsForCops then
+														GiveCorrectWeaponsToPed(peds)
+													end
+													if RandomWeaponComponents then
+														Set_Weapon_Components(peds)
+													end
+													if IsCopModel then
+														SetPedCombatAbilities(peds)
+														PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
+													end
+													if EliteCops then
+														ENTITY.SET_ENTITY_MAX_HEALTH(peds, 300)
+														PED.SET_PED_MAX_HEALTH(peds, 300)
+														ENTITY.SET_ENTITY_HEALTH(peds, 300)
+														PED.SET_PED_SUFFERS_CRITICAL_HITS(peds, false)
+														PED.SET_RAGDOLL_BLOCKING_FLAGS(peds, 1)
+													end
+													if CopsShootWhereYouShoot or CopsShootWhereYouAim or UseCustomsTasksKeys then
+														PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
+														PED.SET_PED_CONFIG_FLAG(peds, 113, false)
+														PED.SET_PED_CONFIG_FLAG(peds, 208, true)
+														PED.SET_PED_COMBAT_ATTRIBUTES(peds, 2, true)
+													end
+												else
+													ENTITY.SET_ENTITY_PROOFS(peds, false, false, false, false, true, false, false, false)
+													WEAPON.REMOVE_ALL_PED_WEAPONS(peds, false)
+													SetPedCombatAbilities(peds)
+													PED.SET_PED_SUFFERS_CRITICAL_HITS(peds, false)
+													PED.SET_RAGDOLL_BLOCKING_FLAGS(peds, 1)
+													SetPedHealth(peds, 400)
+													WEAPON.GIVE_WEAPON_TO_PED(peds, joaat("weapon_knife"), 99999, false, false)
+												end
+												local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+												if Veh ~= 0 then
+													if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
+														if IsArmoredVehModel(Veh) then
+															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 52, true)
+															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 53, true)
+														end
+													end
+												end
+												local AppliedOutfit = false
+												if RandomCopModelComponents then
+													if IsCopModel then
+														SetPedRandomOutfit(peds)
+														AppliedOutfit = true
+													end
+												end
+												if RandomCopComponents then
+													if not AppliedOutfit then
+														if HaveCopRel then
+															SetPedRandomOutfit(peds)
+														end
+													end
+												end
+												local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+												if Veh ~= 0 then
+													if Veh ~= PlayerVeh then
+														if UpgradeCopCars then
+															if DECORATOR.DECOR_GET_INT(Veh, "Casino_Game_Info_Decorator") ~= 31 then
+																NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Veh)
+																VEHICLE.SET_VEHICLE_WHEEL_TYPE(Veh, math.random(0, 12))
+																VEHICLE.SET_VEHICLE_MOD_KIT(Veh, 0)
+																for k = 0, 48 do
+																	local NumMods = entities.get_upgrade_max_value(Veh, k)
+																	if NumMods > 0 then
+																		local Rand = math.random(0, NumMods)
+																		if Rand <= -1 then
+																			Rand = 0
+																		end
+																		entities.set_upgrade_value(Veh, k, Rand, true)
+																	else
+																		if math.random(0, 1) == 1 then
+																			entities.set_upgrade_value(Veh, k, NumMods, true)
+																		end
+																	end
+																end
+																local CanSetColours = true
+																if not SetCopCarsColours then
+																	if VEHICLE.GET_VEHICLE_CLASS(Veh) == 18 then
+																		CanSetColours = false
+																	end
+																end
+																if CanSetColours then
+																	local PRed, PGreen, PBlue, SRed, SGreen, SBlue = math.random(0, 255), math.random(0, 255), math.random(0, 255), math.random(0, 255), math.random(0, 255), math.random(0, 255)  
+																	if SetDefaultColours then
+																		PRed, PGreen, PBlue, SRed, SGreen, SBlue = PR, PG, PB, SR, SG, SB
+																	end
+																	VEHICLE.SET_VEHICLE_CUSTOM_PRIMARY_COLOUR(Veh, PRed, PGreen, PBlue)
+																	VEHICLE.SET_VEHICLE_CUSTOM_SECONDARY_COLOUR(Veh, SRed, SGreen, SBlue)
+																	VEHICLE.SET_VEHICLE_COLOURS(Veh, math.random(0, 160), math.random(0, 160))
+																	DECORATOR.DECOR_SET_INT(Veh, "Casino_Game_Info_Decorator", 31)
+																end
+															end
+														end
+														if SetCopPassengersIntoTurretSeat then
+															local HasSetInTurretSeat = false
+															if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) ~= peds then
+																for i = -1, 9 do
+																	if not HasSetInTurretSeat then
+																		if VEHICLE.IS_TURRET_SEAT(Veh, i) then
+																			if VEHICLE.IS_VEHICLE_SEAT_FREE(Veh, i, true) then
+																				HasSetInTurretSeat = true
+																				NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																				PED.SET_PED_INTO_VEHICLE(peds, Veh, i)
+																			end
 																		end
 																	end
 																end
@@ -2531,8 +2533,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												end
 												DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 32)
 												entities.delete_by_handle(peds)
-												DeadPeds[peds] = nil
 											end
+											DeadPeds[peds] = nil
 										end)
 									end
 								else
