@@ -648,7 +648,7 @@ TaskStatusFunctionsT[28+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 							--	TASK.TASK_VEHICLE_MISSION_PED_TARGET(peds, VehHandle, Target, 4, 100.0, 1, 10.0, 10.0, true)
 							--end
 						end
-						if ENTITY.DOES_ENTITY_EXIST(VehHandle) then
+						if ENTITY.DOES_ENTITY_EXIST(VehHandle) and VehHandle ~= PlayerVeh then
 							local VehClass = VEHICLE.GET_VEHICLE_CLASS(VehHandle)
 							if VehClass ~= 15 and VehClass ~= 16 then
 								local VehPos = ENTITY.GET_ENTITY_COORDS(VehHandle)
@@ -1440,6 +1440,10 @@ local BringFarCopsCloser = true
 menu.toggle(AllyCopSettingsMenu, "Auto Bring Far Cops Back To You", {}, "", function(toggle)
 	BringFarCopsCloser = toggle
 end, BringFarCopsCloser)
+local TPCopsBackToVehicle = true
+menu.toggle(AllyCopSettingsMenu, "TP Cops Back To Their Vehicle", {}, "Works if cops are mission entities, and the cops will be back to their vehicle case if you're in vehicle.", function(toggle)
+	TPCopsBackToVehicle = toggle
+end, TPCopsBackToVehicle)
 
 local BringIfOutsideOfVehicle = false
 menu.toggle(AllyCopSettingsMenu, "Bring If Im Outside Vehicle", {}, "", function(toggle)
@@ -2063,6 +2067,36 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					end
 				end
 			end
+			for index, vehs in pairs(entities.get_all_vehicles_as_handles()) do
+				if ENTITY.IS_ENTITY_A_MISSION_ENTITY(vehs) then
+					local CanEditCop = false
+					if OnlyEditOwnedCops then
+						local PlayerID = PLAYER.PLAYER_ID()
+						if get_entity_owner(peds) == PlayerID then
+							CanEditCop = true
+						end
+					else
+						CanEditCop = true
+					end
+					if CanEditCop then
+						local DecorInt = DECORATOR.DECOR_GET_INT(vehs, "Casino_Game_Info_Decorator")
+						if DecorInt == 31 or DecorInt == 32 then
+							util.create_thread(function ()
+								local Tick = 0
+								while not NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(vehs) and Tick < 1000 do
+									Tick = Tick + 1
+									Wait()
+								end
+								local NetID = NETWORK.VEH_TO_NET(vehs)
+								if NetID ~= 0 then
+									NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PLAYER.PLAYER_ID(), false)
+								end
+								entities.delete_by_handle(vehs)
+							end)
+						end
+					end
+				end
+			end
 		end
 		if AutomaticGenCops then
 			local PlayerID = PLAYER.PLAYER_ID()
@@ -2100,6 +2134,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		local NumCreatedTasks = 11
 		local FoundCopVehs = {}
 		local CopVehsT = {}
+		local OwnedCopVehsT = {}
 		local PedsT = {}
 		local IterationsNumber = 0
 		for i = 1, NumCreatedTasks do
@@ -2130,6 +2165,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		local HostileNum = 1
 		while ApplyCopSettings do
 			local PlayerPed = PLAYER.PLAYER_PED_ID()
+			local IsInVeh = PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false)
 			TaskArgs.IsPlayerShooting = PED.IS_PED_SHOOTING(PlayerPed)
 			local PlayerVeh = PED.GET_VEHICLE_PED_IS_IN(PlayerPed, false)
 			if SetAllyPedHateToAiHate then
@@ -2488,6 +2524,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																	FoundCopVehs[Veh] = Veh
 																	CopVehsT[#CopVehsT+1] = {Handle = Veh, HasSetToMissionEnt = false, Passengers = Peds}
 																end
+																OwnedCopVehsT[peds] = Veh
 															end
 														end
 													end
@@ -2512,6 +2549,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													end
 												end
 												if DecorApplied then
+													MissionCopCount = MissionCopCount + 1
 													NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
 													PED.SET_PED_RELATIONSHIP_GROUP_HASH(peds, SelectedTeam)
 													--PED.SET_PED_FLEE_ATTRIBUTES(peds, 512, true)
@@ -2823,7 +2861,6 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												end
 												if BringFarCopsCloser then
 													local CanGo = true
-													local IsInVeh = PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false)
 													if BringIfOutsideOfVehicle then
 														if IsInVeh then
 															CanGo = false
@@ -2831,6 +2868,27 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													end
 													if CanGo then
 														if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
+															if TPCopsBackToVehicle then
+																if IsInVeh then
+																	if OwnedCopVehsT[peds] ~= nil then
+																		if ENTITY.DOES_ENTITY_EXIST(OwnedCopVehsT[peds]) then
+																			Veh = OwnedCopVehsT[peds]
+																			if not PED.IS_PED_IN_VEHICLE(peds, Veh, false) then
+																				if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																					for i = -1, 9 do
+																						if VEHICLE.IS_VEHICLE_SEAT_FREE(OwnedCopVehsT[peds], i, false) then
+																							PED.SET_PED_INTO_VEHICLE(peds, OwnedCopVehsT[peds], i)
+																							break
+																						end
+																					end
+																				end
+																			end
+																		else
+																			OwnedCopVehsT[peds] = nil
+																		end
+																	end
+																end
+															end
 															if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 																if not RemoveCopsFromVeh then
 																	if Veh ~= 0 then
@@ -3149,18 +3207,25 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 						end
 						local Peds = CopVehsT[i].Passengers
 						local Count = 0
+						local DeadCount = 0
 						for k = 1, #Peds do
 							if ENTITY.DOES_ENTITY_EXIST(Peds[k]) then
-								if not ENTITY.IS_ENTITY_AT_ENTITY(Peds[k], CopVehsT[i].Handle, 130.0, 130.0, 130.0, false, true, false) or ENTITY.IS_ENTITY_DEAD(Peds[k]) then
+								local IsDead = ENTITY.IS_ENTITY_DEAD(Peds[k])
+								if not ENTITY.IS_ENTITY_AT_ENTITY(Peds[k], CopVehsT[i].Handle, 130.0, 130.0, 130.0, false, true, 0) and not IsDead then
 									Count = Count + 1
+								end
+								if IsDead then
+									DeadCount = DeadCount + 1
 								end
 							end
 						end
-						if Count >= #Peds or ENTITY.IS_ENTITY_DEAD(CopVehsT[i].Handle) then
+						if Count >= #Peds or ENTITY.IS_ENTITY_DEAD(CopVehsT[i].Handle) or DeadCount >= #Peds then
 							if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CopVehsT[i].Handle) then
 								set_entity_as_no_longer_needed(CopVehsT[i].Handle)
-								FoundCopVehs[CopVehsT[i].Handle] = nil
-								table.remove(CopVehsT, i)
+							end
+						else
+							if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(CopVehsT[i].Handle) then
+								CopVehsT[i].HasSetToMissionEnt = false
 							end
 						end
 					else
