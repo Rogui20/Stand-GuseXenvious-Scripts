@@ -1444,6 +1444,10 @@ local TPCopsBackToVehicle = true
 menu.toggle(AllyCopSettingsMenu, "TP Cops Back To Their Vehicle", {}, "Works if cops are mission entities, and the cops will be back to their vehicle case if you're in vehicle.", function(toggle)
 	TPCopsBackToVehicle = toggle
 end, TPCopsBackToVehicle)
+local AlwaysTPCopsBackToVehicle = true
+menu.toggle(AllyCopSettingsMenu, "Always TP Cops Back To Their Vehicle", {}, "Works if cops are mission entities.", function(toggle)
+	AlwaysTPCopsBackToVehicle = toggle
+end, AlwaysTPCopsBackToVehicle)
 
 local BringIfOutsideOfVehicle = false
 menu.toggle(AllyCopSettingsMenu, "Bring If Im Outside Vehicle", {}, "", function(toggle)
@@ -2869,22 +2873,27 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													if CanGo then
 														if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
 															if TPCopsBackToVehicle then
-																if IsInVeh then
-																	if OwnedCopVehsT[peds] ~= nil then
-																		if ENTITY.DOES_ENTITY_EXIST(OwnedCopVehsT[peds]) then
-																			Veh = OwnedCopVehsT[peds]
-																			if not PED.IS_PED_IN_VEHICLE(peds, Veh, false) then
-																				if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																					for i = -1, 9 do
-																						if VEHICLE.IS_VEHICLE_SEAT_FREE(OwnedCopVehsT[peds], i, false) then
-																							PED.SET_PED_INTO_VEHICLE(peds, OwnedCopVehsT[peds], i)
-																							break
+																if InteriorPlayerPed == 0 then
+																	if IsInVeh or AlwaysTPCopsBackToVehicle then
+																		if OwnedCopVehsT[peds] ~= nil then
+																			if ENTITY.DOES_ENTITY_EXIST(OwnedCopVehsT[peds]) then
+																				Veh = OwnedCopVehsT[peds]
+																				if ENTITY.IS_ENTITY_DEAD(Veh) then
+																					VEHICLE.SET_VEHICLE_FIXED(Veh)
+																				end
+																				if not PED.IS_PED_IN_VEHICLE(peds, Veh, false) then
+																					if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																						for i = -1, 9 do
+																							if VEHICLE.IS_VEHICLE_SEAT_FREE(OwnedCopVehsT[peds], i, false) then
+																								PED.SET_PED_INTO_VEHICLE(peds, OwnedCopVehsT[peds], i)
+																								break
+																							end
 																						end
 																					end
 																				end
+																			else
+																				OwnedCopVehsT[peds] = nil
 																			end
-																		else
-																			OwnedCopVehsT[peds] = nil
 																		end
 																	end
 																end
@@ -3224,7 +3233,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 								set_entity_as_no_longer_needed(CopVehsT[i].Handle)
 							end
 						else
-							if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(CopVehsT[i].Handle) then
+							if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(CopVehsT[i].Handle) or not ENTITY.IS_ENTITY_DEAD(CopVehsT[i].Handle) then
 								CopVehsT[i].HasSetToMissionEnt = false
 							end
 						end
