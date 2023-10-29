@@ -426,7 +426,8 @@ TaskStatusFunctionsT[23+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 		if TaskArgs.TargetPed ~= 0 then
 			if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 				TASK.TASK_COMBAT_PED(peds, TaskArgs.TargetPed, 0, 16)
-				OperationT[peds].TaskStatus = 13
+				OperationT[peds].TaskStatus = 28
+				OperationT[peds].Target = TaskArgs.TargetPed
 			end
 		else
 			OperationT[peds].TaskStatus = 100
@@ -611,7 +612,7 @@ TaskStatusFunctionsT[28+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 		if Target ~= 0 then
 			if not ENTITY.IS_ENTITY_DEAD(Target) and not PED.IS_PED_DEAD_OR_DYING(Target) and ENTITY.DOES_ENTITY_EXIST(Target) then
 				if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-					local VehHandle = OperationT[peds].VehHandle
+					local VehHandle = PED.GET_VEHICLE_PED_IS_IN(peds, false)--OperationT[peds].VehHandle
 					if not PED.IS_PED_IN_ANY_VEHICLE(peds, false) then
 						if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, Target, 17) then
 							--local BonePos = PED.GET_PED_BONE_COORDS(Target, 0x322C --[[head]], 0.0, 0.0, 0.0)
@@ -623,7 +624,6 @@ TaskStatusFunctionsT[28+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 								TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 0.15, 1.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 							else
 								if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
-									PED.SET_PED_RESET_FLAG(Target, 108, true)
 									TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
 								end
 							end
@@ -641,6 +641,100 @@ TaskStatusFunctionsT[28+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 								PED.SET_PED_RESET_FLAG(Target, 108, true)
 							end
 							TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
+							--PED.SET_PED_COMBAT_ATTRIBUTES(peds, 3, false)
+								--TASK.TASK_VEHICLE_MISSION_PED_TARGET(peds, VehHandle, Target, 4, 100.0, 1, 10.0, 10.0, true)
+								--PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
+							--if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+							--	TASK.TASK_VEHICLE_MISSION_PED_TARGET(peds, VehHandle, Target, 4, 100.0, 1, 10.0, 10.0, true)
+							--end
+						end
+						if ENTITY.DOES_ENTITY_EXIST(VehHandle) then
+							local VehClass = VEHICLE.GET_VEHICLE_CLASS(VehHandle)
+							if VehClass ~= 15 and VehClass ~= 16 then
+								local VehPos = ENTITY.GET_ENTITY_COORDS(VehHandle)
+								local TargetPos = ENTITY.GET_ENTITY_COORDS(Target)
+								local Distance = MISC.GET_DISTANCE_BETWEEN_COORDS(TargetPos.x, TargetPos.y, TargetPos.z, VehPos.x, VehPos.y, VehPos.z, true)
+								--if not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(VehHandle, Target, 17) then
+								--if Distance > 10 then
+								--if ENTITY.HAS_COLLISION_LOADED_AROUND_ENTITY(VehHandle) then
+									local NormZ = 0.0
+									local EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
+									local EntSpeedTotal = ENTITY.GET_ENTITY_SPEED(VehHandle)
+									local BoneIndex = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(VehHandle, "steeringwheel")
+									local EntVel = ENTITY.GET_ENTITY_VELOCITY(VehHandle)
+									local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(VehHandle)
+									local AdjustedVect = {x = VehPos.x + FVect.x * 6.0, y = VehPos.y + FVect.y * 6.0, z = VehPos.z + FVect.z * 6.0}
+									local Norm = v3.new()
+									if BoneIndex ~= 0 then
+										local Rot = ENTITY.GET_ENTITY_BONE_OBJECT_ROTATION(VehHandle, BoneIndex)
+										--Norm = v3.toDir(Rot)
+										--NormZ = Norm.y
+										Norm = v3.normalise(Rot)
+										NormZ = Rot.y
+									end
+									local NormZAbs = math.abs(NormZ)
+									if OperationT[peds].VehCurveState == nil then
+										OperationT[peds].VehCurveState = 0
+									end
+									if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(VehHandle) then
+										if EntSpeed.y > 3.0 and EntSpeed.y < 50.0 then
+											--if NormZAbs < 0.1 then
+												if OperationT[peds].VehCurveState == 0 then
+													--if NormZAbs < 0.6 then
+														ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, (1.0 - NormZAbs) * 0.85, 0.0, 0, true, true, false)
+													--end
+														--Print(NormZAbs)
+													--VEHICLE.SET_VEHICLE_FORWARD_SPEED(VehHandle, (EntSpeed.y + 0.5) - NormZAbs)
+													local ForceZ = 0.0
+													EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
+													if ENTITY.GET_ENTITY_HEIGHT_ABOVE_GROUND(VehHandle) > 1.2 then --or EntSpeed.x > 1.0 or EntSpeed.x < -1.0 then
+														ForceZ = -1.50
+														--EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
+														--ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, -EntSpeed.x, -EntSpeed.y, -EntSpeed.z, 0, true, true, false)
+														--ENTITY.SET_ENTITY_VELOCITY(VehHandle, 0.0, 0.0, 0.0)
+													end
+													--ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, -EntSpeed.x * 0.5, -EntSpeed.x, 0.0, 0, true, true, false)
+													ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, ForceZ, ForceZ, 0, false, true, false)
+													if NormZAbs > 0.6 then
+														OperationT[peds].VehCurveState = 1
+													end
+												end
+												if OperationT[peds].VehCurveState == 1 then
+													ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -NormZAbs, 0.0, 0, true, true, false)
+													EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
+													if EntSpeed.y < 10.0 then
+														OperationT[peds].VehCurveState = 2
+													end
+												end
+												if OperationT[peds].VehCurveState == 2 then
+													if NormZAbs < 0.3 then
+														OperationT[peds].VehCurveState = 0
+													end
+												end
+												--EntVel = ENTITY.GET_ENTITY_VELOCITY(VehHandle)
+												--ENTITY.SET_ENTITY_VELOCITY(VehHandle, EntVel.x, EntVel.y, EntVel.z + ForceZ)
+											--else
+												--ENTITY.SET_ENTITY_VELOCITY(VehHandle, EntVel.x + FVect.x * 0.2 - NormZAbs, EntVel.y + FVect.y * 0.2 - NormZAbs, EntVel.z + FVect.z * 0.2 - NormZAbs)
+											--end
+
+										else
+											if EntSpeed.y >= 30.0 then
+												--ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -2.0, 0.0, 0, true, true, false)
+												--ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -NormZAbs, 0.0, 0, true, true, false)
+												--ENTITY.SET_ENTITY_VELOCITY(VehHandle, EntVel.x - FVect.x * NormZAbs, EntVel.y - FVect.y * NormZAbs, EntVel.z - FVect.z * NormZAbs)
+												ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -NormZAbs, 0.0, 0, true, true, false)
+											end
+										end
+										--ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, EntSpeed.x * 0.1, 0.0, 0.0, 0, true, true, false)
+										--ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -NormZAbs, 0.0, 0, true, true, false)
+										local EndCoords, DidHit, EntHit, SurfaceNormal = ShapeTestNav(VehHandle, VehPos, AdjustedVect)
+										if DidHit and EntSpeed.y >= 2.0 then
+											ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -1.0, 0.0, 0, true, true, false)
+										end
+										ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 5, 0.0, 0.0, -NormZ * 0.005, 0, false, true, false)
+									end
+								--end
+							end
 						end
 					end
 					OperationT[peds].Target = Target
@@ -1062,7 +1156,11 @@ local SelectedPedModels = {"mp_m_bogdangoon"}
 local ModelPresetsT = {
 	"Bogdan Army",
 	"Cops Super Cars",
-	"Cops Armored Cars"
+	"Cops Armored Cars",
+	"Casino Guards",
+	"Heist Crews",
+	"Cayo Perico Guards",
+	"Space Rangers"
 }
 
 local CopSettingsMenu = menu.list(menu.my_root(), "Cop Settings", {}, "Which settings apply to cops.")
@@ -1151,6 +1249,18 @@ if CanSetModels then
 		end
 		if OnChange == 3 then
 			SetCopModels("tampa3", "s_m_y_cop_01", "speedo4", "buzzard", "s_m_y_swat_01", "s_m_y_cop_01", "tampa3", "speedo4")
+		end
+		if OnChange == 4 then
+			SetCopModels("kamacho", "s_m_y_westsec_02", "hellion", "buzzard", "s_m_m_highsec_03", "s_m_y_westsec_02", "kamacho", "hellion")
+		end
+		if OnChange == 5 then
+			SetCopModels("toros", "hc_gunman", "italigto", "swift", "s_m_y_marine_01", "hc_gunman", "toros", "italigto")
+		end
+		if OnChange == 6 then
+			SetCopModels("hermes", "g_m_m_cartelguards_01", "hotknife", "volatus", "g_m_m_cartelguards_02", "g_m_m_cartelguards_01", "hermes", "hotknife")
+		end
+		if OnChange == 7 then
+			SetCopModels("dominator5", "u_m_y_rsranger_01", "imperator2", "annihilator", "s_m_m_movspace_01", "u_m_y_rsranger_01", "dominator5", "imperator2")
 		end
 	end)
 end
@@ -1985,9 +2095,13 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		local TriesTick = 0
 		local TasksT = {}
 		local OperationT = {}
-		local SelectedTask = 2
+		local SelectedTask = 11
 		local OperationsTable = {}
 		local NumCreatedTasks = 11
+		local FoundCopVehs = {}
+		local CopVehsT = {}
+		local PedsT = {}
+		local IterationsNumber = 0
 		for i = 1, NumCreatedTasks do
 			OperationsTable[i] = 0
 		end
@@ -2240,7 +2354,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			if not PED.DOES_RELATIONSHIP_GROUP_EXIST(FriendlyAll) then
 				HasSetHate = false
 			end
-			local PedsT = entities.get_all_peds_as_handles()
+			if IterationsNumber == 0 then
+				PedsT = entities.get_all_peds_as_handles()
+			end
 			local InteriorPlayerPed = INTERIOR.GET_INTERIOR_FROM_ENTITY(PlayerPed)
 			for index, peds in pairs(PedsT) do
 				if DECORATOR.DECOR_GET_INT(peds, "Casino_Game_Info_Decorator") == 31 then
@@ -2276,221 +2392,237 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			end
 			for index, peds in pairs(PedsT) do
 				if peds ~= PlayerPed then
-					if EditedDamageEnts[peds] ~= nil then
-						if ENTITY.IS_ENTITY_DEAD(peds) or PED.IS_PED_A_PLAYER(peds) or PED.IS_PED_DEAD_OR_DYING(peds) then
-							EditedDamageEnts[peds] = nil
-						end
-					end
-					if not PED.IS_PED_A_PLAYER(peds) then
-						local EntScript = ENTITY.GET_ENTITY_SCRIPT(peds, 0)
-						if EntScript == "GB_HEADHUNTER" or EntScript == "GB_BIKER_RESCUE_CONTACT" or "FM_Mission_Controller"
-						or "FM_Mission_Controller_2020" then
-							if EditedDamageEnts[peds] == nil then
-								if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-									ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(peds, false)
-									local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
-									if Veh ~= 0 then
-										ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(Veh, false)
-										ENTITY.SET_ENTITY_CAN_ONLY_BE_DAMAGED_BY_SCRIPT_PARTICIPANTS(Veh, false)
-									end
-									if RelHashBackup ~= 0 then
-										ENTITY.SET_ENTITY_CAN_BE_DAMAGED_BY_RELATIONSHIP_GROUP(peds, true, RelHashBackup)
-									end
-									ENTITY.SET_ENTITY_CAN_BE_DAMAGED_BY_RELATIONSHIP_GROUP(peds, true, SelectedTeam)
-									ENTITY.SET_ENTITY_CAN_ONLY_BE_DAMAGED_BY_SCRIPT_PARTICIPANTS(peds, false)
-									EditedDamageEnts[peds] = peds
-								end
+					if ENTITY.DOES_ENTITY_EXIST(peds) then
+						if EditedDamageEnts[peds] ~= nil then
+							if ENTITY.IS_ENTITY_DEAD(peds) or PED.IS_PED_A_PLAYER(peds) or PED.IS_PED_DEAD_OR_DYING(peds) then
+								EditedDamageEnts[peds] = nil
 							end
 						end
-						if CopsRushToNearestTarget then
-							if #FoundHostiles > 0 then
-								if HostileNum > #FoundHostiles then
-									HostileNum = 1
-								end
-								if OperationT[peds] ~= nil then
-									if OperationT[peds].Target == nil then
-										OperationT[peds].Target = FoundHostiles[HostileNum]
-										HostileNum = HostileNum + 1
+						if not PED.IS_PED_A_PLAYER(peds) then
+							local EntScript = ENTITY.GET_ENTITY_SCRIPT(peds, 0)
+							if EntScript == "GB_HEADHUNTER" or EntScript == "GB_BIKER_RESCUE_CONTACT" or "FM_Mission_Controller"
+							or "FM_Mission_Controller_2020" then
+								if EditedDamageEnts[peds] == nil then
+									if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+										ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(peds, false)
+										local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+										if Veh ~= 0 then
+											ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(Veh, false)
+											ENTITY.SET_ENTITY_CAN_ONLY_BE_DAMAGED_BY_SCRIPT_PARTICIPANTS(Veh, false)
+										end
+										if RelHashBackup ~= 0 then
+											ENTITY.SET_ENTITY_CAN_BE_DAMAGED_BY_RELATIONSHIP_GROUP(peds, true, RelHashBackup)
+										end
+										ENTITY.SET_ENTITY_CAN_BE_DAMAGED_BY_RELATIONSHIP_GROUP(peds, true, SelectedTeam)
+										ENTITY.SET_ENTITY_CAN_ONLY_BE_DAMAGED_BY_SCRIPT_PARTICIPANTS(peds, false)
+										EditedDamageEnts[peds] = peds
 									end
 								end
 							end
-						end
-						local CanEditCop = false
-						if OnlyEditOwnedCops then
-							if NETWORK.NETWORK_IS_GAME_IN_PROGRESS() then
-								if get_entity_owner(peds) == PlayerID then
+							if CopsRushToNearestTarget then
+								if #FoundHostiles > 0 then
+									if HostileNum > #FoundHostiles then
+										HostileNum = 1
+									end
+									if OperationT[peds] ~= nil then
+										if OperationT[peds].Target == nil then
+											OperationT[peds].Target = FoundHostiles[HostileNum]
+											HostileNum = HostileNum + 1
+										end
+									end
+								end
+							end
+							local CanEditCop = false
+							if OnlyEditOwnedCops then
+								if NETWORK.NETWORK_IS_GAME_IN_PROGRESS() then
+									if get_entity_owner(peds) == PlayerID then
+										CanEditCop = true
+									end
+								else
 									CanEditCop = true
 								end
 							else
 								CanEditCop = true
 							end
-						else
-							CanEditCop = true
-						end
-						local IsCopModel = IsCopPedModel(peds)
-						local HaveCopRel = IsWithCopRel(peds)
-						local CanAddBlip = false
-						if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(peds) then
-							if not ENTITY.IS_ENTITY_DEAD(peds) then
-								if CanEditCop then
-									if MissionCopCount < MaxCopsToEdit then
-										if EntScript == nil then
-											local CanApplyDecor = false
-											local DecorApplied = false
-											if CopsModelForMission then
-												if IsCopModel then
-													CanApplyDecor = true
-												end
-											end
-											if CopsForMission then
-												if HaveCopRel then
-													CanApplyDecor = true
-												end
-											end
-											if CanApplyDecor and MakeCopsAsMissionEntities then
-												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-													if DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31) then
-														ENTITY.SET_ENTITY_AS_MISSION_ENTITY(peds, false, true)
-														DecorApplied = true
-														if SetNetworkID then
-															local NetID = NETWORK.PED_TO_NET(peds)
-															if NetID ~= 0 then
-																NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PlayerID, true)
-															end
-														end
-													end
-												end
-											else
-												if CopsForMission then
-													if HaveCopRel then
-														CanApplyDecor = true
-													end
-												end
+							local IsCopModel = IsCopPedModel(peds)
+							local HaveCopRel = IsWithCopRel(peds)
+							local CanAddBlip = false
+							if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(peds) then
+								if not ENTITY.IS_ENTITY_DEAD(peds) then
+									if CanEditCop then
+										if MissionCopCount < MaxCopsToEdit then
+											if EntScript == nil then
+												local CanApplyDecor = false
+												local DecorApplied = false
 												if CopsModelForMission then
 													if IsCopModel then
 														CanApplyDecor = true
 													end
 												end
-												if CanApplyDecor then
-													if not DECORATOR.DECOR_EXIST_ON(peds, "Casino_Game_Info_Decorator") then
-														if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-															DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31)
+												if CopsForMission then
+													if HaveCopRel then
+														CanApplyDecor = true
+													end
+												end
+												if CanApplyDecor and MakeCopsAsMissionEntities then
+													if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+														if DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31) then
+															ENTITY.SET_ENTITY_AS_MISSION_ENTITY(peds, false, true)
 															DecorApplied = true
-														end
-													end
-												end
-											end
-											if DecorApplied then
-												NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-												PED.SET_PED_RELATIONSHIP_GROUP_HASH(peds, SelectedTeam)
-												--PED.SET_PED_FLEE_ATTRIBUTES(peds, 512, true)
-												if not ZombieMode then
-													WEAPON.GIVE_WEAPON_TO_PED(peds, joaat("weapon_pistol"), 99999, false, false)
-													if EnableWeaponSettsForCops then
-														GiveCorrectWeaponsToPed(peds)
-													end
-													if RandomWeaponComponents then
-														Set_Weapon_Components(peds)
-													end
-													if IsCopModel then
-														SetPedCombatAbilities(peds)
-														PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
-													end
-													if EliteCops then
-														ENTITY.SET_ENTITY_MAX_HEALTH(peds, 300)
-														PED.SET_PED_MAX_HEALTH(peds, 300)
-														ENTITY.SET_ENTITY_HEALTH(peds, 300)
-														PED.SET_PED_SUFFERS_CRITICAL_HITS(peds, false)
-														PED.SET_RAGDOLL_BLOCKING_FLAGS(peds, 1)
-													end
-													if CopsShootWhereYouShoot or CopsShootWhereYouAim or UseCustomsTasksKeys then
-														PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
-														PED.SET_PED_CONFIG_FLAG(peds, 113, false)
-														PED.SET_PED_CONFIG_FLAG(peds, 208, true)
-														PED.SET_PED_COMBAT_ATTRIBUTES(peds, 2, true)
-													end
-												else
-													ENTITY.SET_ENTITY_PROOFS(peds, false, false, false, false, true, false, false, false)
-													WEAPON.REMOVE_ALL_PED_WEAPONS(peds, false)
-													SetPedCombatAbilities(peds)
-													PED.SET_PED_SUFFERS_CRITICAL_HITS(peds, false)
-													PED.SET_RAGDOLL_BLOCKING_FLAGS(peds, 1)
-													SetPedHealth(peds, 400)
-													WEAPON.GIVE_WEAPON_TO_PED(peds, joaat("weapon_knife"), 99999, false, false)
-												end
-												local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
-												if Veh ~= 0 then
-													if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
-														if IsArmoredVehModel(Veh) then
-															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 52, true)
-															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 53, true)
-														end
-													end
-												end
-												local AppliedOutfit = false
-												if RandomCopModelComponents then
-													if IsCopModel then
-														SetPedRandomOutfit(peds)
-														AppliedOutfit = true
-													end
-												end
-												if RandomCopComponents then
-													if not AppliedOutfit then
-														if HaveCopRel then
-															SetPedRandomOutfit(peds)
-														end
-													end
-												end
-												local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
-												if Veh ~= 0 then
-													if Veh ~= PlayerVeh then
-														if UpgradeCopCars then
-															if DECORATOR.DECOR_GET_INT(Veh, "Casino_Game_Info_Decorator") ~= 31 then
-																NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Veh)
-																VEHICLE.SET_VEHICLE_WHEEL_TYPE(Veh, math.random(0, 12))
-																VEHICLE.SET_VEHICLE_MOD_KIT(Veh, 0)
-																for k = 0, 48 do
-																	local NumMods = entities.get_upgrade_max_value(Veh, k)
-																	if NumMods > 0 then
-																		local Rand = math.random(0, NumMods)
-																		if Rand <= -1 then
-																			Rand = 0
-																		end
-																		entities.set_upgrade_value(Veh, k, Rand, true)
-																	else
-																		if math.random(0, 1) == 1 then
-																			entities.set_upgrade_value(Veh, k, NumMods, true)
+															if SetNetworkID then
+																local NetID = NETWORK.PED_TO_NET(peds)
+																if NetID ~= 0 then
+																	NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PlayerID, true)
+																end
+															end
+															local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+															if Veh ~= 0 then
+																if FoundCopVehs[Veh] == nil then
+																	local Peds = {}
+																	for i = -1, 9 do
+																		local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, i, false)
+																		if Ped ~= 0 then
+																			Peds[#Peds+1] = Ped
 																		end
 																	end
-																end
-																local CanSetColours = true
-																if not SetCopCarsColours then
-																	if VEHICLE.GET_VEHICLE_CLASS(Veh) == 18 then
-																		CanSetColours = false
-																	end
-																end
-																if CanSetColours then
-																	local PRed, PGreen, PBlue, SRed, SGreen, SBlue = math.random(0, 255), math.random(0, 255), math.random(0, 255), math.random(0, 255), math.random(0, 255), math.random(0, 255)  
-																	if SetDefaultColours then
-																		PRed, PGreen, PBlue, SRed, SGreen, SBlue = PR, PG, PB, SR, SG, SB
-																	end
-																	VEHICLE.SET_VEHICLE_CUSTOM_PRIMARY_COLOUR(Veh, PRed, PGreen, PBlue)
-																	VEHICLE.SET_VEHICLE_CUSTOM_SECONDARY_COLOUR(Veh, SRed, SGreen, SBlue)
-																	VEHICLE.SET_VEHICLE_COLOURS(Veh, math.random(0, 160), math.random(0, 160))
-																	DECORATOR.DECOR_SET_INT(Veh, "Casino_Game_Info_Decorator", 31)
+																	FoundCopVehs[Veh] = Veh
+																	CopVehsT[#CopVehsT+1] = {Handle = Veh, HasSetToMissionEnt = false, Passengers = Peds}
 																end
 															end
 														end
-														if SetCopPassengersIntoTurretSeat then
-															local HasSetInTurretSeat = false
-															if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) ~= peds then
-																for i = -1, 9 do
-																	if not HasSetInTurretSeat then
-																		if VEHICLE.IS_TURRET_SEAT(Veh, i) then
-																			if VEHICLE.IS_VEHICLE_SEAT_FREE(Veh, i, true) then
-																				HasSetInTurretSeat = true
-																				NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-																				PED.SET_PED_INTO_VEHICLE(peds, Veh, i)
+													end
+												else
+													if CopsForMission then
+														if HaveCopRel then
+															CanApplyDecor = true
+														end
+													end
+													if CopsModelForMission then
+														if IsCopModel then
+															CanApplyDecor = true
+														end
+													end
+													if CanApplyDecor then
+														if not DECORATOR.DECOR_EXIST_ON(peds, "Casino_Game_Info_Decorator") then
+															if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31)
+																DecorApplied = true
+															end
+														end
+													end
+												end
+												if DecorApplied then
+													NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+													PED.SET_PED_RELATIONSHIP_GROUP_HASH(peds, SelectedTeam)
+													--PED.SET_PED_FLEE_ATTRIBUTES(peds, 512, true)
+													if not ZombieMode then
+														WEAPON.GIVE_WEAPON_TO_PED(peds, joaat("weapon_pistol"), 99999, false, false)
+														if EnableWeaponSettsForCops then
+															GiveCorrectWeaponsToPed(peds)
+														end
+														if RandomWeaponComponents then
+															Set_Weapon_Components(peds)
+														end
+														if IsCopModel then
+															SetPedCombatAbilities(peds)
+															PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
+														end
+														if EliteCops then
+															ENTITY.SET_ENTITY_MAX_HEALTH(peds, 300)
+															PED.SET_PED_MAX_HEALTH(peds, 300)
+															ENTITY.SET_ENTITY_HEALTH(peds, 300)
+															PED.SET_PED_SUFFERS_CRITICAL_HITS(peds, false)
+															PED.SET_RAGDOLL_BLOCKING_FLAGS(peds, 1)
+														end
+														if CopsShootWhereYouShoot or CopsShootWhereYouAim or UseCustomsTasksKeys then
+															PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
+															PED.SET_PED_CONFIG_FLAG(peds, 113, false)
+															PED.SET_PED_CONFIG_FLAG(peds, 208, true)
+															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 2, true)
+														end
+													else
+														ENTITY.SET_ENTITY_PROOFS(peds, false, false, false, false, true, false, false, false)
+														WEAPON.REMOVE_ALL_PED_WEAPONS(peds, false)
+														SetPedCombatAbilities(peds)
+														PED.SET_PED_SUFFERS_CRITICAL_HITS(peds, false)
+														PED.SET_RAGDOLL_BLOCKING_FLAGS(peds, 1)
+														SetPedHealth(peds, 400)
+														WEAPON.GIVE_WEAPON_TO_PED(peds, joaat("weapon_knife"), 99999, false, false)
+													end
+													local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+													if Veh ~= 0 then
+														if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
+															--if IsArmoredVehModel(Veh) then
+																--PED.SET_PED_COMBAT_ATTRIBUTES(peds, 52, true)
+																PED.SET_PED_COMBAT_ATTRIBUTES(peds, 53, true)
+															--end
+														end
+													end
+													local AppliedOutfit = false
+													if RandomCopModelComponents then
+														if IsCopModel then
+															SetPedRandomOutfit(peds)
+															AppliedOutfit = true
+														end
+													end
+													if RandomCopComponents then
+														if not AppliedOutfit then
+															if HaveCopRel then
+																SetPedRandomOutfit(peds)
+															end
+														end
+													end
+													local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+													if Veh ~= 0 then
+														if Veh ~= PlayerVeh then
+															if UpgradeCopCars then
+																if DECORATOR.DECOR_GET_INT(Veh, "Casino_Game_Info_Decorator") ~= 31 then
+																	NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Veh)
+																	VEHICLE.SET_VEHICLE_WHEEL_TYPE(Veh, math.random(0, 12))
+																	VEHICLE.SET_VEHICLE_MOD_KIT(Veh, 0)
+																	for k = 0, 48 do
+																		local NumMods = entities.get_upgrade_max_value(Veh, k)
+																		if NumMods > 0 then
+																			local Rand = math.random(0, NumMods)
+																			if Rand <= -1 then
+																				Rand = 0
+																			end
+																			entities.set_upgrade_value(Veh, k, Rand, true)
+																		else
+																			if math.random(0, 1) == 1 then
+																				entities.set_upgrade_value(Veh, k, NumMods, true)
+																			end
+																		end
+																	end
+																	local CanSetColours = true
+																	if not SetCopCarsColours then
+																		if VEHICLE.GET_VEHICLE_CLASS(Veh) == 18 then
+																			CanSetColours = false
+																		end
+																	end
+																	if CanSetColours then
+																		local PRed, PGreen, PBlue, SRed, SGreen, SBlue = math.random(0, 255), math.random(0, 255), math.random(0, 255), math.random(0, 255), math.random(0, 255), math.random(0, 255)  
+																		if SetDefaultColours then
+																			PRed, PGreen, PBlue, SRed, SGreen, SBlue = PR, PG, PB, SR, SG, SB
+																		end
+																		VEHICLE.SET_VEHICLE_CUSTOM_PRIMARY_COLOUR(Veh, PRed, PGreen, PBlue)
+																		VEHICLE.SET_VEHICLE_CUSTOM_SECONDARY_COLOUR(Veh, SRed, SGreen, SBlue)
+																		VEHICLE.SET_VEHICLE_COLOURS(Veh, math.random(0, 160), math.random(0, 160))
+																		DECORATOR.DECOR_SET_INT(Veh, "Casino_Game_Info_Decorator", 31)
+																	end
+																end
+															end
+															if SetCopPassengersIntoTurretSeat then
+																local HasSetInTurretSeat = false
+																if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) ~= peds then
+																	for i = -1, 9 do
+																		if not HasSetInTurretSeat then
+																			if VEHICLE.IS_TURRET_SEAT(Veh, i) then
+																				if VEHICLE.IS_VEHICLE_SEAT_FREE(Veh, i, true) then
+																					HasSetInTurretSeat = true
+																					NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+																					PED.SET_PED_INTO_VEHICLE(peds, Veh, i)
+																				end
 																			end
 																		end
 																	end
@@ -2504,179 +2636,120 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 									end
 								end
 							end
-						end
-						local DecorInt = DECORATOR.DECOR_GET_INT(peds, "Casino_Game_Info_Decorator")
-						if ENTITY.IS_ENTITY_A_MISSION_ENTITY(peds) then
-							if DecorInt == 32 then
-								if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-									local NetID = NETWORK.PED_TO_NET(peds)
-									if NetID ~= 0 then
-										NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PlayerID, false)
+							local DecorInt = DECORATOR.DECOR_GET_INT(peds, "Casino_Game_Info_Decorator")
+							if ENTITY.IS_ENTITY_A_MISSION_ENTITY(peds) then
+								if DecorInt == 32 then
+									if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+										local NetID = NETWORK.PED_TO_NET(peds)
+										if NetID ~= 0 then
+											NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PlayerID, false)
+										end
+										entities.delete_by_handle(peds)
 									end
-									entities.delete_by_handle(peds)
 								end
 							end
-						end
-						if DecorInt == 31 then
-							if CanEditCop then
-								if PED.GET_PED_RELATIONSHIP_GROUP_HASH(peds) ~= SelectedTeam then
-									NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-									PED.SET_PED_RELATIONSHIP_GROUP_HASH(peds, SelectedTeam)
-								end
-								if PutCopsIntoPlayerVeh then
-									if PlayerVeh ~= 0 then
-										for i = -1, 9 do
-											if VEHICLE.IS_VEHICLE_SEAT_FREE(PlayerVeh, i, true) then
-												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-													PED.SET_PED_INTO_VEHICLE(peds, PlayerVeh, i)
+							if DecorInt == 31 then
+								if CanEditCop then
+									if PED.GET_PED_RELATIONSHIP_GROUP_HASH(peds) ~= SelectedTeam then
+										NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+										PED.SET_PED_RELATIONSHIP_GROUP_HASH(peds, SelectedTeam)
+									end
+									if PutCopsIntoPlayerVeh then
+										if PlayerVeh ~= 0 then
+											for i = -1, 9 do
+												if VEHICLE.IS_VEHICLE_SEAT_FREE(PlayerVeh, i, true) then
+													if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+														PED.SET_PED_INTO_VEHICLE(peds, PlayerVeh, i)
+													end
 												end
 											end
 										end
 									end
 								end
-							end
-							if ENTITY.IS_ENTITY_DEAD(peds) then
-								if not IgnoreDeadCops then
-									if DeadPeds[peds] == nil then
-										util.create_thread(function()
-											DeadPeds[peds] = {}
-											Wait(10000)
-											while not NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) and ENTITY.DOES_ENTITY_EXIST(peds) do
-												Wait()
-											end
-											if ENTITY.DOES_ENTITY_EXIST(peds) then
-												local NetID = NETWORK.PED_TO_NET(peds)
-												if NetID ~= 0 then
-													NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PlayerID, false)
+								if ENTITY.IS_ENTITY_DEAD(peds) then
+									if not IgnoreDeadCops then
+										if DeadPeds[peds] == nil then
+											util.create_thread(function()
+												DeadPeds[peds] = {}
+												Wait(10000)
+												while not NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) and ENTITY.DOES_ENTITY_EXIST(peds) do
+													Wait()
 												end
-												DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 32)
-												entities.delete_by_handle(peds)
-											end
-											DeadPeds[peds] = nil
-										end)
+												if ENTITY.DOES_ENTITY_EXIST(peds) then
+													local NetID = NETWORK.PED_TO_NET(peds)
+													if NetID ~= 0 then
+														NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PlayerID, false)
+													end
+													DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 32)
+													entities.delete_by_handle(peds)
+												end
+												DeadPeds[peds] = nil
+											end)
+										end
+									else
+										if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+											set_entity_as_no_longer_needed(peds)
+											DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 30)
+										end
+									end
+								end
+								CanAddBlip = false
+								if AddBlipsForAllyCops then
+									if not IsCopModel then
+										CanAddBlip = true
+									end
+								end
+								if AddBlipsForCopsDifferentModel then
+									if IsCopModel then
+										CanAddBlip = true
+									end
+								end
+								if CanEditCop then
+									if CanAddBlip then
+										if not HUD.DOES_PED_HAVE_AI_BLIP(peds) then
+											NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
+											HUD.SET_PED_HAS_AI_BLIP_WITH_COLOUR(peds, true, BlipColorToGive)
+											HUD.SET_PED_AI_BLIP_HAS_CONE(peds, false)
+											HUD.SET_PED_AI_BLIP_FORCED_ON(peds, true)
+										end
 									end
 								else
-									if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-										set_entity_as_no_longer_needed(peds)
-										DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 30)
+									if CanAddBlip then
+										if not HUD.DOES_PED_HAVE_AI_BLIP(peds) then
+											HUD.SET_PED_HAS_AI_BLIP_WITH_COLOUR(peds, true, 2)
+											HUD.SET_PED_AI_BLIP_HAS_CONE(peds, false)
+											HUD.SET_PED_AI_BLIP_FORCED_ON(peds, true)
+										end
 									end
 								end
-							end
-							CanAddBlip = false
-							if AddBlipsForAllyCops then
-								if not IsCopModel then
-									CanAddBlip = true
-								end
-							end
-							if AddBlipsForCopsDifferentModel then
-								if IsCopModel then
-									CanAddBlip = true
-								end
-							end
-							if CanEditCop then
-								if CanAddBlip then
-									if not HUD.DOES_PED_HAVE_AI_BLIP(peds) then
-										NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds)
-										HUD.SET_PED_HAS_AI_BLIP_WITH_COLOUR(peds, true, BlipColorToGive)
-										HUD.SET_PED_AI_BLIP_HAS_CONE(peds, false)
-										HUD.SET_PED_AI_BLIP_FORCED_ON(peds, true)
-									end
-								end
-							else
-								if CanAddBlip then
-									if not HUD.DOES_PED_HAVE_AI_BLIP(peds) then
-										HUD.SET_PED_HAS_AI_BLIP_WITH_COLOUR(peds, true, 2)
-										HUD.SET_PED_AI_BLIP_HAS_CONE(peds, false)
-										HUD.SET_PED_AI_BLIP_FORCED_ON(peds, true)
-									end
-								end
-							end
-							if CopsAreAllies then
-								if CanEditCop then
-									local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
-									if OperationT[peds] == nil then
-										if not ENTITY.IS_ENTITY_DEAD(peds) then
-											local IsPedInGroup = PED.IS_PED_IN_GROUP(peds)
-											if not IsPedInGroup then
-												if not UseCustomsTasksKeys then
-													if CopsFollowAsBodyguard then
-														local CanSetInGroup = true
-														if Veh ~= 0 then
-															local VehModel = ENTITY.GET_ENTITY_MODEL(Veh)
-															local IsAPlane = VEHICLE.IS_THIS_MODEL_A_PLANE(VehModel)
-															local IsAHeli = VEHICLE.IS_THIS_MODEL_A_HELI(VehModel)
-															if IsAPlane or IsAHeli then
-																CanSetInGroup = false
-															end
-														end
-														if CanSetInGroup then
-															if GetPedGroupSize(PlayerGroup) < 7 then
-																if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 30.0, 30.0, 30.0, false, true, false) then
-																	if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																		PED.SET_PED_AS_GROUP_MEMBER(peds, PlayerGroup)
-																		PED.SET_PED_NEVER_LEAVES_GROUP(peds, true)
-																		PED.SET_GROUP_SEPARATION_RANGE(PlayerGroup, 9999.0)
-																		PED.SET_GROUP_FORMATION_SPACING(PlayerGroup, 1.0, -1.0, -1.0)
-																		PED.SET_GROUP_FORMATION(PlayerGroup, 1)
-																		TASK.CLEAR_PED_TASKS(peds)
-																	end
-																end
-															end
-														end
-													end
-												end
-											end
-											IsPedInGroup = PED.IS_PED_IN_GROUP(peds)
-											if CopsFollowInVehTask then
-												if not PED.IS_PED_IN_COMBAT(peds, 0) then
-													if Veh ~= 0 then
-														if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) == 7 then
-															if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
+								if CopsAreAllies then
+									if CanEditCop then
+										local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+										if OperationT[peds] == nil then
+											if not ENTITY.IS_ENTITY_DEAD(peds) then
+												local IsPedInGroup = PED.IS_PED_IN_GROUP(peds)
+												if not IsPedInGroup then
+													if not UseCustomsTasksKeys then
+														if CopsFollowAsBodyguard then
+															local CanSetInGroup = true
+															if Veh ~= 0 then
 																local VehModel = ENTITY.GET_ENTITY_MODEL(Veh)
 																local IsAPlane = VEHICLE.IS_THIS_MODEL_A_PLANE(VehModel)
 																local IsAHeli = VEHICLE.IS_THIS_MODEL_A_HELI(VehModel)
-																if not IsAPlane and not IsAHeli then
-																	if not IsPedInGroup then
-																		if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
-																			if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
-																				if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																					TASK.TASK_VEHICLE_MISSION_PED_TARGET(peds, Veh, PlayerPed, 4, 100.0, 1, 50.0, 10.0, true)
-																				end
-																			end
-																		end
-																	end
-																else
-																	if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 150.0, 150.0, 200.0, false, true, false) then
-																		if IsAHeli then
-																			if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
-																				if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																					TASK.TASK_HELI_MISSION(peds, Veh, 0, PlayerPed, 0.0, 0.0, 150.0, 4, 100.0, 120.0, 0, 100, 50, -1.0, 0)
-																				end
-																			end
-																		end
-																		if IsAPlane then
-																			if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
-																				if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																					TASK.TASK_PLANE_MISSION(peds, Veh, 0, PlayerPed, 0, 0, 0, 4, 100.0, 50.0, 0.0, 50.0, 30.0, true)
-																				end
-																			end
-																		end
-																	end
+																if IsAPlane or IsAHeli then
+																	CanSetInGroup = false
 																end
 															end
-														end
-													end
-												end
-											end
-											if CopsFollowTask then
-												if Veh == 0 then
-													if not IsPedInGroup then
-														if OperationT[peds] == nil and NavsT[peds] == nil then
-															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_SHOOT_AT_COORD")) == 7 then
-																if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 50.0, 50.0, 50.0, false, true, false) then
-																	if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_FOLLOW_TO_OFFSET_OF_ENTITY")) == 7 then
+															if CanSetInGroup then
+																if GetPedGroupSize(PlayerGroup) < 7 then
+																	if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 30.0, 30.0, 30.0, false, true, false) then
 																		if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																			TASK.TASK_FOLLOW_TO_OFFSET_OF_ENTITY(peds, PlayerPed, math.random(-10, 10), math.random(-10, 10), math.random(-10, 10), 100.0, -1, 5.0, true)
+																			PED.SET_PED_AS_GROUP_MEMBER(peds, PlayerGroup)
+																			PED.SET_PED_NEVER_LEAVES_GROUP(peds, true)
+																			PED.SET_GROUP_SEPARATION_RANGE(PlayerGroup, 9999.0)
+																			PED.SET_GROUP_FORMATION_SPACING(PlayerGroup, 1.0, -1.0, -1.0)
+																			PED.SET_GROUP_FORMATION(PlayerGroup, 1)
+																			TASK.CLEAR_PED_TASKS(peds)
 																		end
 																	end
 																end
@@ -2684,91 +2757,186 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 														end
 													end
 												end
-											end
-											if AllyAttacksHostiles then
-												if not PED.IS_PED_IN_COMBAT(peds, 0) then
-													TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, DistanceNeededToAttack, 0)
-												end
-											end
-											if BringFarCopsCloser then
-												local CanGo = true
-												local IsInVeh = PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false)
-												if BringIfOutsideOfVehicle then
-													if IsInVeh then
-														CanGo = false
-													end
-												end
-												if CanGo then
-													if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
-														if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-															if not RemoveCopsFromVeh then
-																if Veh ~= 0 then
-																	local CheckRadius = 700.0
-																	if TPIfImInAInterior then
-																		if InteriorPlayerPed ~= 0 then
-																			CheckRadius = 100.0
+												IsPedInGroup = PED.IS_PED_IN_GROUP(peds)
+												if CopsFollowInVehTask then
+													if not PED.IS_PED_IN_COMBAT(peds, 0) then
+														if Veh ~= 0 then
+															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) == 7 then
+																if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
+																	local VehModel = ENTITY.GET_ENTITY_MODEL(Veh)
+																	local IsAPlane = VEHICLE.IS_THIS_MODEL_A_PLANE(VehModel)
+																	local IsAHeli = VEHICLE.IS_THIS_MODEL_A_HELI(VehModel)
+																	if not IsAPlane and not IsAHeli then
+																		if not IsPedInGroup then
+																			if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
+																				if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+																					if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																						TASK.TASK_VEHICLE_MISSION_PED_TARGET(peds, Veh, PlayerPed, 4, 100.0, 1, 50.0, 10.0, true)
+																					end
+																				end
+																			end
+																		end
+																	else
+																		if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 150.0, 150.0, 200.0, false, true, false) then
+																			if IsAHeli then
+																				if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+																					if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																						TASK.TASK_HELI_MISSION(peds, Veh, 0, PlayerPed, 0.0, 0.0, 150.0, 4, 100.0, 120.0, 0, 100, 50, -1.0, 0)
+																					end
+																				end
+																			end
+																			if IsAPlane then
+																				if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+																					if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																						TASK.TASK_PLANE_MISSION(peds, Veh, 0, PlayerPed, 0, 0, 0, 4, 100.0, 50.0, 0.0, 50.0, 30.0, true)
+																					end
+																				end
+																			end
 																		end
 																	end
-																	if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Veh) then
-																		if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
-																			local VehClass = VEHICLE.GET_VEHICLE_CLASS(Veh)
-																			if VehClass ~= 15 and VehClass ~= 16 then
-																				if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, CheckRadius, CheckRadius, CheckRadius, false, true, false) then
-																					local FVect = nil
-																					local Multiplier = 100
-																					if IsInVeh then
-																						FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(PlayerPed)
-																						Multiplier = -100
-																					else
-																						local CamRot = CAM.GET_GAMEPLAY_CAM_ROT(2)
-																						CamRot.z = -CamRot.z
-																						FVect = CamRot:toDir()
-																					end
-																					local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-																					local AdjustedX = PPos.x + FVect.x * Multiplier
-																					local AdjustedY = PPos.y + FVect.y * Multiplier
-																					local AdjustedZ = PPos.z + FVect.z * Multiplier
-																					local DidHit = memory.alloc(1)
-																					local EndCoords = v3.new()
-																					local Normal = v3.new()
-																					local HitEntity = memory.alloc_int()
-																				
-																					local Handle = SHAPETEST.START_EXPENSIVE_SYNCHRONOUS_SHAPE_TEST_LOS_PROBE(
-																						PPos.x, PPos.y, PPos.z,
-																						AdjustedX, AdjustedY, AdjustedZ,
-																						-1,
-																						PlayerPed, 7
-																					)
-																					SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
-																					local EntTarget = Veh
-																					local CheckSz = 2.0
-																					if TPIfImInAInterior then
-																						if InteriorPlayerPed ~= 0 then
-																							EntTarget = peds
-																							CheckSz = 0.5
+																end
+															end
+														end
+													end
+												end
+												if CopsFollowTask then
+													if Veh == 0 then
+														if not IsPedInGroup then
+															if OperationT[peds] == nil and NavsT[peds] == nil then
+																if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_SHOOT_AT_COORD")) == 7 then
+																	if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 50.0, 50.0, 50.0, false, true, false) then
+																		if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_FOLLOW_TO_OFFSET_OF_ENTITY")) == 7 then
+																			if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																				TASK.TASK_FOLLOW_TO_OFFSET_OF_ENTITY(peds, PlayerPed, math.random(-10, 10), math.random(-10, 10), math.random(-10, 10), 100.0, -1, 5.0, true)
+																			end
+																		end
+																	end
+																end
+															end
+														end
+													end
+												end
+												if AllyAttacksHostiles then
+													if not PED.IS_PED_IN_COMBAT(peds, 0) then
+														TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, DistanceNeededToAttack, 0)
+													end
+												end
+												if BringFarCopsCloser then
+													local CanGo = true
+													local IsInVeh = PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false)
+													if BringIfOutsideOfVehicle then
+														if IsInVeh then
+															CanGo = false
+														end
+													end
+													if CanGo then
+														if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
+															if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																if not RemoveCopsFromVeh then
+																	if Veh ~= 0 then
+																		local CheckRadius = 700.0
+																		if TPIfImInAInterior then
+																			if InteriorPlayerPed ~= 0 then
+																				CheckRadius = 100.0
+																			end
+																		end
+																		if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Veh) then
+																			if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
+																				local VehClass = VEHICLE.GET_VEHICLE_CLASS(Veh)
+																				if VehClass ~= 15 and VehClass ~= 16 then
+																					if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, CheckRadius, CheckRadius, CheckRadius, false, true, false) then
+																						local FVect = nil
+																						local Multiplier = 100
+																						if IsInVeh then
+																							FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(PlayerPed)
+																							Multiplier = -100
+																						else
+																							local CamRot = CAM.GET_GAMEPLAY_CAM_ROT(2)
+																							CamRot.z = -CamRot.z
+																							FVect = CamRot:toDir()
+																						end
+																						local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+																						local AdjustedX = PPos.x + FVect.x * Multiplier
+																						local AdjustedY = PPos.y + FVect.y * Multiplier
+																						local AdjustedZ = PPos.z + FVect.z * Multiplier
+																						local DidHit = memory.alloc(1)
+																						local EndCoords = v3.new()
+																						local Normal = v3.new()
+																						local HitEntity = memory.alloc_int()
+																					
+																						local Handle = SHAPETEST.START_EXPENSIVE_SYNCHRONOUS_SHAPE_TEST_LOS_PROBE(
+																							PPos.x, PPos.y, PPos.z,
+																							AdjustedX, AdjustedY, AdjustedZ,
+																							-1,
+																							PlayerPed, 7
+																						)
+																						SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
+																						local EntTarget = Veh
+																						local CheckSz = 2.0
+																						if TPIfImInAInterior then
+																							if InteriorPlayerPed ~= 0 then
+																								EntTarget = peds
+																								CheckSz = 0.5
+																							end
+																						end
+																						if memory.read_byte(DidHit) ~= 0 then
+																							if not MISC.IS_POSITION_OCCUPIED(EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0, CheckSz, false, true, true, false, false, 0, true) then
+																								ENTITY.SET_ENTITY_COORDS(EntTarget, EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0)
+																							end
+																						else
+																							if not MISC.IS_POSITION_OCCUPIED(AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0, CheckSz, false, true, true, false, false, 0, true) then
+																								ENTITY.SET_ENTITY_COORDS(EntTarget, AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0)
+																							end
 																						end
 																					end
-																					if memory.read_byte(DidHit) ~= 0 then
-																						if not MISC.IS_POSITION_OCCUPIED(EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0, CheckSz, false, true, true, false, false, 0, true) then
-																							ENTITY.SET_ENTITY_COORDS(EntTarget, EndCoords.x - FVect.x * 5.0, EndCoords.y - FVect.y * 5.0, (EndCoords.z - 1.0) - FVect.z * 5.0)
-																						end
-																					else
-																						if not MISC.IS_POSITION_OCCUPIED(AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0, CheckSz, false, true, true, false, false, 0, true) then
-																							ENTITY.SET_ENTITY_COORDS(EntTarget, AdjustedX - FVect.x * 5.0, AdjustedY - FVect.y * 5.0, (AdjustedZ - 1.0) - FVect.z * 5.0)
+																				else
+																					if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, 700.0, 700.0, 700.0, false, true, false) then
+																						local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																						local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+																						local AdjustedX = PPos.x + FVect.x * 100
+																						local AdjustedY = PPos.y + FVect.y * 100
+																						local AdjustedZ = PPos.z + FVect.z * 100
+																						if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ + 100.0, 1.0, false, true, true, false, false, PlayerPed, true) then
+																							ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX, AdjustedY, AdjustedZ + 100.0)
 																						end
 																					end
 																				end
-																			else
-																				if not ENTITY.IS_ENTITY_AT_ENTITY(Veh, PlayerPed, 700.0, 700.0, 700.0, false, true, false) then
-																					local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
-																					local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-																					local AdjustedX = PPos.x + FVect.x * 100
-																					local AdjustedY = PPos.y + FVect.y * 100
-																					local AdjustedZ = PPos.z + FVect.z * 100
-																					if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ + 100.0, 1.0, false, true, true, false, false, PlayerPed, true) then
-																						ENTITY.SET_ENTITY_COORDS(Veh, AdjustedX, AdjustedY, AdjustedZ + 100.0)
-																					end
-																				end
+																			end
+																		end
+																	else
+																		local FVect = nil
+																		if IsInVeh then
+																			FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(PlayerPed)
+																		else
+																			FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+																		end
+																		local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+																		local MultiplierToGive = 5
+																		if IsInVeh then
+																			MultiplierToGive = -50
+																		end
+																		local AdjustedX = PPos.x + FVect.x * MultiplierToGive
+																		local AdjustedY = PPos.y + FVect.y * MultiplierToGive
+																		local AdjustedZ = PPos.z + FVect.z * MultiplierToGive
+																		local DidHit = memory.alloc(1)
+																		local EndCoords = v3.new()
+																		local Normal = v3.new()
+																		local HitEntity = memory.alloc_int()
+																	
+																		local Handle = SHAPETEST.START_EXPENSIVE_SYNCHRONOUS_SHAPE_TEST_LOS_PROBE(
+																			PPos.x, PPos.y, PPos.z,
+																			AdjustedX, AdjustedY, AdjustedZ,
+																			-1,
+																			PlayerPed, 7
+																		)
+																		SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
+																		if memory.read_byte(DidHit) ~= 0 then
+																			if not MISC.IS_POSITION_OCCUPIED(EndCoords.x, EndCoords.y, EndCoords.z - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																				ENTITY.SET_ENTITY_COORDS(peds, EndCoords.x, EndCoords.y, EndCoords.z - 1.0)
+																			end
+																		else
+																			if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
+																				ENTITY.SET_ENTITY_COORDS(peds, AdjustedX, AdjustedY, AdjustedZ - 1.0)
 																			end
 																		end
 																	end
@@ -2779,11 +2947,11 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																	else
 																		FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
 																	end
-																	local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
 																	local MultiplierToGive = 5
 																	if IsInVeh then
 																		MultiplierToGive = -50
 																	end
+																	local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
 																	local AdjustedX = PPos.x + FVect.x * MultiplierToGive
 																	local AdjustedY = PPos.y + FVect.y * MultiplierToGive
 																	local AdjustedZ = PPos.z + FVect.z * MultiplierToGive
@@ -2809,174 +2977,142 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																		end
 																	end
 																end
-															else
-																local FVect = nil
-																if IsInVeh then
-																	FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(PlayerPed)
-																else
-																	FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
-																end
-																local MultiplierToGive = 5
-																if IsInVeh then
-																	MultiplierToGive = -50
-																end
-																local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-																local AdjustedX = PPos.x + FVect.x * MultiplierToGive
-																local AdjustedY = PPos.y + FVect.y * MultiplierToGive
-																local AdjustedZ = PPos.z + FVect.z * MultiplierToGive
-																local DidHit = memory.alloc(1)
-																local EndCoords = v3.new()
-																local Normal = v3.new()
-																local HitEntity = memory.alloc_int()
-															
-																local Handle = SHAPETEST.START_EXPENSIVE_SYNCHRONOUS_SHAPE_TEST_LOS_PROBE(
-																	PPos.x, PPos.y, PPos.z,
-																	AdjustedX, AdjustedY, AdjustedZ,
-																	-1,
-																	PlayerPed, 7
-																)
-																SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
-																if memory.read_byte(DidHit) ~= 0 then
-																	if not MISC.IS_POSITION_OCCUPIED(EndCoords.x, EndCoords.y, EndCoords.z - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
-																		ENTITY.SET_ENTITY_COORDS(peds, EndCoords.x, EndCoords.y, EndCoords.z - 1.0)
-																	end
-																else
-																	if not MISC.IS_POSITION_OCCUPIED(AdjustedX, AdjustedY, AdjustedZ - 1.0, 2.0, false, true, true, false, false, PlayerPed, true) then
-																		ENTITY.SET_ENTITY_COORDS(peds, AdjustedX, AdjustedY, AdjustedZ - 1.0)
-																	end
-																end
 															end
 														end
 													end
 												end
 											end
 										end
-									end
-									if UseCustomsTasksKeys then
-										CustomTasksArgsFunctions[SelectedTask](TaskArgs, OperationsTable, OperationT, peds, Veh,
-										FVect, RVect, UpVect, Vect)
-										for k = 1, NumCreatedTasks do
-											if OperationsTable[k] > 1 then
-												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-													PED.SET_PED_COMBAT_MOVEMENT(peds, 2)
-													TASK.CLEAR_PED_TASKS(peds)
-													PED.SET_PED_MAX_MOVE_BLEND_RATIO(peds, 1.0)
-													PED.RESET_PED_MOVEMENT_CLIPSET(peds, 0.55)
-													PED.RESET_PED_STRAFE_CLIPSET(peds)
-													PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
-													ENTITY.DETACH_ENTITY(peds, true, true)
-													OperationT[peds] = nil
-												end
-											end
-										end
-									end
-									if CopsShootWhereYouShoot or CopsShootWhereYouAim or SelectedTask == 1 then
-										if Veh == 0 then
-											if not WEAPON.IS_PED_ARMED(peds, 4) then
-												local BestWeapon = WEAPON.GET_BEST_PED_WEAPON(peds, false)
-												WEAPON.SET_CURRENT_PED_WEAPON(peds, BestWeapon, true)
-											end
-											if TaskArgs.HasHit then
-												if TaskArgs.HitCoords ~= nil then
-													if TaskArgs.ShootsT[peds] == nil then
-														if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-															TASK.TASK_SHOOT_AT_COORD(peds, TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 3000, joaat("FIRING_PATTERN_FULL_AUTO"))
-															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_SHOOT_AT_COORD")) ~= 7 then
-																TaskArgs.ShootsT[peds] = 0
-															end
-														end
+										if UseCustomsTasksKeys then
+											CustomTasksArgsFunctions[SelectedTask](TaskArgs, OperationsTable, OperationT, peds, Veh,
+											FVect, RVect, UpVect, Vect)
+											for k = 1, NumCreatedTasks do
+												if OperationsTable[k] > 1 then
+													if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+														PED.SET_PED_COMBAT_MOVEMENT(peds, 2)
+														TASK.CLEAR_PED_TASKS(peds)
+														PED.SET_PED_MAX_MOVE_BLEND_RATIO(peds, 1.0)
+														PED.RESET_PED_MOVEMENT_CLIPSET(peds, 0.55)
+														PED.RESET_PED_STRAFE_CLIPSET(peds)
+														PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+														ENTITY.DETACH_ENTITY(peds, true, true)
+														OperationT[peds] = nil
 													end
 												end
 											end
-										else
-											if TaskArgs.HitCoords ~= nil then
+										end
+										if CopsShootWhereYouShoot or CopsShootWhereYouAim or SelectedTask == 1 then
+											if Veh == 0 then
+												if not WEAPON.IS_PED_ARMED(peds, 4) then
+													local BestWeapon = WEAPON.GET_BEST_PED_WEAPON(peds, false)
+													WEAPON.SET_CURRENT_PED_WEAPON(peds, BestWeapon, true)
+												end
 												if TaskArgs.HasHit then
-													if TasksT[peds] == nil then
-														if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-															local VehicleWeap = memory.alloc(8)
-															if WEAPON.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehicleWeap) then
-																TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 20.0)
-																if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) ~= 7 then
-																	TasksT[peds] = 9
+													if TaskArgs.HitCoords ~= nil then
+														if TaskArgs.ShootsT[peds] == nil then
+															if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																TASK.TASK_SHOOT_AT_COORD(peds, TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 3000, joaat("FIRING_PATTERN_FULL_AUTO"))
+																if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_SHOOT_AT_COORD")) ~= 7 then
+																	TaskArgs.ShootsT[peds] = 0
 																end
-															else
-																if SetPedVehicleWeapon(peds) then
+															end
+														end
+													end
+												end
+											else
+												if TaskArgs.HitCoords ~= nil then
+													if TaskArgs.HasHit then
+														if TasksT[peds] == nil then
+															if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																local VehicleWeap = memory.alloc(8)
+																if WEAPON.GET_CURRENT_PED_VEHICLE_WEAPON(peds, VehicleWeap) then
 																	TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 20.0)
 																	if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) ~= 7 then
 																		TasksT[peds] = 9
 																	end
+																else
+																	if SetPedVehicleWeapon(peds) then
+																		TASK.TASK_VEHICLE_SHOOT_AT_COORD(peds, TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 20.0)
+																		if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) ~= 7 then
+																			TasksT[peds] = 9
+																		end
+																	end
 																end
 															end
 														end
 													end
 												end
 											end
-										end
-										if PED.IS_PED_SHOOTING(peds) then
-											if TasksT[peds] ~= nil then
-												TasksT[peds] = TasksT[peds] + 1
-												if TasksT[peds] > 10 then
-													if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-														TASK.CLEAR_PED_TASKS(peds)
-														TasksT[peds] = nil
+											if PED.IS_PED_SHOOTING(peds) then
+												if TasksT[peds] ~= nil then
+													TasksT[peds] = TasksT[peds] + 1
+													if TasksT[peds] > 10 then
+														if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+															TASK.CLEAR_PED_TASKS(peds)
+															TasksT[peds] = nil
+														end
 													end
 												end
 											end
 										end
 									end
-								end
-							else
-								if CanEditCop then
-									if CopsAttackEveryone then
-										if MakeCopsAttackEveryone then
+								else
+									if CanEditCop then
+										if CopsAttackEveryone then
+											if MakeCopsAttackEveryone then
+												if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT_HATED_TARGETS_AROUND_PED")) == 7 then
+													TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, 1000.0, 0)
+												end
+											end
+										end
+										if ZombieMode then
+											if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
+												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+													local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+													local OutPos, FoundCoords = find_right_spawn_normal(PPos.x, PPos.y, PPos.z, 40.0, 70.0)
+													if FoundCoords then
+														if not MISC.IS_POSITION_OCCUPIED(OutPos.x, OutPos.y, OutPos.z, 1.0, false, true, true, false, false, PlayerPed, true) then
+															ENTITY.SET_ENTITY_COORDS(peds, OutPos.x, OutPos.y, OutPos.z)
+															ENTITY.SET_ENTITY_HEADING(peds, math.random(0, 360))
+														end
+													end
+												end
+											end
 											if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT_HATED_TARGETS_AROUND_PED")) == 7 then
-												TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, 1000.0, 0)
-											end
-										end
-									end
-									if ZombieMode then
-										if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
-											if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-												local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-												local OutPos, FoundCoords = find_right_spawn_normal(PPos.x, PPos.y, PPos.z, 40.0, 70.0)
-												if FoundCoords then
-													if not MISC.IS_POSITION_OCCUPIED(OutPos.x, OutPos.y, OutPos.z, 1.0, false, true, true, false, false, PlayerPed, true) then
-														ENTITY.SET_ENTITY_COORDS(peds, OutPos.x, OutPos.y, OutPos.z)
-														ENTITY.SET_ENTITY_HEADING(peds, math.random(0, 360))
-													end
+												if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+													TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, 1000.0, 0)
 												end
-											end
-										end
-										if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT_HATED_TARGETS_AROUND_PED")) == 7 then
-											if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-												TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, 1000.0, 0)
 											end
 										end
 									end
 								end
 							end
-						end
-						if TaskArgs.ShootsT[peds] ~= nil then
-							TaskArgs.ShootsT[peds] = TaskArgs.ShootsT[peds] + 1
-							if PED.IS_PED_SHOOTING(peds) or TaskArgs.ShootsT[peds] > 100 then
-								TaskArgs.ShootsT[peds] = nil
+							if TaskArgs.ShootsT[peds] ~= nil then
+								TaskArgs.ShootsT[peds] = TaskArgs.ShootsT[peds] + 1
+								if PED.IS_PED_SHOOTING(peds) or TaskArgs.ShootsT[peds] > 100 then
+									TaskArgs.ShootsT[peds] = nil
+								end
 							end
-						end
-						if OperationT[peds] ~= nil then
-							if DECORATOR.DECOR_EXIST_ON(peds, "Casino_Game_Info_Decorator") then
-								if not ENTITY.IS_ENTITY_DEAD(peds) then
-									if TaskStatusFunctionsT[OperationT[peds].TaskStatus+1] ~= nil then
-										TaskStatusFunctionsT[OperationT[peds].TaskStatus+1](OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
+							if OperationT[peds] ~= nil then
+								if DECORATOR.DECOR_EXIST_ON(peds, "Casino_Game_Info_Decorator") then
+									if not ENTITY.IS_ENTITY_DEAD(peds) then
+										if TaskStatusFunctionsT[OperationT[peds].TaskStatus+1] ~= nil then
+											TaskStatusFunctionsT[OperationT[peds].TaskStatus+1](OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
+										end
+									else
+										OperationT[peds] = nil
 									end
 								else
 									OperationT[peds] = nil
 								end
-							else
-								OperationT[peds] = nil
 							end
 						end
 					end
 				end
+			end
+			IterationsNumber = IterationsNumber + 1
+			if IterationsNumber > 100 then
+				IterationsNumber = 0
 			end
 			for i = 1, NumCreatedTasks do
 				if OperationsTable[i] > 1 then
@@ -2990,10 +3126,49 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 				end
 				TaskArgs.PointedPeds = 0
 			end
-			TaskArgs.TargetPed = 0
+			--TaskArgs.TargetPed = 0
 			TaskArgs.OffsetsAttach = nil
 			TaskArgs.RotsAttach = nil
 			TaskArgs.OffsetBringedPeds = 0
+			for i = 1, #CopVehsT do
+				if CopVehsT[i] ~= nil then
+					if ENTITY.DOES_ENTITY_EXIST(CopVehsT[i].Handle) then
+						if not CopVehsT[i].HasSetToMissionEnt then
+							if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CopVehsT[i].Handle) then
+								ENTITY.SET_ENTITY_AS_MISSION_ENTITY(CopVehsT[i].Handle, false, true)
+								CopVehsT[i].NetID = 0
+								if SetNetworkID then
+									local NetID = NETWORK.VEH_TO_NET(CopVehsT[i].Handle)
+									if NetID ~= 0 then
+										NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PlayerID, true)
+										CopVehsT[i].NetID = NetID
+									end
+								end
+								CopVehsT[i].HasSetToMissionEnt = true
+							end
+						end
+						local Peds = CopVehsT[i].Passengers
+						local Count = 0
+						for k = 1, #Peds do
+							if ENTITY.DOES_ENTITY_EXIST(Peds[k]) then
+								if not ENTITY.IS_ENTITY_AT_ENTITY(Peds[k], CopVehsT[i].Handle, 130.0, 130.0, 130.0, false, true, false) or ENTITY.IS_ENTITY_DEAD(Peds[k]) then
+									Count = Count + 1
+								end
+							end
+						end
+						if Count >= #Peds or ENTITY.IS_ENTITY_DEAD(CopVehsT[i].Handle) then
+							if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CopVehsT[i].Handle) then
+								set_entity_as_no_longer_needed(CopVehsT[i].Handle)
+								FoundCopVehs[CopVehsT[i].Handle] = nil
+								table.remove(CopVehsT, i)
+							end
+						end
+					else
+						FoundCopVehs[CopVehsT[i].Handle] = nil
+						table.remove(CopVehsT, i)
+					end
+				end
+			end
 			if ApplyCopSettings then
 				if AutomaticGenCops then
 					if MissionCopCount >= MaxCopsToEdit then
@@ -3451,16 +3626,16 @@ menu.action(DevMenu, "Addr Get", {}, "", function(toggle)
 	Print(FormatedString)
 end)
 
-menu.toggle_loop(DevMenu, "Normal Surface", {}, "", function(toggle)
+menu.toggle_loop(DevMenu, "Wheel Heading", {}, "", function(toggle)
 	local PlayerPed = PLAYER.PLAYER_PED_ID()
-	local Pos = CAM.GET_GAMEPLAY_CAM_COORD()
-	local Rot = CAM.GET_GAMEPLAY_CAM_ROT(2)
-	local Dir = Rot:toDir()
-	local AdjustedPos = {x = Pos.x + Dir.x * 100, y = Pos.y + Dir.y * 100, z = Pos.z + Dir.z * 100}
-	local EndCoords, DidHit, EntityHit, SurfaceNormal = ShapeTestNav(PlayerPed, Pos, AdjustedPos)
-	if DidHit then
-		local NewAdjusted = {x = EndCoords.x + SurfaceNormal.x * 100, y = EndCoords.y + SurfaceNormal.y * 100, z = EndCoords.z + SurfaceNormal.z * 100}
-		GRAPHICS.DRAW_LINE(EndCoords.x, EndCoords.y, EndCoords.z, NewAdjusted.x, NewAdjusted.y, NewAdjusted.z, 0, 0, 255, 255)
+	local PlayerVeh = PED.GET_VEHICLE_PED_IS_IN(PlayerPed, false)
+	if PlayerVeh ~= 0 then
+		local BoneIndex = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(PlayerVeh, "steeringwheel")
+		if BoneIndex ~= 0 then
+			local Rot = ENTITY.GET_ENTITY_BONE_OBJECT_ROTATION(PlayerVeh, BoneIndex)
+			local Norm = v3.normalise(Rot)
+			directx.draw_text(0.7, 0.7, "Z "..(math.abs(Rot.y)), ALIGN_CENTRE, 1.0, {r = 0, g = 255 , b = 255, a = 200}, false)
+		end
 	end
 end)
 
@@ -3472,6 +3647,26 @@ end)
 menu.action(DevMenu, "B Battle2 Args Solo", {}, "", function(Toggle)
     memory.write_int(memory.script_global(SplitGlobals("Global_2756336.f_183")), -1)
     memory.write_int(memory.script_global(SplitGlobals("Global_2756336.f_184")), 2)
+end)
+
+menu.action(DevMenu, "Set Population Budget 3", {}, "", function(Toggle)
+	STREAMING.SET_VEHICLE_POPULATION_BUDGET(3)
+	STREAMING.SET_PED_POPULATION_BUDGET(3)
+end)
+menu.action(DevMenu, "Populate Now", {}, "", function(Toggle)
+	MISC.POPULATE_NOW()
+end)
+local SpamPopulate = false
+menu.toggle(DevMenu, "Spam Populate Now", {}, "", function(Toggle)
+	SpamPopulate = Toggle
+	while SpamPopulate do
+		STREAMING.SET_VEHICLE_POPULATION_BUDGET(3)
+		STREAMING.SET_PED_POPULATION_BUDGET(3)
+		PED.INSTANTLY_FILL_PED_POPULATION()
+		VEHICLE.INSTANTLY_FILL_VEHICLE_POPULATION()
+		MISC.POPULATE_NOW()
+		Wait(1000)
+	end
 end)
 
 local MissionFinisher = false
@@ -3560,6 +3755,63 @@ menu.toggle(MiscMenu, "Mission Finisher", {}, "", function(toggle)
 		end
 	end
 end)
+
+local FastDriving = false
+menu.toggle(MiscMenu, "Fast Cars", {}, "", function(toggle)
+	FastDriving = toggle
+	if FastDriving then
+		local MaxSpeed = 80.0
+		while FastDriving do
+			local HandBrake = PAD.IS_CONTROL_PRESSED(0, 76)
+			local BrakeNormal = PAD.GET_CONTROL_NORMAL(0, 72)
+			local AccelerateNormal = PAD.GET_CONTROL_NORMAL(0, 71)
+			local LeftRight = PAD.GET_CONTROL_NORMAL(0, 59)
+			local PlayerPed = PLAYER.PLAYER_PED_ID()
+			local VehHandle = PED.GET_VEHICLE_PED_IS_IN(PlayerPed, false)
+			if VehHandle ~= 0 then
+				local NormZ = 0.0
+				local EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
+				local EntSpeedTotal = ENTITY.GET_ENTITY_SPEED(VehHandle)
+				local BoneIndex = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(VehHandle, "steeringwheel")
+				local EntVel = ENTITY.GET_ENTITY_VELOCITY(VehHandle)
+				local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(VehHandle)
+				local Norm = v3.new()
+				if BoneIndex ~= 0 then
+					local Rot = ENTITY.GET_ENTITY_BONE_OBJECT_ROTATION(VehHandle, BoneIndex)
+					Norm = v3.normalise(Rot)
+					NormZ = Rot.y
+				end
+				local NormZAbs = math.abs(NormZ)
+				if ENTITY.GET_ENTITY_HEIGHT_ABOVE_GROUND(VehHandle) < 1.2 then
+					if EntSpeed.y < MaxSpeed and EntSpeed.y > 0.0 then
+						local Drift = -EntSpeed.x
+						if HandBrake then
+							Drift = 0.0
+						end
+						local YSpeed = (AccelerateNormal - NormZAbs) * 0.5
+						if YSpeed < 0.0 then
+							--YSpeed = 0.0
+						end
+						ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, Drift, YSpeed - BrakeNormal, 0.0, 0, true, true, false)
+					else
+						if EntSpeed.y >= MaxSpeed then
+							ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -NormZAbs, 0.0, 0, true, true, false)
+						end
+					end
+					local Curve = 1
+					if HandBrake then
+						Curve = 2
+					end
+					if EntSpeed.y >= 50.0 then
+						Curve = Curve + 2
+					end
+					ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 5, 0.0, 0.0, -LeftRight * 0.045 * Curve, 0, false, true, false)
+				end
+			end
+			Wait()
+		end
+	end
+end, FastDriving)
 
 local CrouchAim = false
 menu.toggle(MiscMenu, "Stealth Crouch Aim", {}, "When pressing stealth button, will crouch.", function(toggle)
@@ -4116,17 +4368,23 @@ function SetCopModels(Police3, Cop, FBI2, Polmav, SWAT, SheriffPed, Sheriff, She
 end
 
 function SetPedRandomOutfit(Ped)
+	--PED.SET_PED_DEFAULT_COMPONENT_VARIATION(Ped)
+	PED.SET_PED_RANDOM_COMPONENT_VARIATION(Ped, 0)
+	PED.SET_PED_RANDOM_PROPS(Ped)
+	--[[
 	for i = 1, 11 do
 		local Drawables = PED.GET_NUMBER_OF_PED_DRAWABLE_VARIATIONS(Ped, i)
 		if Drawables > 0 then
-			Drawables = Drawables - 1
-			local RandomDrawable = math.random(0, Drawables)
+			Drawables = Drawables
+			local RandomDrawable = math.random(0, Drawables-1)
 			local Textures = PED.GET_NUMBER_OF_PED_TEXTURE_VARIATIONS(Ped, i, RandomDrawable)
 			if Textures > 0 then
-				Textures = Textures-1
-				local RandomTexture = math.random(0, Textures)
-				if PED.IS_PED_COMPONENT_VARIATION_VALID(Ped, i, RandomDrawable, RandomTexture) then
-					PED.SET_PED_COMPONENT_VARIATION(Ped, i, RandomDrawable, RandomTexture, -1)
+				Textures = Textures
+				local RandomTexture = math.random(Textures-1)
+				Print(Textures)
+				local Palette = PED.GET_PED_PALETTE_VARIATION(Ped, i)
+				if PED.IS_PED_COMPONENT_VARIATION_VALID(Ped, i, RandomDrawable, 0) then
+					PED.SET_PED_COMPONENT_VARIATION(Ped, i, RandomDrawable, 0, -1)
 				end
 			end
 		end
@@ -4134,15 +4392,16 @@ function SetPedRandomOutfit(Ped)
 	for i = 0, 8 do
 		local Drawables = PED.GET_NUMBER_OF_PED_PROP_DRAWABLE_VARIATIONS(Ped, i)
 		if Drawables > 0 then
-			Drawables = Drawables - 1
-			local RandomDrawable = math.random(0, Drawables)
+			Drawables = Drawables
+			local RandomDrawable = math.random(0, Drawables-1)
 			local Textures = PED.GET_NUMBER_OF_PED_PROP_TEXTURE_VARIATIONS(Ped, i, RandomDrawable)
 			if Textures > 0 then
-				Textures = Textures-1
-				PED.SET_PED_PROP_INDEX(Ped, i, RandomDrawable, math.random(0, Textures), false)
+				Textures = Textures
+				PED.SET_PED_PROP_INDEX(Ped, i, RandomDrawable, math.random(0, Textures-1), false)
 			end
 		end
 	end
+	]]
 end
 
 
@@ -4224,7 +4483,7 @@ function RaycastFromCamera(PlayerPed, Distance)
 	return HitCoords, memory.read_byte(DidHit) ~= 0
 end
 
-function ShapeTestNav(Ped, PPos, AdjustedVect)
+function ShapeTestNav(Entity, PPos, AdjustedVect)
 	local HitCoords = v3.new()
 	local DidHit = memory.alloc(1)
 	local EndCoords = v3.new()
@@ -4235,7 +4494,7 @@ function ShapeTestNav(Ped, PPos, AdjustedVect)
 		PPos.x, PPos.y, PPos.z,
 		AdjustedVect.x, AdjustedVect.y, AdjustedVect.z,
 		-1,
-		Ped, 7
+		Entity, 7
 	)
 	SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
 	if memory.read_byte(DidHit) ~= 0 then
