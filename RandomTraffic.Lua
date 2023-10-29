@@ -707,10 +707,12 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 		if DeleteOnTurningOff then
 			for index, vehs in pairs(entities.get_all_vehicles_as_handles()) do
 				if DECORATOR.DECOR_GET_INT(vehs, "Casino_Game_Info_Decorator") > 0 then
-					while not NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(vehs) do
-						Wait()
-					end
-					entities.delete_by_handle(vehs)
+					util.create_thread(function()
+						while not NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(vehs) do
+							Wait()
+						end
+						entities.delete_by_handle(vehs)
+					end)
 				end
 			end
 		end
@@ -770,7 +772,11 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 										local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(vehs, i, false)
 										if Ped ~= 0 then
 											Peds[#Peds+1] = {Handle = Ped, Seat = i}
-											ENTITY.SET_ENTITY_COORDS(Ped, Coords.x, Coords.y, Coords.z + 10.0)
+											if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Ped) then
+												ENTITY.SET_ENTITY_COORDS(Ped, Coords.x, Coords.y, Coords.z + 10.0)
+											else
+												break
+											end
 										end
 									end
 									local NewVeh = VEHICLE.CREATE_VEHICLE(ReplacedVehs[vehs].ModelToRequest, Coords.x, Coords.y, Coords.z, Rot.z, true, false, false)
@@ -791,6 +797,7 @@ menu.toggle(menu.my_root(), "Set Random Traffic", {}, "", function(toggle)
 										STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(ReplacedVehs[vehs].ModelToRequest)
 										ReplacedVehs[vehs] = nil
 										UpgradeCar(NewVeh)
+										ENTITY.SET_ENTITY_AS_MISSION_ENTITY(NewVeh, false, true)
 									else
 										STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(ReplacedVehs[vehs].ModelToRequest)
 										ReplacedVehs[vehs] = nil
@@ -1153,6 +1160,8 @@ menu.action(UtilsMenu, "Delete Empty Vehicles", {}, "", function()
 end)
 
 function UpgradeCar(Veh)
+	VEHICLE.SET_VEHICLE_WHEEL_TYPE(Veh, math.random(0, 12))
+	VEHICLE.SET_VEHICLE_MOD_KIT(Veh, 0)
 	for k = 0, 48 do
 		local NumMods = entities.get_upgrade_max_value(Veh, k)
 		if NumMods > 0 then
