@@ -2873,26 +2873,28 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													if CanGo then
 														if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
 															if TPCopsBackToVehicle then
-																if InteriorPlayerPed == 0 then
-																	if IsInVeh or AlwaysTPCopsBackToVehicle then
-																		if OwnedCopVehsT[peds] ~= nil then
-																			if ENTITY.DOES_ENTITY_EXIST(OwnedCopVehsT[peds]) then
-																				Veh = OwnedCopVehsT[peds]
-																				if ENTITY.IS_ENTITY_DEAD(Veh) then
-																					VEHICLE.SET_VEHICLE_FIXED(Veh)
-																				end
-																				if not PED.IS_PED_IN_VEHICLE(peds, Veh, false) then
-																					if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																						for i = -1, 9 do
-																							if VEHICLE.IS_VEHICLE_SEAT_FREE(OwnedCopVehsT[peds], i, false) then
-																								PED.SET_PED_INTO_VEHICLE(peds, OwnedCopVehsT[peds], i)
-																								break
+																if not RemoveCopsFromVeh then
+																	if InteriorPlayerPed == 0 then
+																		if IsInVeh or AlwaysTPCopsBackToVehicle then
+																			if OwnedCopVehsT[peds] ~= nil then
+																				if ENTITY.DOES_ENTITY_EXIST(OwnedCopVehsT[peds]) then
+																					Veh = OwnedCopVehsT[peds]
+																					if ENTITY.IS_ENTITY_DEAD(Veh) then
+																						VEHICLE.SET_VEHICLE_FIXED(Veh)
+																					end
+																					if not PED.IS_PED_IN_VEHICLE(peds, Veh, false) then
+																						if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+																							for i = -1, 9 do
+																								if VEHICLE.IS_VEHICLE_SEAT_FREE(OwnedCopVehsT[peds], i, false) then
+																									PED.SET_PED_INTO_VEHICLE(peds, OwnedCopVehsT[peds], i)
+																									break
+																								end
 																							end
 																						end
 																					end
+																				else
+																					OwnedCopVehsT[peds] = nil
 																				end
-																			else
-																				OwnedCopVehsT[peds] = nil
 																			end
 																		end
 																	end
