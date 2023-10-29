@@ -601,6 +601,7 @@ TaskStatusFunctionsT[27+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 		end
 	end
 end
+local DistanceMult = 0.5
 TaskStatusFunctionsT[28+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	if OperationT[peds].TaskStatus == 28 then
 		local Target = 0
@@ -612,11 +613,9 @@ TaskStatusFunctionsT[28+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 		if Target ~= 0 then
 			if not ENTITY.IS_ENTITY_DEAD(Target) and not PED.IS_PED_DEAD_OR_DYING(Target) and ENTITY.DOES_ENTITY_EXIST(Target) then
 				if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-					local VehHandle = PED.GET_VEHICLE_PED_IS_IN(peds, false)--OperationT[peds].VehHandle
+					local VehHandle = PED.GET_VEHICLE_PED_IS_IN(peds, false)
 					if not PED.IS_PED_IN_ANY_VEHICLE(peds, false) then
 						if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, Target, 17) then
-							--local BonePos = PED.GET_PED_BONE_COORDS(Target, 0x322C --[[head]], 0.0, 0.0, 0.0)
-							--TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_COORD(peds, Target, BonePos.x, BonePos.y, BonePos.z, 3.0, true, 2.0, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 							if CopsAimAtHead then
 								PED.SET_PED_RESET_FLAG(Target, 108, true)
 							end
@@ -628,7 +627,6 @@ TaskStatusFunctionsT[28+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 								end
 							end
 							PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
-							--OperationT[peds].TaskStatus = 29
 							OperationT[peds].TaskStatus = 31
 						else
 							TASK.TASK_GO_TO_ENTITY(peds, Target, -1, 1.0, 3.0, 2.0, 0)
@@ -642,11 +640,6 @@ TaskStatusFunctionsT[28+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 							end
 							TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
 							--PED.SET_PED_COMBAT_ATTRIBUTES(peds, 3, false)
-								--TASK.TASK_VEHICLE_MISSION_PED_TARGET(peds, VehHandle, Target, 4, 100.0, 1, 10.0, 10.0, true)
-								--PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
-							--if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
-							--	TASK.TASK_VEHICLE_MISSION_PED_TARGET(peds, VehHandle, Target, 4, 100.0, 1, 10.0, 10.0, true)
-							--end
 						end
 						if ENTITY.DOES_ENTITY_EXIST(VehHandle) and VehHandle ~= PlayerVeh then
 							local VehClass = VEHICLE.GET_VEHICLE_CLASS(VehHandle)
@@ -654,86 +647,79 @@ TaskStatusFunctionsT[28+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 								local VehPos = ENTITY.GET_ENTITY_COORDS(VehHandle)
 								local TargetPos = ENTITY.GET_ENTITY_COORDS(Target)
 								local Distance = MISC.GET_DISTANCE_BETWEEN_COORDS(TargetPos.x, TargetPos.y, TargetPos.z, VehPos.x, VehPos.y, VehPos.z, true)
-								--if not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(VehHandle, Target, 17) then
-								--if Distance > 10 then
-								--if ENTITY.HAS_COLLISION_LOADED_AROUND_ENTITY(VehHandle) then
-									local NormZ = 0.0
-									local EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
-									local EntSpeedTotal = ENTITY.GET_ENTITY_SPEED(VehHandle)
-									local BoneIndex = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(VehHandle, "steeringwheel")
-									local EntVel = ENTITY.GET_ENTITY_VELOCITY(VehHandle)
-									local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(VehHandle)
-									local AdjustedVect = {x = VehPos.x + FVect.x * 6.0, y = VehPos.y + FVect.y * 6.0, z = VehPos.z + FVect.z * 6.0}
-									local Norm = v3.new()
-									if BoneIndex ~= 0 then
-										local Rot = ENTITY.GET_ENTITY_BONE_OBJECT_ROTATION(VehHandle, BoneIndex)
-										--Norm = v3.toDir(Rot)
-										--NormZ = Norm.y
-										Norm = v3.normalise(Rot)
-										NormZ = Rot.y
-									end
-									local NormZAbs = math.abs(NormZ)
-									if OperationT[peds].VehCurveState == nil then
-										OperationT[peds].VehCurveState = 0
-									end
-									if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(VehHandle) then
-										if EntSpeed.y > 3.0 and EntSpeed.y < 50.0 then
-											--if NormZAbs < 0.1 then
-												if OperationT[peds].VehCurveState == 0 then
-													--if NormZAbs < 0.6 then
-														ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, (1.0 - NormZAbs) * 0.85, 0.0, 0, true, true, false)
-													--end
-														--Print(NormZAbs)
-													--VEHICLE.SET_VEHICLE_FORWARD_SPEED(VehHandle, (EntSpeed.y + 0.5) - NormZAbs)
-													local ForceZ = 0.0
-													EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
-													if ENTITY.GET_ENTITY_HEIGHT_ABOVE_GROUND(VehHandle) > 1.2 then --or EntSpeed.x > 1.0 or EntSpeed.x < -1.0 then
-														ForceZ = -1.50
-														--EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
-														--ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, -EntSpeed.x, -EntSpeed.y, -EntSpeed.z, 0, true, true, false)
-														--ENTITY.SET_ENTITY_VELOCITY(VehHandle, 0.0, 0.0, 0.0)
-													end
-													--ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, -EntSpeed.x * 0.5, -EntSpeed.x, 0.0, 0, true, true, false)
-													ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, ForceZ, ForceZ, 0, false, true, false)
-													if NormZAbs > 0.6 then
-														OperationT[peds].VehCurveState = 1
-													end
+								if TaskArgs.CopsRushWithTP then
+									if Distance > 300.0 then
+										if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(VehHandle) then
+											local OutPos = v3.new()
+											local Heading = memory.alloc(8)
+											local NumLanes = memory.alloc(8)
+											local RandomX = TargetPos.x + (math.random() < 0.5 and math.random(-50, -30) or math.random(30, 50))
+											local RandomY = TargetPos.y + (math.random() < 0.5 and math.random(-50, -30) or math.random(30, 50))
+											local RandomZ = TargetPos.z + (math.random() < 0.5 and math.random(-50, -30) or math.random(30, 50))
+											local Found = PATHFIND.GET_NTH_CLOSEST_VEHICLE_NODE_WITH_HEADING(RandomX, RandomY, RandomZ, 1, OutPos, Heading, NumLanes, 1, 3.0, 0.0)
+											if Found then
+												if not MISC.IS_POSITION_OCCUPIED(OutPos.x, OutPos.y, OutPos.z, 2.0, false, true, true, false, false, 0, true) then
+													ENTITY.SET_ENTITY_COORDS(VehHandle, OutPos.x, OutPos.y, OutPos.z)
+													ENTITY.SET_ENTITY_HEADING(VehHandle, memory.read_float(Heading))
 												end
-												if OperationT[peds].VehCurveState == 1 then
-													ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -NormZAbs, 0.0, 0, true, true, false)
-													EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
-													if EntSpeed.y < 10.0 then
-														OperationT[peds].VehCurveState = 2
-													end
-												end
-												if OperationT[peds].VehCurveState == 2 then
-													if NormZAbs < 0.3 then
-														OperationT[peds].VehCurveState = 0
-													end
-												end
-												--EntVel = ENTITY.GET_ENTITY_VELOCITY(VehHandle)
-												--ENTITY.SET_ENTITY_VELOCITY(VehHandle, EntVel.x, EntVel.y, EntVel.z + ForceZ)
-											--else
-												--ENTITY.SET_ENTITY_VELOCITY(VehHandle, EntVel.x + FVect.x * 0.2 - NormZAbs, EntVel.y + FVect.y * 0.2 - NormZAbs, EntVel.z + FVect.z * 0.2 - NormZAbs)
-											--end
-
-										else
-											if EntSpeed.y >= 30.0 then
-												--ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -2.0, 0.0, 0, true, true, false)
-												--ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -NormZAbs, 0.0, 0, true, true, false)
-												--ENTITY.SET_ENTITY_VELOCITY(VehHandle, EntVel.x - FVect.x * NormZAbs, EntVel.y - FVect.y * NormZAbs, EntVel.z - FVect.z * NormZAbs)
-												ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -NormZAbs, 0.0, 0, true, true, false)
 											end
 										end
-										--ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, EntSpeed.x * 0.1, 0.0, 0.0, 0, true, true, false)
-										--ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -NormZAbs, 0.0, 0, true, true, false)
-										local EndCoords, DidHit, EntHit, SurfaceNormal = ShapeTestNav(VehHandle, VehPos, AdjustedVect)
-										if DidHit and EntSpeed.y >= 2.0 then
+									end
+								end
+								if OperationT[peds].LastDistance == nil then
+									OperationT[peds].LastDistance = Distance
+								end
+								local NormZ = 0.0
+								local EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
+								local EntSpeedTotal = ENTITY.GET_ENTITY_SPEED(VehHandle)
+								local BoneIndex = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(VehHandle, "steeringwheel")
+								local EntVel = ENTITY.GET_ENTITY_VELOCITY(VehHandle)
+								local FVect, RVect, UpVect, Vect = v3.new(), v3.new(), v3.new(), v3.new()
+								ENTITY.GET_ENTITY_MATRIX(VehHandle, FVect, RVect, UpVect, Vect)
+								local AdjustedVect = {x = VehPos.x + FVect.x * 6.0, y = VehPos.y + FVect.y * 6.0, z = VehPos.z + FVect.z * 6.0}
+								local Norm = v3.new()
+								if BoneIndex ~= 0 then
+									local Rot = ENTITY.GET_ENTITY_BONE_OBJECT_ROTATION(VehHandle, BoneIndex)
+									Norm = v3.normalise(Rot)
+									NormZ = Rot.y
+								end
+								local NormZAbs = math.abs(NormZ)
+								if Distance <= OperationT[peds].LastDistance then
+									if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(VehHandle) then
+										if EntSpeed.y > 3.0 and EntSpeed.y < 50.0 then
+											ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, NormZ * 0.005 * EntSpeed.y, (1.0 - NormZAbs) * 0.01 * EntSpeed.y, 0.0, 0, true, true, false)
+										end
+										local ForceZ = 0.0
+										EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
+										if ENTITY.GET_ENTITY_HEIGHT_ABOVE_GROUND(VehHandle) > 1.1 then --or EntSpeed.x > 1.0 or EntSpeed.x < -1.0 then
+											ForceZ = -1.50
+										end
+										ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, ForceZ, ForceZ, 0, false, true, false)
+										if EntSpeed.y >= 3.0 then
+											ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, NormZ * 0.005 * EntSpeed.y, -NormZAbs * 0.01 * EntSpeed.y, 0.0, 0, true, true, false)
+										end
+										local AdjustedVect2 = {x = VehPos.x + FVect.x * EntSpeed.y * DistanceMult, y = VehPos.y + FVect.y * EntSpeed.y * DistanceMult, z = VehPos.z + FVect.z * EntSpeed.y * DistanceMult}
+										local EndCoords2, DidHit2, EntHit2, SurfaceNormal2 = ShapeTestNav(VehHandle, VehPos, AdjustedVect2)
+										if DidHit2 and EntSpeed.y >= 2.0 then
 											ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -1.0, 0.0, 0, true, true, false)
 										end
-										ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 5, 0.0, 0.0, -NormZ * 0.005, 0, false, true, false)
+										local AdjustedVect3 = {x = VehPos.x + RVect.x * 2.0, y = VehPos.y + RVect.y * 2.0, z = VehPos.z + RVect.z * 2.0}
+										local EndCoords3, DidHit3, EntHit3, SurfaceNormal3 = ShapeTestNav(VehHandle, VehPos, AdjustedVect3)
+										if DidHit3 then
+											ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, -1.0, 0.0, 0.0, 0, true, true, false)
+										end
+										local AdjustedVect4 = {x = VehPos.x - RVect.x * 2.0, y = VehPos.y - RVect.y * 2.0, z = VehPos.z - RVect.z * 2.0}
+										local EndCoords4, DidHit4, EntHit4, SurfaceNormal4 = ShapeTestNav(VehHandle, VehPos, AdjustedVect4)
+										if DidHit4 then
+											ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 1.0, 0.0, 0.0, 0, true, true, false)
+										end
+										ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 5, 0.0, 0.0, -NormZ * 0.0005 * EntSpeed.y, 0, false, true, false)
 									end
-								--end
+								else
+									if Distance < OperationT[peds].LastDistance then
+										OperationT[peds].LastDistance = Distance
+									end
+								end
 							end
 						end
 					end
@@ -1405,6 +1391,19 @@ local EliteCops = true
 menu.toggle(CopAttributesSettingsMenu, "Set Elite Cops", {}, "More HP, no ragdoll and no critical hits.", function(toggle)
 	EliteCops = toggle
 end, EliteCops)
+local MiscCopSettings = menu.list(CopSettingsMenu, "Misc Settings", {}, "")
+local BulletTracerOverride = false
+menu.toggle(MiscCopSettings, "Bullet Tracer Override", {}, "Railgun tracer.", function(toggle)
+	BulletTracerOverride = toggle
+	local OldAssetName = "bullet_tracer"
+	local NewAssetName = "bullet_tracer_railgun"
+	if not BulletTracerOverride then
+		GRAPHICS.RESET_PARTICLE_FX_OVERRIDE(OldAssetName)
+	end
+	if BulletTracerOverride then
+		GRAPHICS.SET_PARTICLE_FX_OVERRIDE(OldAssetName, NewAssetName)
+	end
+end, BulletTracerOverride)
 
 local RandomCopComponents = false
 menu.toggle(CopSettingsMenu, "Set Cops Random Components", {}, "Outfit.", function(toggle)
@@ -1558,6 +1557,10 @@ local CopsRushToNearestTarget = true
 menu.toggle(AllyCopSettingsMenu, "Cops Rush To Nearest Enemy", {}, "Works with custom tasks keys.", function(toggle)
 	CopsRushToNearestTarget = toggle
 end, CopsRushToNearestTarget)
+local CopsRushWithTP = false
+menu.toggle(AllyCopSettingsMenu, "Cops Rush With Teleport", {}, "Works with custom tasks keys. Will teleport if far from target.", function(toggle)
+	CopsRushWithTP = toggle
+end, CopsRushWithTP)
 menu.toggle(AllyCopSettingsMenu, "Set Cops Aim At Head", {}, "One hit kill.", function(toggle)
 	CopsAimAtHead = toggle
 end, CopsAimAtHead)
@@ -1577,6 +1580,10 @@ local CopsShootWhereYouAim = false
 menu.toggle(MiscCustomTasksMenu, "Cops Shoot Where You Aim", {}, "", function(toggle)
 	CopsShootWhereYouAim = toggle
 end, CopsShootWhereYouAim)
+local CopsRushedFollow = true
+menu.toggle(MiscCustomTasksMenu, "Cops Rushed Follow", {}, "", function(toggle)
+	CopsRushedFollow = toggle
+end, CopsRushedFollow)
 --menu.list_select(AllyCopSettingsMenu, "Cop Relationship Type", {"allycoprelationship"}, "Set if cops will be able to attack players or only npcs.", table<int, table> options, 1, function on_change)
 
 local RenderCopCount = true
@@ -1621,7 +1628,7 @@ local SelectedTaskTXT = {
 	{TXT = "Call to stay above veh", ColourG = 255},
 	{TXT = "Rushed combat mode", ColourG = 255},
 	{TXT = "TP all cops to me", ColourG = 255},
-	{TXT = "Super rushed combat mode", ColourG = 255},
+	{TXT = "Super rushed combat mode", ColourG = 255}
 }
 
 local CustomTasksFunctions = {
@@ -2024,6 +2031,22 @@ local CustomTasksArgsFunctions = {
 				}
 			end
 		end
+	end,
+	function(Args, OperationsTable, OperationT, peds, Veh, FVect, RVect, UpVect, Vect)
+		if OperationsTable[12] < 2 then
+			if Args.OperationButton then
+				local IsPilot = false
+				if Veh ~= 0 then
+					IsPilot = VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds
+				end
+				OperationT[peds] = {
+					Handle = peds, XOffset = 0.0, YOffset = 0,
+					X = 0.0, Y = 0.0, Z = 0.0, Heading = 0,
+					TaskStatus = 32, VehHandle = Veh, FVect = FVect, RVect = RVect, UpVect = UpVect,
+					Vect = Vect, IsPilot = IsPilot
+				}
+			end
+		end
 	end
 }
 
@@ -2163,7 +2186,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			PedsToPointedArea = {},
 			PointedAreaSet = 0,
 			PointedPeds = 0,
-			OffsetBringedPeds = 0
+			OffsetBringedPeds = 0,
+			CopsRushWithTP = CopsRushWithTP
 		}
 		local NavsT = {}
 		local HostileNum = 1
@@ -2184,6 +2208,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			local FoundHostiles = {}
 			TaskArgs.HitCoords = nil
 			TaskArgs.HasHit = false
+			TaskArgs.CopsRushWithTP = CopsRushWithTP
 			local FVect, RVect, UpVect, Vect = v3.new(), v3.new(), v3.new(), v3.new()
 			if UseCustomsTasksKeys then
 				local SwitchReleased = PAD.IS_CONTROL_JUST_RELEASED(0, 47)
@@ -2813,7 +2838,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																			if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
 																				if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
 																					if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-																						TASK.TASK_VEHICLE_MISSION_PED_TARGET(peds, Veh, PlayerPed, 4, 100.0, 1, 50.0, 10.0, true)
+																						TASK.TASK_VEHICLE_MISSION_PED_TARGET(peds, Veh, PlayerPed, 4, 100.0, 64+512+2048+262144, 50.0, 10.0, true)
 																					end
 																				end
 																			end
@@ -3202,6 +3227,73 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			for i = 1, #CopVehsT do
 				if CopVehsT[i] ~= nil then
 					if ENTITY.DOES_ENTITY_EXIST(CopVehsT[i].Handle) then
+						if CopsRushedFollow then
+							if CopVehsT[i].Passengers[1] ~= nil then
+								if OperationT[CopVehsT[i].Passengers[1]] == nil then
+									local VehHandle = CopVehsT[i].Handle
+									local VehClass = VEHICLE.GET_VEHICLE_CLASS(VehHandle)
+									if VehClass ~= 15 and VehClass ~= 16 then
+										local VehPos = ENTITY.GET_ENTITY_COORDS(VehHandle)
+										local TargetPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+										local Distance = MISC.GET_DISTANCE_BETWEEN_COORDS(TargetPos.x, TargetPos.y, TargetPos.z, VehPos.x, VehPos.y, VehPos.z, true)
+										if CopVehsT[i].LastDistance == nil then
+											CopVehsT[i].LastDistance = Distance
+										end
+										local NormZ = 0.0
+										local EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
+										local EntSpeedTotal = ENTITY.GET_ENTITY_SPEED(VehHandle)
+										local BoneIndex = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(VehHandle, "steeringwheel")
+										local EntVel = ENTITY.GET_ENTITY_VELOCITY(VehHandle)
+										local FVect, RVect, UpVect, Vect = v3.new(), v3.new(), v3.new(), v3.new()
+										ENTITY.GET_ENTITY_MATRIX(VehHandle, FVect, RVect, UpVect, Vect)
+										local AdjustedVect = {x = VehPos.x + FVect.x * 6.0, y = VehPos.y + FVect.y * 6.0, z = VehPos.z + FVect.z * 6.0}
+										local Norm = v3.new()
+										if BoneIndex ~= 0 then
+											local Rot = ENTITY.GET_ENTITY_BONE_OBJECT_ROTATION(VehHandle, BoneIndex)
+											Norm = v3.normalise(Rot)
+											NormZ = Rot.y
+										end
+										local NormZAbs = math.abs(NormZ)
+										if Distance <= CopVehsT[i].LastDistance then
+											if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(VehHandle) then
+												if EntSpeed.y > 3.0 and EntSpeed.y < 50.0 then
+													ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, NormZ * 0.005 * EntSpeed.y, (1.0 - NormZAbs) * 0.01 * EntSpeed.y, 0.0, 0, true, true, false)
+												end
+												local ForceZ = 0.0
+												EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
+												if ENTITY.GET_ENTITY_HEIGHT_ABOVE_GROUND(VehHandle) > 1.1 then --or EntSpeed.x > 1.0 or EntSpeed.x < -1.0 then
+													ForceZ = -1.50
+												end
+												ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, ForceZ, ForceZ, 0, false, true, false)
+												if EntSpeed.y >= 3.0 then
+													ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, NormZ * 0.005 * EntSpeed.y, -NormZAbs * 0.01 * EntSpeed.y, 0.0, 0, true, true, false)
+												end
+												local AdjustedVect2 = {x = VehPos.x + FVect.x * EntSpeed.y * DistanceMult, y = VehPos.y + FVect.y * EntSpeed.y * DistanceMult, z = VehPos.z + FVect.z * EntSpeed.y * DistanceMult}
+												local EndCoords2, DidHit2, EntHit2, SurfaceNormal2 = ShapeTestNav(VehHandle, VehPos, AdjustedVect2)
+												if DidHit2 and EntSpeed.y >= 2.0 then
+													ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -1.0, 0.0, 0, true, true, false)
+												end
+												local AdjustedVect3 = {x = VehPos.x + RVect.x * 2.0, y = VehPos.y + RVect.y * 2.0, z = VehPos.z + RVect.z * 2.0}
+												local EndCoords3, DidHit3, EntHit3, SurfaceNormal3 = ShapeTestNav(VehHandle, VehPos, AdjustedVect3)
+												if DidHit3 then
+													ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, -1.0, 0.0, 0.0, 0, true, true, false)
+												end
+												local AdjustedVect4 = {x = VehPos.x - RVect.x * 2.0, y = VehPos.y - RVect.y * 2.0, z = VehPos.z - RVect.z * 2.0}
+												local EndCoords4, DidHit4, EntHit4, SurfaceNormal4 = ShapeTestNav(VehHandle, VehPos, AdjustedVect4)
+												if DidHit4 then
+													ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 1.0, 0.0, 0.0, 0, true, true, false)
+												end
+												ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 5, 0.0, 0.0, -NormZ * 0.0005 * EntSpeed.y, 0, false, true, false)
+											end
+										else
+											if Distance < CopVehsT[i].LastDistance then
+												CopVehsT[i].LastDistance = Distance
+											end
+										end
+									end
+								end
+							end
+						end
 						if not CopVehsT[i].HasSetToMissionEnt then
 							if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CopVehsT[i].Handle) then
 								ENTITY.SET_ENTITY_AS_MISSION_ENTITY(CopVehsT[i].Handle, false, true)
@@ -3230,12 +3322,12 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 								end
 							end
 						end
-						if Count >= #Peds or ENTITY.IS_ENTITY_DEAD(CopVehsT[i].Handle) or DeadCount >= #Peds then
+						if DeadCount >= #Peds then --Count >= #Peds or ENTITY.IS_ENTITY_DEAD(CopVehsT[i].Handle) or DeadCount >= #Peds then
 							if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(CopVehsT[i].Handle) then
 								set_entity_as_no_longer_needed(CopVehsT[i].Handle)
 							end
 						else
-							if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(CopVehsT[i].Handle) or not ENTITY.IS_ENTITY_DEAD(CopVehsT[i].Handle) then
+							if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(CopVehsT[i].Handle) then --or not ENTITY.IS_ENTITY_DEAD(CopVehsT[i].Handle) then
 								CopVehsT[i].HasSetToMissionEnt = false
 							end
 						end
@@ -3833,55 +3925,61 @@ menu.toggle(MiscMenu, "Mission Finisher", {}, "", function(toggle)
 end)
 
 local FastDriving = false
-menu.toggle(MiscMenu, "Fast Cars", {}, "", function(toggle)
+menu.toggle(MiscMenu, "Improved Driving", {}, "", function(toggle)
 	FastDriving = toggle
 	if FastDriving then
 		local MaxSpeed = 80.0
 		while FastDriving do
-			local HandBrake = PAD.IS_CONTROL_PRESSED(0, 76)
-			local BrakeNormal = PAD.GET_CONTROL_NORMAL(0, 72)
-			local AccelerateNormal = PAD.GET_CONTROL_NORMAL(0, 71)
-			local LeftRight = PAD.GET_CONTROL_NORMAL(0, 59)
 			local PlayerPed = PLAYER.PLAYER_PED_ID()
 			local VehHandle = PED.GET_VEHICLE_PED_IS_IN(PlayerPed, false)
 			if VehHandle ~= 0 then
-				local NormZ = 0.0
-				local EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
-				local EntSpeedTotal = ENTITY.GET_ENTITY_SPEED(VehHandle)
-				local BoneIndex = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(VehHandle, "steeringwheel")
-				local EntVel = ENTITY.GET_ENTITY_VELOCITY(VehHandle)
-				local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(VehHandle)
-				local Norm = v3.new()
-				if BoneIndex ~= 0 then
-					local Rot = ENTITY.GET_ENTITY_BONE_OBJECT_ROTATION(VehHandle, BoneIndex)
-					Norm = v3.normalise(Rot)
-					NormZ = Rot.y
-				end
-				local NormZAbs = math.abs(NormZ)
-				if ENTITY.GET_ENTITY_HEIGHT_ABOVE_GROUND(VehHandle) < 1.2 then
-					if EntSpeed.y < MaxSpeed and EntSpeed.y > 0.0 then
-						local Drift = -EntSpeed.x
-						if HandBrake then
-							Drift = 0.0
+				if VEHICLE.GET_PED_IN_VEHICLE_SEAT(VehHandle, -1, false) == PlayerPed then
+					local VehClass = VEHICLE.GET_VEHICLE_CLASS(VehHandle)
+					if VehClass ~= 15 and VehClass ~= 16 then
+						local NormZ = 0.0
+						local VehPos = ENTITY.GET_ENTITY_COORDS(VehHandle)
+						local EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
+						local BoneIndex = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(VehHandle, "steeringwheel")
+						local EntVel = ENTITY.GET_ENTITY_VELOCITY(VehHandle)
+						local FVect, RVect, UpVect, Vect = v3.new(), v3.new(), v3.new(), v3.new()
+						ENTITY.GET_ENTITY_MATRIX(VehHandle, FVect, RVect, UpVect, Vect)
+						local AdjustedVect = {x = VehPos.x + FVect.x * 6.0, y = VehPos.y + FVect.y * 6.0, z = VehPos.z + FVect.z * 6.0}
+						local Norm = v3.new()
+						if BoneIndex ~= 0 then
+							local Rot = ENTITY.GET_ENTITY_BONE_OBJECT_ROTATION(VehHandle, BoneIndex)
+							Norm = v3.normalise(Rot)
+							NormZ = Rot.y
 						end
-						local YSpeed = (AccelerateNormal - NormZAbs) * 0.5
-						if YSpeed < 0.0 then
-							--YSpeed = 0.0
+						local NormZAbs = math.abs(NormZ)
+						if EntSpeed.y > 3.0 and EntSpeed.y < MaxSpeed then
+							ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, NormZ * 0.005 * EntSpeed.y, (1.0 - NormZAbs) * 0.01 * EntSpeed.y, 0.0, 0, true, true, false)
 						end
-						ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, Drift, YSpeed - BrakeNormal, 0.0, 0, true, true, false)
-					else
-						if EntSpeed.y >= MaxSpeed then
-							ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -NormZAbs, 0.0, 0, true, true, false)
+						local ForceZ = 0.0
+						EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
+						if ENTITY.GET_ENTITY_HEIGHT_ABOVE_GROUND(VehHandle) > 1.1 then --or EntSpeed.x > 1.0 or EntSpeed.x < -1.0 then
+							ForceZ = -1.50
 						end
+						ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, ForceZ, ForceZ, 0, false, true, false)
+						if EntSpeed.y >= 3.0 then
+							ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, NormZ * 0.005 * EntSpeed.y, -NormZAbs * 0.01 * EntSpeed.y, 0.0, 0, true, true, false)
+						end
+						local AdjustedVect2 = {x = VehPos.x + FVect.x * EntSpeed.y * DistanceMult, y = VehPos.y + FVect.y * EntSpeed.y * DistanceMult, z = VehPos.z + FVect.z * EntSpeed.y * DistanceMult}
+						local EndCoords2, DidHit2, EntHit2, SurfaceNormal2 = ShapeTestNav(VehHandle, VehPos, AdjustedVect2)
+						if DidHit2 and EntSpeed.y >= 2.0 then
+							ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -1.0, 0.0, 0, true, true, false)
+						end
+						local AdjustedVect3 = {x = VehPos.x + RVect.x * 2.0, y = VehPos.y + RVect.y * 2.0, z = VehPos.z + RVect.z * 2.0}
+						local EndCoords3, DidHit3, EntHit3, SurfaceNormal3 = ShapeTestNav(VehHandle, VehPos, AdjustedVect3)
+						if DidHit3 then
+							ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, -1.0, 0.0, 0.0, 0, true, true, false)
+						end
+						local AdjustedVect4 = {x = VehPos.x - RVect.x * 2.0, y = VehPos.y - RVect.y * 2.0, z = VehPos.z - RVect.z * 2.0}
+						local EndCoords4, DidHit4, EntHit4, SurfaceNormal4 = ShapeTestNav(VehHandle, VehPos, AdjustedVect4)
+						if DidHit4 then
+							ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 1.0, 0.0, 0.0, 0, true, true, false)
+						end
+						ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 5, 0.0, 0.0, -NormZ * 0.0005 * EntSpeed.y, 0, false, true, false)
 					end
-					local Curve = 1
-					if HandBrake then
-						Curve = 2
-					end
-					if EntSpeed.y >= 50.0 then
-						Curve = Curve + 2
-					end
-					ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 5, 0.0, 0.0, -LeftRight * 0.045 * Curve, 0, false, true, false)
 				end
 			end
 			Wait()
