@@ -846,6 +846,97 @@ TaskStatusFunctionsT[32+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 		end
 	end
 end
+
+TaskStatusFunctionsT[33+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
+	if OperationT[peds].TaskStatus == 33 then
+		if not PED.IS_PED_IN_ANY_VEHICLE(peds, false) then
+			if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 30.0, 30.0, 100.0, false, true, 0) then
+				local OffsetToGive = TaskArgs.OperationOffset
+				if TaskArgs.OperationSide == 0 then
+					OffsetToGive = -TaskArgs.OperationOffset
+				end
+				if TaskArgs.OperationSide == 1 then
+					OffsetToGive = TaskArgs.OperationOffset
+				end
+				OperationT[peds].X = OperationT[peds].Vect.x + ((OperationT[peds].RVect.x * OffsetToGive) - (OperationT[peds].FVect.x * (TaskArgs.OperationStatus)))
+				OperationT[peds].Y = OperationT[peds].Vect.y + ((OperationT[peds].RVect.y * OffsetToGive) - (OperationT[peds].FVect.y * (TaskArgs.OperationStatus)))
+				OperationT[peds].Z = OperationT[peds].Vect.z + ((OperationT[peds].RVect.z * OffsetToGive) - (OperationT[peds].FVect.z * (TaskArgs.OperationStatus)))
+				OperationT[peds].YOffset = TaskArgs.OperationStatus
+				OperationT[peds].XOffset = OffsetToGive
+				TaskArgs.OperationStatus = TaskArgs.OperationStatus + 1
+				if TaskArgs.OperationStatus > 4 then
+					TaskArgs.OperationStatus = 0
+					TaskArgs.OperationSide = TaskArgs.OperationSide + 1
+					if TaskArgs.OperationSide > 1 then
+						TaskArgs.OperationSide = 0
+						TaskArgs.OperationOffset = TaskArgs.OperationOffset + 1.0
+					end
+				end
+				if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+					PED.SET_PED_COMBAT_MOVEMENT(peds, 0)
+					TASK.TASK_GO_TO_COORD_ANY_MEANS(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.5, 0, false, 0, -1.0)
+					OperationT[peds].TaskStatus = 34
+				end
+			end
+		end
+	end
+end
+
+TaskStatusFunctionsT[34+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
+	if OperationT[peds].TaskStatus == 34 then
+		if ENTITY.IS_ENTITY_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.0, 3.0, 3.0, false, true, 0) then
+			OperationT[peds].TaskStatus = 35
+		end
+	end
+end
+
+TaskStatusFunctionsT[35+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
+	if OperationT[peds].TaskStatus == 35 then
+		OperationT[peds].X = TaskArgs.PlayerCoords.x + ((OperationT[peds].RVect.x * OperationT[peds].XOffset) - (OperationT[peds].FVect.x * (OperationT[peds].YOffset)))
+		OperationT[peds].Y = TaskArgs.PlayerCoords.y + ((OperationT[peds].RVect.y * OperationT[peds].XOffset) - (OperationT[peds].FVect.y * (OperationT[peds].YOffset)))
+		OperationT[peds].Z = TaskArgs.PlayerCoords.z + ((OperationT[peds].RVect.z * OperationT[peds].XOffset) - (OperationT[peds].FVect.z * (OperationT[peds].YOffset)))
+		if not ENTITY.IS_ENTITY_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 1.0, 1.0, 1.0, false, true, 0) then
+			if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+				if TaskArgs.IsAiming then
+					if TaskArgs.HitCoords ~= nil then
+						TASK.TASK_GO_TO_COORD_WHILE_AIMING_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z,
+						TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 3.5, TaskArgs.IsPlayerShooting, 1.0, 4.0, true, 0, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+						OperationT[peds].TaskStatus = 36
+					end
+				else
+					TASK.TASK_GO_TO_COORD_ANY_MEANS(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.5, 0, false, 0, -1.0)
+					OperationT[peds].TaskStatus = 34
+				end
+			end
+		else
+			if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+				if TaskArgs.IsAiming then
+					if TaskArgs.HitCoords ~= nil then
+						TASK.TASK_AIM_GUN_AT_COORD(peds, TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 10000, false, false)
+					end
+				else
+					TASK.TASK_GO_TO_COORD_ANY_MEANS(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.5, 0, false, 0, -1.0)
+					OperationT[peds].TaskStatus = 34
+				end
+			end
+		end
+	end
+end
+
+TaskStatusFunctionsT[36+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
+	if OperationT[peds].TaskStatus == 36 then
+		if TaskArgs.IsPlayerShooting then
+			if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+				TASK.TASK_GO_TO_COORD_WHILE_AIMING_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z,
+				TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 3.5, TaskArgs.IsPlayerShooting, 1.0, 4.0, true, 0, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+			end
+		end
+		if ENTITY.IS_ENTITY_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.0, 3.0, 3.0, false, true, 0) then
+			OperationT[peds].TaskStatus = 35
+		end
+	end
+end
+
 TaskStatusFunctionsT[100+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	OperationT[peds] = nil
 end
@@ -1641,6 +1732,7 @@ menu.text_input(CopCustomRelMenu, "Custom Relationship Name", {"copcustomrelatio
 end)
 local SelectedTaskTXT = {
 	{TXT = "Everyone crouch near", ColourG = 255, Task = 1},
+	{TXT = "Follow in formation", ColourG = 255, Task = 12},
 	{TXT = "Make half go to pointed area", ColourG = 255, Task = 5},
 	{TXT = "TP all cops to me", ColourG = 255, Task = 10},
 	{TXT = "Call to enter my vehicle", ColourG = 255, Task = 3},
@@ -1858,6 +1950,28 @@ local CustomTasksFunctions = {
 		else
 			SelectedTaskTXT[11].ColourG = 255
 		end
+	end,
+	function(Args, PlayerPed, TableT, HitCoords, FVect, RVect, UpVect, Vect)
+		if Args.OperationButton then
+			TableT[12] = TableT[12] + 1
+		end
+		if TableT[12] == 1 then
+			SelectedTaskTXT[12].ColourG = 20
+			Args.PlayerCoords = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+			Args.OperationHeading = ENTITY.GET_ENTITY_HEADING(PlayerPed)
+			Args.OperationStatus = 0
+			Args.OperationSide = 0
+			Args.OperationOffset = 1.0
+			Args.IsAiming = CAM.IS_AIM_CAM_ACTIVE()
+			ENTITY.GET_ENTITY_MATRIX(PlayerPed, FVect, RVect, UpVect, Vect)
+			if Args.HitCoords == nil then
+				Args.HitCoords = RaycastFromCamera(PlayerPed, 1000.0)
+				Args.HasHit = Args.IsPlayerShooting
+			end
+		else
+			SelectedTaskTXT[12].ColourG = 255
+			Args.IsAiming = false
+		end
 	end
 }
 
@@ -2067,7 +2181,7 @@ local CustomTasksArgsFunctions = {
 				OperationT[peds] = {
 					Handle = peds, XOffset = 0.0, YOffset = 0,
 					X = 0.0, Y = 0.0, Z = 0.0, Heading = 0,
-					TaskStatus = 32, VehHandle = Veh, FVect = FVect, RVect = RVect, UpVect = UpVect,
+					TaskStatus = 33, VehHandle = Veh, FVect = FVect, RVect = RVect, UpVect = UpVect,
 					Vect = Vect, IsPilot = IsPilot
 				}
 			end
@@ -2184,7 +2298,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		local TaskNum = 1
 		local SelectedTask = SelectedTaskTXT[TaskNum].Task
 		local OperationsTable = {}
-		local NumCreatedTasks = 11
+		local NumCreatedTasks = 12
 		local FoundCopVehs = {}
 		local CopVehsT = {}
 		local OwnedCopVehsT = {}
@@ -2213,7 +2327,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			PointedAreaSet = 0,
 			PointedPeds = 0,
 			OffsetBringedPeds = 0,
-			CopsRushWithTP = CopsRushWithTP
+			CopsRushWithTP = CopsRushWithTP,
+			PlayerCoords = nil,
+			IsAiming = false
 		}
 		local NavsT = {}
 		local HostileNum = 1
@@ -2853,9 +2969,10 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													end
 												end
 												IsPedInGroup = PED.IS_PED_IN_GROUP(peds)
+												local IsPedInVeh = PED.IS_PED_IN_ANY_VEHICLE(peds, false)
 												if CopsFollowInVehTask then
 													if not PED.IS_PED_IN_COMBAT(peds, 0) then
-														if Veh ~= 0 then
+														if IsPedInVeh then
 															if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_SHOOT_AT_COORD")) == 7 then
 																if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
 																	local VehModel = ENTITY.GET_ENTITY_MODEL(Veh)
@@ -2895,7 +3012,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													end
 												end
 												if CopsFollowTask then
-													if Veh == 0 then
+													if not IsPedInVeh then
 														if not IsPedInGroup then
 															if OperationT[peds] == nil and NavsT[peds] == nil then
 																if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_SHOOT_AT_COORD")) == 7 then
