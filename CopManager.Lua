@@ -3365,6 +3365,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					end
 				end
 			end
+			TaskArgs.MissionCopCount = MissionCopCount
 			if ApplyCopSettings then
 				if AutomaticGenCops then
 					if MissionCopCount >= MaxCopsToEdit then
