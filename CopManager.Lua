@@ -328,7 +328,7 @@ end
 TaskStatusFunctionsT[19+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	if OperationT[peds].TaskStatus == 19 then
 		if TaskArgs.PedsToPointedArea[peds] == nil and ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
-			if PointedAreaSet < TaskArgs.MissionCopCount / 2 then
+			if TaskArgs.PointedAreaSet < TaskArgs.MissionCopCount / 2 then
 				if TaskArgs.HasHit then
 					if TaskArgs.HitCoords ~= nil then
 						local VehHandle = OperationT[peds].VehHandle
@@ -481,21 +481,28 @@ TaskStatusFunctionsT[25+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 				if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 					local VehHandle = OperationT[peds].VehHandle
 					if not PED.IS_PED_IN_ANY_VEHICLE(peds, false) then
-						local BonePos = PED.GET_PED_BONE_COORDS(Target, 0x322C --[[head]], 0.0, 0.0, 0.0)
-						if CopsAimAtHead then
-							PED.SET_PED_RESET_FLAG(Target, 108, true)
-						end
-						if not ENTITY.IS_ENTITY_AT_ENTITY(peds, Target, MinRadius, MinRadius, MinRadius, false, true, false) then
-							--TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 5.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
-							TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_COORD(peds, Target, BonePos.x, BonePos.y, BonePos.z, 3.0, true, 2.0, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
-						else
-							if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
-								TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
+						if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, Target, 17) then
+							local BonePos = PED.GET_PED_BONE_COORDS(Target, 0x322C --[[head]], 0.0, 0.0, 0.0)
+							if CopsAimAtHead then
+								PED.SET_PED_RESET_FLAG(Target, 108, true)
 							end
+							if not ENTITY.IS_ENTITY_AT_ENTITY(peds, Target, MinRadius, MinRadius, MinRadius, false, true, false) then
+								--TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, Target, Target, 3.0, true, 5.5, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+								--TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_COORD(peds, Target, BonePos.x, BonePos.y, BonePos.z, 3.0, true, 2.0, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+								TASK.TASK_SHOOT_AT_ENTITY(peds, Target, -1, joaat("FIRING_PATTERN_FULL_AUTO"))
+								OperationT[peds].TaskStatus = 32
+							else
+								if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
+									TASK.TASK_COMBAT_PED(peds, Target, 0, 16)
+								end
+							end
+						else
+							TASK.TASK_GO_TO_ENTITY(peds, Target, -1, 1.0, 3.0, 2.0, 0)
+							OperationT[peds].TaskStatus = 26
 						end
 						--TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_COORD(peds, Target, BonePos.x, BonePos.y, BonePos.z, 3.0, true, 2.0, 4.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 						PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
-						OperationT[peds].TaskStatus = 26
+						
 					else
 						if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT")) == 7 then
 							if CopsAimAtHead then
@@ -527,10 +534,10 @@ TaskStatusFunctionsT[26+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 				if CopsAimAtHead then
 					PED.SET_PED_RESET_FLAG(OperationT[peds].Target, 108, true)
 				end
-				if PED.IS_PED_SHOOTING(peds) then
-				--if not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) or 
-				--ENTITY.IS_ENTITY_AT_ENTITY(peds, OperationT[peds].Target, 2.5, 2.5, 2.5, false, true, false) then
+				if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) then
 					OperationT[peds].TaskStatus = 25
+					TASK.CLEAR_PED_TASKS(peds)
+					PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
 				end
 			else
 				if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
@@ -817,6 +824,23 @@ TaskStatusFunctionsT[31+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 					PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
 					TASK.CLEAR_PED_TASKS(peds)
 					OperationT[peds].Target = nil
+				end
+			end
+		end
+	end
+end
+TaskStatusFunctionsT[32+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
+	if OperationT[peds].TaskStatus == 32 then
+		if OperationT[peds].Target ~= 0 then
+			if not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) and not PED.IS_PED_DEAD_OR_DYING(OperationT[peds].Target) and ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target) then
+				if CopsAimAtHead then
+					PED.SET_PED_RESET_FLAG(OperationT[peds].Target, 108, true)
+				end
+			else
+				if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+					OperationT[peds].TaskStatus = 25
+					TASK.CLEAR_PED_TASKS(peds)
+					PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
 				end
 			end
 		end
@@ -1395,13 +1419,18 @@ local MiscCopSettings = menu.list(CopSettingsMenu, "Misc Settings", {}, "")
 local BulletTracerOverride = false
 menu.toggle(MiscCopSettings, "Bullet Tracer Override", {}, "Railgun tracer.", function(toggle)
 	BulletTracerOverride = toggle
-	local OldAssetName = "bullet_tracer"
+	local OldAssetNames = {"bullet_tracer", "bullet_tracer_jet", "bullet_tracer_mg", "bullet_shotgun_tracer"}
 	local NewAssetName = "bullet_tracer_railgun"
 	if not BulletTracerOverride then
-		GRAPHICS.RESET_PARTICLE_FX_OVERRIDE(OldAssetName)
+		for i = 1, #OldAssetNames do
+			GRAPHICS.RESET_PARTICLE_FX_OVERRIDE(OldAssetNames[i])
+		end
 	end
-	if BulletTracerOverride then
-		GRAPHICS.SET_PARTICLE_FX_OVERRIDE(OldAssetName, NewAssetName)
+	while BulletTracerOverride do
+		for i = 1, #OldAssetNames do
+			GRAPHICS.SET_PARTICLE_FX_OVERRIDE(OldAssetNames[i], NewAssetName)
+		end
+		Wait(10000)
 	end
 end, BulletTracerOverride)
 
@@ -1564,13 +1593,6 @@ end, CopsRushWithTP)
 menu.toggle(AllyCopSettingsMenu, "Set Cops Aim At Head", {}, "One hit kill.", function(toggle)
 	CopsAimAtHead = toggle
 end, CopsAimAtHead)
---[[
-local CustomTasksMenu = menu.list(AllyCopSettingsMenu, "Set Custom Tasks To Appear In Menu", {}, "")
-local SWATOperationTask = true
-menu.toggle(CustomTasksMenu, "Crouch And Stand", {}, "Idk how to describe this.", function(toggle)
-	SWATOperationTask = toggle
-end, SWATOperationTask)
-]]
 local MiscCustomTasksMenu = menu.list(AllyCopSettingsMenu, "Misc Custom Behaviour", {}, "")
 local CopsShootWhereYouShoot = false
 menu.toggle(MiscCustomTasksMenu, "Cops Shoot Where You Shoot", {}, "", function(toggle)
@@ -1618,17 +1640,20 @@ menu.text_input(CopCustomRelMenu, "Custom Relationship Name", {"copcustomrelatio
 	CustomRelText = on_change
 end)
 local SelectedTaskTXT = {
-	{TXT = "Everyone crouch near", ColourG = 255},
-	{TXT = "Rush to enemies", ColourG = 255},
-	{TXT = "Call to enter my vehicle", ColourG = 255},
-	{TXT = "Call to exit my vehicle", ColourG = 255},
-	{TXT = "Make half go to pointed area", ColourG = 255},
-	{TXT = "Closer cops exit vehicle", ColourG = 255},
-	{TXT = "Attack nearest ped in screen", ColourG = 255},
-	{TXT = "Call to stay above veh", ColourG = 255},
-	{TXT = "Rushed combat mode", ColourG = 255},
-	{TXT = "TP all cops to me", ColourG = 255},
-	{TXT = "Super rushed combat mode", ColourG = 255}
+	{TXT = "Everyone crouch near", ColourG = 255, Task = 1},
+	{TXT = "Make half go to pointed area", ColourG = 255, Task = 5},
+	{TXT = "TP all cops to me", ColourG = 255, Task = 10},
+	{TXT = "Call to enter my vehicle", ColourG = 255, Task = 3},
+	{TXT = "Call to exit my vehicle", ColourG = 255, Task = 4},
+	{TXT = "Closer cops exit vehicle", ColourG = 255, Task = 6},
+	{TXT = "Call to stay above veh", ColourG = 255, Task = 8},
+	{TXT = "Attack nearest ped in screen", ColourG = 255, Task = 7},
+	{TXT = "Rush to enemies", ColourG = 255, Task = 2},
+	{TXT = "Rushed combat mode", ColourG = 255, Task = 9},
+	{TXT = "Super rushed combat mode", ColourG = 255, Task = 11}
+}
+local AvailableTasks = {
+	1, 5, 10, 3, 4, 6, 8, 7, 2, 9, 11
 }
 
 local CustomTasksFunctions = {
@@ -2156,7 +2181,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		local TriesTick = 0
 		local TasksT = {}
 		local OperationT = {}
-		local SelectedTask = 11
+		local TaskNum = 1
+		local SelectedTask = SelectedTaskTXT[TaskNum].Task
 		local OperationsTable = {}
 		local NumCreatedTasks = 11
 		local FoundCopVehs = {}
@@ -2196,6 +2222,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			local IsInVeh = PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false)
 			TaskArgs.IsPlayerShooting = PED.IS_PED_SHOOTING(PlayerPed)
 			local PlayerVeh = PED.GET_VEHICLE_PED_IS_IN(PlayerPed, false)
+			SelectedTask = SelectedTaskTXT[TaskNum].Task
 			if SetAllyPedHateToAiHate then
 				if not HasSetHate then
 					if PED.DOES_RELATIONSHIP_GROUP_EXIST(FriendlyAll) then
@@ -2213,13 +2240,14 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			if UseCustomsTasksKeys then
 				local SwitchReleased = PAD.IS_CONTROL_JUST_RELEASED(0, 47)
 				if SwitchReleased then
-					SelectedTask = SelectedTask + 1
-					if SelectedTask > NumCreatedTasks then
-						SelectedTask = 1
+					TaskNum = TaskNum + 1
+					if TaskNum > #SelectedTaskTXT then
+						TaskNum = 1
 					end
-					if SelectedTask < 1 then
-						SelectedTask = NumCreatedTasks
+					if TaskNum < 1 then
+						TaskNum = #SelectedTaskTXT
 					end
+					SelectedTask = SelectedTaskTXT[TaskNum].Task
 					AUDIO.PLAY_SOUND_FRONTEND(-1, "LOCAL_PLYR_CASH_COUNTER_INCREASE", "DLC_HEISTS_GENERAL_FRONTEND_SOUNDS", false)
 					for i = 1, NumCreatedTasks do
 						OperationsTable[i] = 0
@@ -2227,7 +2255,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					end
 				end
 				PAD.DISABLE_CONTROL_ACTION(0, 85, true)
-				Draw2DText(SelectedTaskTXT[SelectedTask].TXT, 0.7, 0.5, 0.5, 0.5, 200, SelectedTaskTXT[SelectedTask].ColourG, 20, 200, 1.0)
+				Draw2DText(SelectedTaskTXT[TaskNum].TXT, 0.7, 0.5, 0.5, 0.5, 200, SelectedTaskTXT[SelectedTask].ColourG, 20, 200, 1.0)
 				if not STREAMING.HAS_ANIM_SET_LOADED("move_ped_crouched") then
 					STREAMING.REQUEST_ANIM_SET("move_ped_crouched")
 				end
@@ -3327,9 +3355,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 								set_entity_as_no_longer_needed(CopVehsT[i].Handle)
 							end
 						else
-							if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(CopVehsT[i].Handle) then --or not ENTITY.IS_ENTITY_DEAD(CopVehsT[i].Handle) then
-								CopVehsT[i].HasSetToMissionEnt = false
-							end
+							--if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(CopVehsT[i].Handle) then --or not ENTITY.IS_ENTITY_DEAD(CopVehsT[i].Handle) then
+								--CopVehsT[i].HasSetToMissionEnt = false
+							--end
 						end
 					else
 						FoundCopVehs[CopVehsT[i].Handle] = nil
@@ -3587,8 +3615,10 @@ end
 
 local MiscMenu = menu.list(menu.my_root(), "Misc Features", {}, "")
 
-menu.action(MiscMenu, "Fill Pop", {}, "", function(toggle)
-	PED.INSTANTLY_FILL_PED_POPULATION()
+menu.action(MiscMenu, "Enable All Dispatch Services", {}, "", function(toggle)
+	for i = 1, 15 do
+		MISC.ENABLE_DISPATCH_SERVICE(i, true)
+	end
 end)
 
 menu.toggle_loop(MiscMenu, "Network Door", {}, "Some doors you aim will be able to open by other players.", function(toggle)
@@ -3766,6 +3796,14 @@ menu.action(DevMenu, "Bypass Law Vehicles", {}, "To spawn cops and SWATS inside 
 	end
 end)
 
+menu.action(DevMenu, "Get Addr", {}, "", function(toggle)
+	local Addr = memory.scan("? 8b c4 ? 88 ? ? ? 89 ? ? ? 89 ? ? ? 89 ? ? 55 53")
+	local FormatedString = string.format("%X", Addr)
+	Print(FormatedString)
+	util.copy_to_clipboard(FormatedString)
+end)
+
+
 menu.action(DevMenu, "Get Group Size", {}, "", function(toggle)
 	Print(GetPedGroupSize(PLAYER.GET_PLAYER_GROUP(PLAYER.PLAYER_ID())))
 end)
@@ -3935,7 +3973,7 @@ menu.toggle(MiscMenu, "Improved Driving", {}, "", function(toggle)
 			if VehHandle ~= 0 then
 				if VEHICLE.GET_PED_IN_VEHICLE_SEAT(VehHandle, -1, false) == PlayerPed then
 					local VehClass = VEHICLE.GET_VEHICLE_CLASS(VehHandle)
-					if VehClass ~= 15 and VehClass ~= 16 then
+					if VehClass ~= 8 and VehClass ~= 13 and VehClass ~= 15 and VehClass ~= 16 then
 						local NormZ = 0.0
 						local VehPos = ENTITY.GET_ENTITY_COORDS(VehHandle)
 						local EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
@@ -3949,36 +3987,52 @@ menu.toggle(MiscMenu, "Improved Driving", {}, "", function(toggle)
 							local Rot = ENTITY.GET_ENTITY_BONE_OBJECT_ROTATION(VehHandle, BoneIndex)
 							Norm = v3.normalise(Rot)
 							NormZ = Rot.y
+							local NormZAbs = math.abs(NormZ)
+							if EntSpeed.y > 3.0 and EntSpeed.y < MaxSpeed then
+								ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, NormZ * 0.005 * EntSpeed.y, (1.0 - NormZAbs) * 0.01 * EntSpeed.y, 0.0, 0, true, true, false)
+							end
+							local ForceZ = 0.0
+							EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
+							if ENTITY.GET_ENTITY_HEIGHT_ABOVE_GROUND(VehHandle) > 1.1 then --or EntSpeed.x > 1.0 or EntSpeed.x < -1.0 then
+								ForceZ = -1.50
+							end
+							ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, ForceZ, ForceZ, 0, false, true, false)
+							if EntSpeed.y >= 3.0 then
+								ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, NormZ * 0.005 * EntSpeed.y, -NormZAbs * 0.01 * EntSpeed.y, 0.0, 0, true, true, false)
+							end
+							local AdjustedVect2 = {x = VehPos.x + FVect.x * EntSpeed.y * DistanceMult, y = VehPos.y + FVect.y * EntSpeed.y * DistanceMult, z = VehPos.z + FVect.z * EntSpeed.y * DistanceMult}
+							local EndCoords2, DidHit2, EntHit2, SurfaceNormal2 = ShapeTestNav(VehHandle, VehPos, AdjustedVect2)
+							if DidHit2 and EntSpeed.y >= 2.0 then
+								ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -1.0, 0.0, 0, true, true, false)
+							end
+							local AdjustedVect3 = {x = VehPos.x + RVect.x * 2.0, y = VehPos.y + RVect.y * 2.0, z = VehPos.z + RVect.z * 2.0}
+							local EndCoords3, DidHit3, EntHit3, SurfaceNormal3 = ShapeTestNav(VehHandle, VehPos, AdjustedVect3)
+							if DidHit3 then
+								local CanSetVel = false
+								if EntHit3 ~= 0 then
+									if ENTITY.IS_ENTITY_A_VEHICLE(EntHit3) then
+										CanSetVel = true
+									end
+								end
+								if CanSetVel then
+									ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, -1.0, 0.0, 0.0, 0, true, true, false)
+								end
+							end
+							local AdjustedVect4 = {x = VehPos.x - RVect.x * 2.0, y = VehPos.y - RVect.y * 2.0, z = VehPos.z - RVect.z * 2.0}
+							local EndCoords4, DidHit4, EntHit4, SurfaceNormal4 = ShapeTestNav(VehHandle, VehPos, AdjustedVect4)
+							if DidHit4 then
+								local CanSetVel = false
+								if EntHit4 ~= 0 then
+									if ENTITY.IS_ENTITY_A_VEHICLE(EntHit4) then
+										CanSetVel = true
+									end
+								end
+								if CanSetVel then
+									ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 1.0, 0.0, 0.0, 0, true, true, false)
+								end
+							end
+							ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 5, 0.0, 0.0, -NormZ * 0.0005 * EntSpeed.y, 0, false, true, false)
 						end
-						local NormZAbs = math.abs(NormZ)
-						if EntSpeed.y > 3.0 and EntSpeed.y < MaxSpeed then
-							ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, NormZ * 0.005 * EntSpeed.y, (1.0 - NormZAbs) * 0.01 * EntSpeed.y, 0.0, 0, true, true, false)
-						end
-						local ForceZ = 0.0
-						EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(VehHandle, true)
-						if ENTITY.GET_ENTITY_HEIGHT_ABOVE_GROUND(VehHandle) > 1.1 then --or EntSpeed.x > 1.0 or EntSpeed.x < -1.0 then
-							ForceZ = -1.50
-						end
-						ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, ForceZ, ForceZ, 0, false, true, false)
-						if EntSpeed.y >= 3.0 then
-							ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, NormZ * 0.005 * EntSpeed.y, -NormZAbs * 0.01 * EntSpeed.y, 0.0, 0, true, true, false)
-						end
-						local AdjustedVect2 = {x = VehPos.x + FVect.x * EntSpeed.y * DistanceMult, y = VehPos.y + FVect.y * EntSpeed.y * DistanceMult, z = VehPos.z + FVect.z * EntSpeed.y * DistanceMult}
-						local EndCoords2, DidHit2, EntHit2, SurfaceNormal2 = ShapeTestNav(VehHandle, VehPos, AdjustedVect2)
-						if DidHit2 and EntSpeed.y >= 2.0 then
-							ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -1.0, 0.0, 0, true, true, false)
-						end
-						local AdjustedVect3 = {x = VehPos.x + RVect.x * 2.0, y = VehPos.y + RVect.y * 2.0, z = VehPos.z + RVect.z * 2.0}
-						local EndCoords3, DidHit3, EntHit3, SurfaceNormal3 = ShapeTestNav(VehHandle, VehPos, AdjustedVect3)
-						if DidHit3 then
-							ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, -1.0, 0.0, 0.0, 0, true, true, false)
-						end
-						local AdjustedVect4 = {x = VehPos.x - RVect.x * 2.0, y = VehPos.y - RVect.y * 2.0, z = VehPos.z - RVect.z * 2.0}
-						local EndCoords4, DidHit4, EntHit4, SurfaceNormal4 = ShapeTestNav(VehHandle, VehPos, AdjustedVect4)
-						if DidHit4 then
-							ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 1.0, 0.0, 0.0, 0, true, true, false)
-						end
-						ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 5, 0.0, 0.0, -NormZ * 0.0005 * EntSpeed.y, 0, false, true, false)
 					end
 				end
 			end
@@ -4772,6 +4826,128 @@ function NormalizeEulerAngle(angle)
   return angle;
 
 end
+
+local WhichMissionStartGlobal = SplitGlobals("Global_1895156[bParam0 /*609*/].f_10.f_32")
+local InteriorsGlobal = SplitGlobals("Global_1895156[PLAYER::PLAYER_ID() /*609*/].f_536")
+local MissionMenu = menu.list(menu.my_root(), "Missions", {}, "This will start some existing missions but edited to have something to do with cops in your side.")
+local CalledTimes = 0
+menu.action(MissionMenu, "Juggernaut Hunter Raid", {}, "Head Hunter but with powerful juggernauts, inside Life Invader.", function(toggle)
+	local PlayerID = PLAYER.PLAYER_ID()
+	if CalledTimes == 0 then
+		if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("gb_headhunter")) == 0 then
+			CalledTimes = 1
+			memory.write_int(memory.script_global(WhichMissionStartGlobal + 609 * PlayerID), 166)
+		end
+		local InteriorsAddr = memory.script_global((InteriorsGlobal + 1) + 609 * PlayerID)
+		local InteriorBits = memory.read_int(InteriorsAddr)
+		if not is_bit_set(InteriorBits, 28) then
+			memory.write_int(InteriorsAddr, set_bit(InteriorBits, 28))
+		end
+		while SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("gb_headhunter")) == 0 do
+			Wait()
+		end
+		local EnemyPos = {
+			{x = -1080.4959716797, y = -247.38218688965, z = 44.021259307861, heading = 272.7998046875},
+			{x = -1075.7357177734, y = -247.38316345215, z = 44.021259307861, heading = 109.94403839111},
+			{x = -1073.5018310547, y = -251.26336669922, z = 44.021144866943, heading = 24.946968078613},
+			{x = -1070.2962646484, y = -248.71055603027, z = 44.021144866943, heading = 136.94508361816},
+			{x = -1082.7797851562, y = -249.94247436523, z = 37.763290405273, heading = 161.91333007812},
+			{x = -1087.3153076172, y = -252.57009887695, z = 37.763290405273, heading = 260.42572021484},
+			{x = -1086.4970703125, y = -258.06216430664, z = 37.763290405273, heading = 325.92617797852},
+			{x = -1074.0124511719, y = -251.79231262207, z = 37.763290405273, heading = 67.093109130859},
+			{x = -1067.9763183594, y = -242.21368408203, z = 39.733184814453, heading = 217.19052124023},
+			{x = -1065.7501220703, y = -246.55972290039, z = 39.733177185059, heading = 43.595375061035},
+			{x = -1063.3648681641, y = -245.10153198242, z = 39.733177185059, heading = 111.81429290771},
+			{x = -1063.9797363281, y = -243.65957641602, z = 39.733177185059, heading = 353.44216918945},
+			{x = -1051.3376464844, y = -235.96850585938, z = 44.021179199219, heading = 117.43196868896},
+			{x = -1056.4271240234, y = -241.15454101562, z = 44.021064758301, heading = 82.519561767578},
+			{x = -1062.6623535156, y = -240.81518554688, z = 44.021137237549, heading = 144.05053710938},
+			{x = -1061.4749755859, y = -244.7255859375, z = 44.021060943604, heading = 66.738822937012},
+			{x = -1085.9837646484, y = -251.97950744629, z = 37.763298034668, heading = 282.31689453125}
+		}
+		local PositionNum = 1
+		local EnemyAddrs = {
+			SplitGlobals("Local_94.f_2[bVar0 /*26*/].f_1"),
+			SplitGlobals("Local_94.f_2[iParam0 /*26*/].f_7[bVar1]"),
+			SplitGlobals("Local_94.f_2[iParam0 /*26*/].f_3[iVar1].f_1"),
+			SplitGlobals("Local_94.f_2[iParam0 /*26*/].f_3[iVar1].f_2")
+		}
+		local TriesCount = 0
+		local EnemyModel = joaat("u_m_y_juggernaut_01")
+		local CreatedEverything = false
+		while not CreatedEverything do
+			local IsHost = false
+			local ScriptStatus = 0
+			util.spoof_script("gb_headhunter", function()
+				IsHost = NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT()
+				if not IsHost then
+					NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+				end
+				IsHost = NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT()
+				if IsHost then
+					NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
+				end
+				ScriptStatus = NETWORK.NETWORK_GET_SCRIPT_STATUS()
+			end)
+			if IsHost and ScriptStatus == 2 then
+				local NetIDsFound = 0
+				if TriesCount < 100 then
+					if not STREAMING.HAS_MODEL_LOADED(EnemyModel) then
+						STREAMING.REQUEST_MODEL(EnemyModel)
+					end
+					if STREAMING.HAS_MODEL_LOADED(EnemyModel) then
+						for i = 0, 3 do
+							for k = 0, 3 do
+								local OldNetID = memory.read_int(memory.script_local("gb_headhunter", EnemyAddrs[k+1] + 26 * i))
+								if OldNetID ~= 0 then
+									NetIDsFound = NetIDsFound + 1
+								end
+							end
+						end
+						if NetIDsFound >= 10 then
+							for i = 0, 3 do
+								for k = 0, 3 do
+									local OldNetID = memory.read_int(memory.script_local("gb_headhunter", EnemyAddrs[k+1] + 26 * i))
+									if OldNetID ~= 0 then
+										util.spoof_script("gb_headhunter", function()
+											local OldPed = NETWORK.NET_TO_PED(OldNetID)
+											local Ped = PED.CREATE_PED(28, EnemyModel, EnemyPos[PositionNum].x, EnemyPos[PositionNum].y, EnemyPos[PositionNum].z, EnemyPos[PositionNum].heading, true, true)
+											ENTITY.SET_ENTITY_AS_MISSION_ENTITY(Ped, false, true)
+											local NetID = NETWORK.PED_TO_NET(Ped)
+											if NetID ~= 0 then
+												memory.write_int(memory.script_local("gb_headhunter", EnemyAddrs[k+1] + 26 * i), NetID)
+												NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(OldPed)
+												entities.delete_by_handle(OldPed)
+												SetPedCombatAbilities(Ped)
+												PED.SET_PED_RELATIONSHIP_GROUP_HASH(Ped, joaat(AiHateRel))
+												SetPedHealth(Ped, 10000)
+												PED.SET_PED_SUFFERS_CRITICAL_HITS(Ped, false)
+												PED.SET_RAGDOLL_BLOCKING_FLAGS(Ped, 1)
+												WEAPON.GIVE_WEAPON_TO_PED(Ped, joaat("weapon_minigun"), 99999, false, true)
+												HUD.SET_PED_HAS_AI_BLIP_WITH_COLOUR(Ped, true, 1)
+												HUD.SET_PED_AI_BLIP_HAS_CONE(Ped, false)
+												HUD.SET_PED_AI_BLIP_FORCED_ON(Ped, true)
+												PositionNum = PositionNum + 1
+												CreatedEverything = true
+											end
+										end)
+									end
+								end
+							end
+						end
+					end
+				else
+					CreatedEverything = true
+				end
+			end
+			Wait()
+		end
+		STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(EnemyModel)
+		CalledTimes = 0
+	else
+		memory.write_int(memory.script_global(WhichMissionStartGlobal + 609 * PlayerID), 166)
+	end
+end)
 
 util.create_tick_handler(function()
 	return true
