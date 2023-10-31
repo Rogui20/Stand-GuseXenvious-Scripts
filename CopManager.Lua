@@ -895,30 +895,41 @@ TaskStatusFunctionsT[35+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 		OperationT[peds].X = TaskArgs.PlayerCoords.x + ((OperationT[peds].RVect.x * OperationT[peds].XOffset) - (OperationT[peds].FVect.x * (OperationT[peds].YOffset)))
 		OperationT[peds].Y = TaskArgs.PlayerCoords.y + ((OperationT[peds].RVect.y * OperationT[peds].XOffset) - (OperationT[peds].FVect.y * (OperationT[peds].YOffset)))
 		OperationT[peds].Z = TaskArgs.PlayerCoords.z + ((OperationT[peds].RVect.z * OperationT[peds].XOffset) - (OperationT[peds].FVect.z * (OperationT[peds].YOffset)))
-		if not ENTITY.IS_ENTITY_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 1.0, 1.0, 1.0, false, true, 0) then
-			if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-				if TaskArgs.IsAiming then
-					if TaskArgs.HitCoords ~= nil then
-						TASK.TASK_GO_TO_COORD_WHILE_AIMING_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z,
-						TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 3.5, TaskArgs.IsPlayerShooting, 1.0, 4.0, true, 0, true, joaat("FIRING_PATTERN_FULL_AUTO"))
-						OperationT[peds].TaskStatus = 36
+		local Target = PED.GET_PED_TARGET_FROM_COMBAT_PED(peds, 0)
+		if Target == 0 then
+			if not ENTITY.IS_ENTITY_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 1.0, 1.0, 1.0, false, true, 0) then
+				if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+					if TaskArgs.IsAiming then
+						if TaskArgs.HitCoords ~= nil then
+							TASK.TASK_GO_TO_COORD_WHILE_AIMING_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z,
+							TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 3.5, TaskArgs.IsPlayerShooting, 1.0, 4.0, true, 0, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+							OperationT[peds].TaskStatus = 36
+						end
+					else
+						TASK.TASK_GO_TO_COORD_ANY_MEANS(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.5, 0, false, 0, -1.0)
+						OperationT[peds].TaskStatus = 34
 					end
-				else
-					TASK.TASK_GO_TO_COORD_ANY_MEANS(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.5, 0, false, 0, -1.0)
-					OperationT[peds].TaskStatus = 34
+				end
+			else
+				if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+					if TaskArgs.IsAiming then
+						if TaskArgs.HitCoords ~= nil then
+							TASK.TASK_AIM_GUN_AT_COORD(peds, TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 10000, false, false)
+						end
+					else
+						TASK.TASK_GO_TO_COORD_ANY_MEANS(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.5, 0, false, 0, -1.0)
+						OperationT[peds].TaskStatus = 34
+					end
 				end
 			end
 		else
-			if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
-				if TaskArgs.IsAiming then
-					if TaskArgs.HitCoords ~= nil then
-						TASK.TASK_AIM_GUN_AT_COORD(peds, TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 10000, false, false)
-					end
-				else
-					TASK.TASK_GO_TO_COORD_ANY_MEANS(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.5, 0, false, 0, -1.0)
-					OperationT[peds].TaskStatus = 34
-				end
+			if CopsAimAtHead then
+				PED.SET_PED_RESET_FLAG(Target, 108, true)
 			end
+			TASK.TASK_GO_TO_COORD_WHILE_AIMING_AT_ENTITY(peds, OperationT[peds].X, OperationT[peds].Y,
+			OperationT[peds].Z, Target, 3.5, true, 1.0, 4.0, true, 0, true, joaat("FIRING_PATTERN_FULL_AUTO"), -1)
+			OperationT[peds].Target = Target
+			OperationT[peds].TaskStatus = 37
 		end
 	end
 end
@@ -936,6 +947,57 @@ TaskStatusFunctionsT[36+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 		end
 	end
 end
+
+TaskStatusFunctionsT[37+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
+	if OperationT[peds].TaskStatus == 37 then
+		if not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) and not PED.IS_PED_DEAD_OR_DYING(OperationT[peds].Target) and ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target) then
+			if CopsAimAtHead then
+				PED.SET_PED_RESET_FLAG(OperationT[peds].Target, 108, true)
+			end
+			if not ENTITY.IS_ENTITY_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 2.0, 2.0, 2.0, false, true, 0) then
+				if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+					OperationT[peds].X = TaskArgs.PlayerCoords.x + ((OperationT[peds].RVect.x * OperationT[peds].XOffset) - (OperationT[peds].FVect.x * (OperationT[peds].YOffset)))
+					OperationT[peds].Y = TaskArgs.PlayerCoords.y + ((OperationT[peds].RVect.y * OperationT[peds].XOffset) - (OperationT[peds].FVect.y * (OperationT[peds].YOffset)))
+					OperationT[peds].Z = TaskArgs.PlayerCoords.z + ((OperationT[peds].RVect.z * OperationT[peds].XOffset) - (OperationT[peds].FVect.z * (OperationT[peds].YOffset)))
+					TASK.TASK_GO_TO_COORD_WHILE_AIMING_AT_ENTITY(peds, OperationT[peds].X, OperationT[peds].Y,
+					OperationT[peds].Z, OperationT[peds].Target, 3.5, true, 1.0, 4.0, true, 0, true, joaat("FIRING_PATTERN_FULL_AUTO"), -1)
+					PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
+					OperationT[peds].TaskStatus = 38
+				end
+			end
+		else
+			if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+				TASK.CLEAR_PED_TASKS(peds)
+				PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+				OperationT[peds].TaskStatus = 35
+				OperationT[peds].Target = nil
+			end
+		end
+	end
+end
+TaskStatusFunctionsT[38+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
+	if OperationT[peds].TaskStatus == 38 then
+		if not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) and not PED.IS_PED_DEAD_OR_DYING(OperationT[peds].Target) and ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target) then
+			if CopsAimAtHead then
+				PED.SET_PED_RESET_FLAG(OperationT[peds].Target, 108, true)
+			end
+			if ENTITY.IS_ENTITY_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 2.0, 2.0, 2.0, false, true, 0) then
+				OperationT[peds].X = TaskArgs.PlayerCoords.x + ((OperationT[peds].RVect.x * OperationT[peds].XOffset) - (OperationT[peds].FVect.x * (OperationT[peds].YOffset)))
+				OperationT[peds].Y = TaskArgs.PlayerCoords.y + ((OperationT[peds].RVect.y * OperationT[peds].XOffset) - (OperationT[peds].FVect.y * (OperationT[peds].YOffset)))
+				OperationT[peds].Z = TaskArgs.PlayerCoords.z + ((OperationT[peds].RVect.z * OperationT[peds].XOffset) - (OperationT[peds].FVect.z * (OperationT[peds].YOffset)))
+				OperationT[peds].TaskStatus = 37
+			end
+		else
+			if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+				TASK.CLEAR_PED_TASKS(peds)
+				PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+				OperationT[peds].TaskStatus = 35
+				OperationT[peds].Target = nil
+			end
+		end
+	end
+end
+
 
 TaskStatusFunctionsT[100+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	OperationT[peds] = nil
