@@ -923,34 +923,48 @@ TaskStatusFunctionsT[35+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 				end
 			end
 		else
-			if CopsAimAtHead then
-				PED.SET_PED_RESET_FLAG(Target, 108, true)
+			if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
+				if CopsAimAtHead then
+					PED.SET_PED_RESET_FLAG(Target, 108, true)
+				end
+				TASK.CLEAR_PED_TASKS(peds)
+				TASK.TASK_GO_TO_COORD_WHILE_AIMING_AT_ENTITY(peds, OperationT[peds].X, OperationT[peds].Y,
+				OperationT[peds].Z, Target, 3.5, true, 1.0, 4.0, true, 0, true, joaat("FIRING_PATTERN_FULL_AUTO"), -1)
+				PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
+				OperationT[peds].Target = Target
+				OperationT[peds].TaskStatus = 37
 			end
-			TASK.TASK_GO_TO_COORD_WHILE_AIMING_AT_ENTITY(peds, OperationT[peds].X, OperationT[peds].Y,
-			OperationT[peds].Z, Target, 3.5, true, 1.0, 4.0, true, 0, true, joaat("FIRING_PATTERN_FULL_AUTO"), -1)
-			OperationT[peds].Target = Target
-			OperationT[peds].TaskStatus = 37
 		end
 	end
 end
 
 TaskStatusFunctionsT[36+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	if OperationT[peds].TaskStatus == 36 then
+		if OperationT[peds].TimeOut == nil then
+			OperationT[peds].TimeOut = 0
+		end
+		OperationT[peds].TimeOut = OperationT[peds].TimeOut + 1
 		if TaskArgs.IsPlayerShooting then
 			if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 				TASK.TASK_GO_TO_COORD_WHILE_AIMING_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z,
 				TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 3.5, TaskArgs.IsPlayerShooting, 1.0, 4.0, true, 0, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 			end
 		end
-		if ENTITY.IS_ENTITY_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.0, 3.0, 3.0, false, true, 0) then
+		if ENTITY.IS_ENTITY_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.0, 3.0, 3.0, false, true, 0) or OperationT[peds].TimeOut > 300 then
 			OperationT[peds].TaskStatus = 35
+			OperationT[peds].TimeOut = 0
 		end
 	end
 end
 
 TaskStatusFunctionsT[37+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	if OperationT[peds].TaskStatus == 37 then
-		if not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) and not PED.IS_PED_DEAD_OR_DYING(OperationT[peds].Target) and ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target) then
+		if OperationT[peds].TimeOut == nil then
+			OperationT[peds].TimeOut = 0
+		end
+		OperationT[peds].TimeOut = OperationT[peds].TimeOut + 1
+		if not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) and not PED.IS_PED_DEAD_OR_DYING(OperationT[peds].Target) and ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target)
+		and OperationT[peds].TimeOut < 300 then
 			if CopsAimAtHead then
 				PED.SET_PED_RESET_FLAG(OperationT[peds].Target, 108, true)
 			end
@@ -971,13 +985,19 @@ TaskStatusFunctionsT[37+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 				PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
 				OperationT[peds].TaskStatus = 35
 				OperationT[peds].Target = nil
+				OperationT[peds].TimeOut = 0
 			end
 		end
 	end
 end
 TaskStatusFunctionsT[38+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	if OperationT[peds].TaskStatus == 38 then
-		if not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) and not PED.IS_PED_DEAD_OR_DYING(OperationT[peds].Target) and ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target) then
+		if OperationT[peds].TimeOut == nil then
+			OperationT[peds].TimeOut = 0
+		end
+		OperationT[peds].TimeOut = OperationT[peds].TimeOut + 1
+		if not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) and not PED.IS_PED_DEAD_OR_DYING(OperationT[peds].Target) and ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target)
+		and OperationT[peds].TimeOut < 300 then
 			if CopsAimAtHead then
 				PED.SET_PED_RESET_FLAG(OperationT[peds].Target, 108, true)
 			end
