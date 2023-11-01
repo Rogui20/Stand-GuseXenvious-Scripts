@@ -941,7 +941,12 @@ TaskStatusFunctionsT[35+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 				if RequestControlOfEntity(peds) then
 					if TaskArgs.IsAiming then
 						if TaskArgs.HitCoords ~= nil then
-							TASK.TASK_AIM_GUN_AT_COORD(peds, TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 10000, false, false)
+							if not TaskArgs.IsPlayerShooting then
+								TASK.TASK_AIM_GUN_AT_COORD(peds, TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 10000, false, false)
+							else
+								TASK.TASK_SHOOT_AT_COORD(peds, TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 3000, joaat("FIRING_PATTERN_FULL_AUTO"))
+								OperationT[peds].TaskStatus = 39
+							end
 						end
 					else
 						--TASK.TASK_GO_TO_COORD_ANY_MEANS(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.5, 0, false, 0, -1.0)
@@ -1046,6 +1051,14 @@ TaskStatusFunctionsT[38+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 	end
 end
 
+TaskStatusFunctionsT[39+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
+	if OperationT[peds].TaskStatus == 39 then
+		--if ENTITY.IS_ENTITY_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.0, 3.0, 3.0, false, true, 0) then
+		if PED.IS_PED_SHOOTING(peds) or OperationT[peds].Target ~= nil then
+			OperationT[peds].TaskStatus = 35
+		end
+	end
+end
 
 TaskStatusFunctionsT[100+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	OperationT[peds] = nil
