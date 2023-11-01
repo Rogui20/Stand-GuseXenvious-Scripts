@@ -849,7 +849,7 @@ end
 
 TaskStatusFunctionsT[33+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	if OperationT[peds].TaskStatus == 33 then
-		if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 30.0, 30.0, 100.0, false, true, 0) then	
+		if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 30.0, 30.0, 10.0, false, true, 0) then	
 			if not PED.IS_PED_IN_ANY_VEHICLE(peds, false) then
 				local OffsetToGive = TaskArgs.OperationOffset
 				if TaskArgs.OperationSide == 0 then
@@ -861,13 +861,13 @@ TaskStatusFunctionsT[33+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 				OperationT[peds].X = OperationT[peds].Vect.x + ((OperationT[peds].RVect.x * OffsetToGive) - (OperationT[peds].FVect.x * (TaskArgs.OperationStatus)))
 				OperationT[peds].Y = OperationT[peds].Vect.y + ((OperationT[peds].RVect.y * OffsetToGive) - (OperationT[peds].FVect.y * (TaskArgs.OperationStatus)))
 				OperationT[peds].Z = OperationT[peds].Vect.z + ((OperationT[peds].RVect.z * OffsetToGive) - (OperationT[peds].FVect.z * (TaskArgs.OperationStatus)))
-				local PedPos = ENTITY.GET_ENTITY_COORDS(peds)
-				local AdjustedVect = {x = OperationT[peds].X, y = OperationT[peds].Y, z = OperationT[peds].Z - 2.0}
-				local EndCoords, DidHit = ShapeTestNav(peds, PedPos, AdjustedVect, 19)
+				--local PedPos = ENTITY.GET_ENTITY_COORDS(peds)
+				--local AdjustedVect = {x = OperationT[peds].X, y = OperationT[peds].Y, z = OperationT[peds].Z - 2.0}
+				--local EndCoords, DidHit = ShapeTestNav(peds, PedPos, AdjustedVect, 19)
 				--if DidHit then
-					OperationT[peds].X = EndCoords.x
-					OperationT[peds].Y = EndCoords.y
-					OperationT[peds].Z = EndCoords.z
+				--	OperationT[peds].X = EndCoords.x
+				--	OperationT[peds].Y = EndCoords.y
+				--	OperationT[peds].Z = EndCoords.z
 				--end
 				OperationT[peds].YOffset = TaskArgs.OperationStatus
 				OperationT[peds].XOffset = OffsetToGive
@@ -882,7 +882,8 @@ TaskStatusFunctionsT[33+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 				end
 				if NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(peds) then
 					PED.SET_PED_COMBAT_MOVEMENT(peds, 0)
-					TASK.TASK_GO_TO_COORD_ANY_MEANS(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.5, 0, false, 0, -1.0)
+					--TASK.TASK_GO_TO_COORD_ANY_MEANS(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.5, 0, false, 0, -1.0)
+					TASK.TASK_FOLLOW_TO_OFFSET_OF_ENTITY(peds, PlayerPed, OperationT[peds].XOffset, OperationT[peds].YOffset, -1, 100.0, -1, 0.1, true)
 					OperationT[peds].TaskStatus = 34
 				end
 			else
@@ -975,16 +976,14 @@ TaskStatusFunctionsT[36+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 		end
 		if ENTITY.IS_ENTITY_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 1.0, 1.0, 1.0, false, true, 0) then
 			OperationT[peds].TaskStatus = 35
-			OperationT[peds].TimeOut = 0
 		end
 	end
 end
 
 TaskStatusFunctionsT[37+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	if OperationT[peds].TaskStatus == 37 then
-		
 		if not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) and not PED.IS_PED_DEAD_OR_DYING(OperationT[peds].Target) and ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target)
-		and not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) then
+		and ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) then
 			if CopsAimAtHead then
 				PED.SET_PED_RESET_FLAG(OperationT[peds].Target, 108, true)
 			end
