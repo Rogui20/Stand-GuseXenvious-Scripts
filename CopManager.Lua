@@ -913,9 +913,9 @@ end
 
 TaskStatusFunctionsT[35+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	if OperationT[peds].TaskStatus == 35 then
-		OperationT[peds].X = TaskArgs.PlayerCoords.x + ((OperationT[peds].RVect.x * OperationT[peds].XOffset) - (OperationT[peds].FVect.x * (OperationT[peds].YOffset)))
-		OperationT[peds].Y = TaskArgs.PlayerCoords.y + ((OperationT[peds].RVect.y * OperationT[peds].XOffset) - (OperationT[peds].FVect.y * (OperationT[peds].YOffset)))
-		OperationT[peds].Z = TaskArgs.PlayerCoords.z + ((OperationT[peds].RVect.z * OperationT[peds].XOffset) - (OperationT[peds].FVect.z * (OperationT[peds].YOffset)))
+		OperationT[peds].X = TaskArgs.PlayerCoords.x + ((TaskArgs.RVect.x * OperationT[peds].XOffset) - (TaskArgs.FVect.x * (OperationT[peds].YOffset)))
+		OperationT[peds].Y = TaskArgs.PlayerCoords.y + ((TaskArgs.RVect.y * OperationT[peds].XOffset) - (TaskArgs.FVect.y * (OperationT[peds].YOffset)))
+		OperationT[peds].Z = TaskArgs.PlayerCoords.z + ((TaskArgs.RVect.z * OperationT[peds].XOffset) - (TaskArgs.FVect.z * (OperationT[peds].YOffset)))
 		local Target = 0
 		if OperationT[peds].Target == nil then
 			Target = PED.GET_PED_TARGET_FROM_COMBAT_PED(peds, 0)
@@ -974,9 +974,9 @@ TaskStatusFunctionsT[36+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 	if OperationT[peds].TaskStatus == 36 then
 		if TaskArgs.IsPlayerShooting then
 			if RequestControlOfEntity(peds) then
-				OperationT[peds].X = TaskArgs.PlayerCoords.x + ((OperationT[peds].RVect.x * OperationT[peds].XOffset) - (OperationT[peds].FVect.x * (OperationT[peds].YOffset)))
-				OperationT[peds].Y = TaskArgs.PlayerCoords.y + ((OperationT[peds].RVect.y * OperationT[peds].XOffset) - (OperationT[peds].FVect.y * (OperationT[peds].YOffset)))
-				OperationT[peds].Z = TaskArgs.PlayerCoords.z + ((OperationT[peds].RVect.z * OperationT[peds].XOffset) - (OperationT[peds].FVect.z * (OperationT[peds].YOffset)))
+				OperationT[peds].X = TaskArgs.PlayerCoords.x + ((TaskArgs.RVect.x * OperationT[peds].XOffset) - (TaskArgs.FVect.x * (OperationT[peds].YOffset)))
+				OperationT[peds].Y = TaskArgs.PlayerCoords.y + ((TaskArgs.RVect.y * OperationT[peds].XOffset) - (TaskArgs.FVect.y * (OperationT[peds].YOffset)))
+				OperationT[peds].Z = TaskArgs.PlayerCoords.z + ((TaskArgs.RVect.z * OperationT[peds].XOffset) - (TaskArgs.FVect.z * (OperationT[peds].YOffset)))
 				TASK.TASK_GO_TO_COORD_WHILE_AIMING_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z,
 				TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 3.5, TaskArgs.IsPlayerShooting, 0.5, 2.0, true, 0, true, joaat("FIRING_PATTERN_FULL_AUTO"))
 			end
@@ -999,9 +999,9 @@ TaskStatusFunctionsT[37+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 					--if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_SHOOT_AT_ENTITY")) ~= 7 then
 					--	TASK.CLEAR_PED_TASKS(peds)
 					--end
-					OperationT[peds].X = TaskArgs.PlayerCoords.x + ((OperationT[peds].RVect.x * OperationT[peds].XOffset) - (OperationT[peds].FVect.x * (OperationT[peds].YOffset)))
-					OperationT[peds].Y = TaskArgs.PlayerCoords.y + ((OperationT[peds].RVect.y * OperationT[peds].XOffset) - (OperationT[peds].FVect.y * (OperationT[peds].YOffset)))
-					OperationT[peds].Z = TaskArgs.PlayerCoords.z + ((OperationT[peds].RVect.z * OperationT[peds].XOffset) - (OperationT[peds].FVect.z * (OperationT[peds].YOffset)))
+					OperationT[peds].X = TaskArgs.PlayerCoords.x + ((TaskArgs.RVect.x * OperationT[peds].XOffset) - (TaskArgs.FVect.x * (OperationT[peds].YOffset)))
+					OperationT[peds].Y = TaskArgs.PlayerCoords.y + ((TaskArgs.RVect.y * OperationT[peds].XOffset) - (TaskArgs.FVect.y * (OperationT[peds].YOffset)))
+					OperationT[peds].Z = TaskArgs.PlayerCoords.z + ((TaskArgs.RVect.z * OperationT[peds].XOffset) - (TaskArgs.FVect.z * (OperationT[peds].YOffset)))
 					TASK.TASK_GO_TO_COORD_WHILE_AIMING_AT_ENTITY(peds, OperationT[peds].X, OperationT[peds].Y,
 					OperationT[peds].Z, OperationT[peds].Target, 3.5, true, 1.0, 4.0, true --[[Use Navmesh]], 0, true, joaat("FIRING_PATTERN_FULL_AUTO"), -1)
 					PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
@@ -1011,9 +1011,9 @@ TaskStatusFunctionsT[37+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 				end
 			else
 				if RequestControlOfEntity(peds) then
-					OperationT[peds].X = TaskArgs.PlayerCoords.x + ((OperationT[peds].RVect.x * OperationT[peds].XOffset) - (OperationT[peds].FVect.x * (OperationT[peds].YOffset)))
-					OperationT[peds].Y = TaskArgs.PlayerCoords.y + ((OperationT[peds].RVect.y * OperationT[peds].XOffset) - (OperationT[peds].FVect.y * (OperationT[peds].YOffset)))
-					OperationT[peds].Z = TaskArgs.PlayerCoords.z + ((OperationT[peds].RVect.z * OperationT[peds].XOffset) - (OperationT[peds].FVect.z * (OperationT[peds].YOffset)))
+					OperationT[peds].X = TaskArgs.PlayerCoords.x + ((TaskArgs.RVect.x * OperationT[peds].XOffset) - (TaskArgs.FVect.x * (OperationT[peds].YOffset)))
+					OperationT[peds].Y = TaskArgs.PlayerCoords.y + ((TaskArgs.RVect.y * OperationT[peds].XOffset) - (TaskArgs.FVect.y * (OperationT[peds].YOffset)))
+					OperationT[peds].Z = TaskArgs.PlayerCoords.z + ((TaskArgs.RVect.z * OperationT[peds].XOffset) - (TaskArgs.FVect.z * (OperationT[peds].YOffset)))
 					--TASK.CLEAR_PED_TASKS(peds)
 					TASK.TASK_SHOOT_AT_ENTITY(peds, OperationT[peds].Target, -1, joaat("FIRING_PATTERN_FULL_AUTO"))
 					PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
@@ -1039,9 +1039,9 @@ TaskStatusFunctionsT[38+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 		if OperationT[peds].TaskDelay > 100 then
 			OperationT[peds].TaskDelay = 0
 			OperationT[peds].TaskStatus = 37
-			OperationT[peds].X = TaskArgs.PlayerCoords.x + ((OperationT[peds].RVect.x * OperationT[peds].XOffset) - (OperationT[peds].FVect.x * (OperationT[peds].YOffset)))
-			OperationT[peds].Y = TaskArgs.PlayerCoords.y + ((OperationT[peds].RVect.y * OperationT[peds].XOffset) - (OperationT[peds].FVect.y * (OperationT[peds].YOffset)))
-			OperationT[peds].Z = TaskArgs.PlayerCoords.z + ((OperationT[peds].RVect.z * OperationT[peds].XOffset) - (OperationT[peds].FVect.z * (OperationT[peds].YOffset)))
+			OperationT[peds].X = TaskArgs.PlayerCoords.x + ((TaskArgs.RVect.x * OperationT[peds].XOffset) - (TaskArgs.FVect.x * (OperationT[peds].YOffset)))
+			OperationT[peds].Y = TaskArgs.PlayerCoords.y + ((TaskArgs.RVect.y * OperationT[peds].XOffset) - (TaskArgs.FVect.y * (OperationT[peds].YOffset)))
+			OperationT[peds].Z = TaskArgs.PlayerCoords.z + ((TaskArgs.RVect.z * OperationT[peds].XOffset) - (TaskArgs.FVect.z * (OperationT[peds].YOffset)))
 		end
 	end
 end
@@ -2067,7 +2067,6 @@ local CustomTasksFunctions = {
 		end
 		if TableT[12] == 1 then
 			SelectedTaskTXT[12].ColourG = 20
-			Args.PlayerCoords = ENTITY.GET_ENTITY_COORDS(PlayerPed)
 			Args.OperationHeading = ENTITY.GET_ENTITY_HEADING(PlayerPed)
 			Args.OperationStatus = 0
 			Args.OperationSide = 0
@@ -2078,6 +2077,11 @@ local CustomTasksFunctions = {
 				Args.HitCoords = RaycastFromCamera(PlayerPed, 1000.0)
 				Args.HasHit = Args.IsPlayerShooting
 			end
+			Args.FVect = FVect
+			Args.RVect = RVect
+			Args.UpVect = UpVect
+			Args.Vect = Vect
+			Args.PlayerCoords = Vect
 		else
 			SelectedTaskTXT[12].ColourG = 255
 			Args.IsAiming = false
