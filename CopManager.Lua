@@ -933,7 +933,7 @@ TaskStatusFunctionsT[35+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 						end
 					else
 						--TASK.TASK_GO_TO_COORD_ANY_MEANS(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.5, 0, false, 0, -1.0)
-						TASK.TASK_FOLLOW_TO_OFFSET_OF_ENTITY(peds, PlayerPed, OperationT[peds].XOffset, OperationT[peds].YOffset, -1, 100.0, -1, 0.1, true)
+						TASK.TASK_FOLLOW_TO_OFFSET_OF_ENTITY(peds, PlayerPed, OperationT[peds].XOffset, -OperationT[peds].YOffset, -1, 100.0, -1, 0.5, true)
 						OperationT[peds].TaskStatus = 34
 					end
 				end
@@ -950,7 +950,7 @@ TaskStatusFunctionsT[35+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 						end
 					else
 						--TASK.TASK_GO_TO_COORD_ANY_MEANS(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.5, 0, false, 0, -1.0)
-						TASK.TASK_FOLLOW_TO_OFFSET_OF_ENTITY(peds, PlayerPed, OperationT[peds].XOffset, OperationT[peds].YOffset, -1, 100.0, -1, 0.1, true)
+						TASK.TASK_FOLLOW_TO_OFFSET_OF_ENTITY(peds, PlayerPed, OperationT[peds].XOffset, -OperationT[peds].YOffset, -1, 100.0, -1, 0.5, true)
 						OperationT[peds].TaskStatus = 34
 					end
 				end
