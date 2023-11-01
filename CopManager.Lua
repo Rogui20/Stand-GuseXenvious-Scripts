@@ -1039,6 +1039,9 @@ TaskStatusFunctionsT[38+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 		if OperationT[peds].TaskDelay > 100 then
 			OperationT[peds].TaskDelay = 0
 			OperationT[peds].TaskStatus = 37
+			OperationT[peds].X = TaskArgs.PlayerCoords.x + ((OperationT[peds].RVect.x * OperationT[peds].XOffset) - (OperationT[peds].FVect.x * (OperationT[peds].YOffset)))
+			OperationT[peds].Y = TaskArgs.PlayerCoords.y + ((OperationT[peds].RVect.y * OperationT[peds].XOffset) - (OperationT[peds].FVect.y * (OperationT[peds].YOffset)))
+			OperationT[peds].Z = TaskArgs.PlayerCoords.z + ((OperationT[peds].RVect.z * OperationT[peds].XOffset) - (OperationT[peds].FVect.z * (OperationT[peds].YOffset)))
 		end
 	end
 end
