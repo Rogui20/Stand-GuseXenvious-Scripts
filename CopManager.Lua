@@ -2502,7 +2502,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 				if not STREAMING.HAS_ANIM_SET_LOADED("move_ped_crouched") then
 					STREAMING.REQUEST_ANIM_SET("move_ped_crouched")
 				end
-				TaskArgs.OperationButton = PAD.IS_CONTROL_JUST_PRESSED(0, 46)
+				TaskArgs.OperationButton = PAD.IS_CONTROL_JUST_PRESSED(0, 46) or PAD.IS_DISABLED_CONTROL_JUST_PRESSED(0, 46)
 				if TaskArgs.OperationButton then
 					AUDIO.PLAY_SOUND_FRONTEND(-1, "Collect", "DLC_Low2_Ibi_Sounds", false)
 				end
@@ -2690,9 +2690,6 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			if not PED.DOES_RELATIONSHIP_GROUP_EXIST(FriendlyAll) then
 				HasSetHate = false
 			end
-			if IterationsNumber == 0 then
-				PedsT = entities.get_all_peds_as_handles()
-			end
 			local InteriorPlayerPed = INTERIOR.GET_INTERIOR_FROM_ENTITY(PlayerPed)
 			for index, peds in pairs(PedsT) do
 				if DECORATOR.DECOR_GET_INT(peds, "Casino_Game_Info_Decorator") == 31 then
@@ -2732,6 +2729,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 						end
 					end
 				end
+			end
+			if MissionCopCount < MaxCopsToEdit then
+				PedsT = entities.get_all_peds_as_handles()
 			end
 			if RenderCopCount then
 				directx.draw_text(0.7, 0.7, "Cops "..MissionCopCount, ALIGN_CENTRE, 1.0, {r = 0, g = 255 , b = 255, a = 200}, false)
@@ -4066,11 +4066,8 @@ menu.action(DevMenu, "Bypass Law Vehicles", {}, "To spawn cops and SWATS inside 
 	end
 end)
 
-menu.action(DevMenu, "Get Addr", {}, "", function(toggle)
-	local Addr = memory.scan("? 8b c4 ? 88 ? ? ? 89 ? ? ? 89 ? ? ? 89 ? ? 55 53")
-	local FormatedString = string.format("%X", Addr)
-	Print(FormatedString)
-	util.copy_to_clipboard(FormatedString)
+menu.toggle_loop(DevMenu, "Get Events", {}, "", function(toggle)
+	Print(SCRIPT.GET_NUMBER_OF_EVENTS(0))
 end)
 
 
@@ -4096,7 +4093,7 @@ menu.action(DevMenu, "Addr Test", {}, "", function(toggle)
 end)
 
 menu.action(DevMenu, "Addr Get", {}, "", function(toggle)
-	local Addr = memory.scan("? 89 5c ? ? ? 89 6c ? ? ? 89 74 ? ? 57")
+	local Addr = memory.scan("74 ? 3b 05 ? ? ? ? 74 ? 3b 05 ? ? ? ? 75 ? ? b0 01")
 	local FormatedString = string.format("%02X", Addr)
 	util.copy_to_clipboard(FormatedString)
 	Print(FormatedString)
@@ -4949,7 +4946,11 @@ function Draw2DText(Text, X, Y, Scale, Size, R, G, B, A, DropShadowDist)
 	HUD.END_TEXT_COMMAND_DISPLAY_TEXT(X, Y, 0)
 end
 
-function RaycastFromCamera(PlayerPed, Distance)
+function RaycastFromCamera(PlayerPed, Distance, Flags)
+	local FlagBits = -1
+	if Flags ~= nil then
+		FlagBits = Flags
+	end
 	local HitCoords = v3.new()
 	local CamRot = CAM.GET_GAMEPLAY_CAM_ROT(2)
 	local FVect = CamRot:toDir()
@@ -4965,7 +4966,7 @@ function RaycastFromCamera(PlayerPed, Distance)
 	local Handle = SHAPETEST.START_EXPENSIVE_SYNCHRONOUS_SHAPE_TEST_LOS_PROBE(
 		PPos.x, PPos.y, PPos.z,
 		AdjustedX, AdjustedY, AdjustedZ,
-		-1,
+		FlagBits,
 		PlayerPed, 7
 	)
 	SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
@@ -4978,7 +4979,7 @@ function RaycastFromCamera(PlayerPed, Distance)
 		HitCoords.y = AdjustedY
 		HitCoords.z = AdjustedZ
 	end
-	return HitCoords, memory.read_byte(DidHit) ~= 0
+	return HitCoords, memory.read_byte(DidHit) ~= 0, memory.read_int(HitEntity)
 end
 
 function ShapeTestNav(Entity, PPos, AdjustedVect, Flags)
@@ -5231,10 +5232,412 @@ menu.action(MissionMenu, "Juggernaut Hunter Raid", {}, "Head Hunter but with pow
 	end
 end)
 
+local VehGuns = false
+menu.toggle(MiscMenu, "Vehicle Guns", {}, "", function(toggle)
+	VehGuns = toggle
+	if VehGuns then
+		--WEAPON.REQUEST_WEAPON_ASSET(WEAPON_TYPE weaponType, INT iWeaponResourceFlags = WRF_REQUEST_ALL_ANIMS, EXTRA_WEAPON_COMPONENT_RESOURCE_FLAGS ExtraWeaponComponentFlags = WEAPON_COMPONENT_NONE)
+		while VehGuns do
+			if PAD.IS_CONTROL_PRESSED(0, 69) then
+				local PlayerPed = PLAYER.PLAYER_PED_ID()
+				local Veh = PED.GET_VEHICLE_PED_IS_IN(PlayerPed, false)
+				local CamRot = CAM.GET_GAMEPLAY_CAM_ROT(0)
+				if Veh ~= 0 then
+					if PED.IS_PED_IN_VEHICLE(PlayerPed, Veh, false) then
+						local EndCoords, DidHit = RaycastFromCamera(Veh, 1000.0)
+						local BoneIndex = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(Veh, "headlight_l")
+						local BoneIndex2 = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(Veh, "headlight_r")
+						if BoneIndex ~= 0 then
+							local Pos = ENTITY.GET_ENTITY_BONE_POSTION(Veh, BoneIndex)
+							local NewPos = v3.new(EndCoords)
+							local Sub = v3.sub(NewPos, Pos)
+							local Rot = v3.toRot(Sub)
+							MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS_IGNORE_ENTITY(Pos.x, Pos.y, Pos.z, EndCoords.x, EndCoords.y, EndCoords.z, 30, false, joaat("weapon_raycarbine"), PlayerPed, false--[[VFX]], true, -1.0, Veh, 0)
+							GRAPHICS.USE_PARTICLE_FX_ASSET("weap_xs_weapons")
+							--GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD("bullet_tracer_xs_sr", Pos.x, Pos.y, Pos.z, CamRot.y, -CamRot.x + 90.0, CamRot.z + 90.0, 1.0, false, false, false, true)
+							GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD("bullet_tracer_xs_sr", Pos.x, Pos.y, Pos.z, Rot.x - 90.0, Rot.y, Rot.z, 1.0, false, false, false, true)
+						end
+						if BoneIndex2 ~= 0 then
+							local Pos = ENTITY.GET_ENTITY_BONE_POSTION(Veh, BoneIndex2)
+							local NewPos = v3.new(EndCoords)
+							local Sub = v3.sub(NewPos, Pos)
+							local Rot = v3.toRot(Sub)
+							MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS_IGNORE_ENTITY(Pos.x, Pos.y, Pos.z, EndCoords.x, EndCoords.y, EndCoords.z, 30, false, joaat("weapon_raycarbine"), PlayerPed, false--[[VFX]], true, -1.0, Veh, 0)
+							GRAPHICS.USE_PARTICLE_FX_ASSET("weap_xs_weapons")
+							--GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD("bullet_tracer_xs_sr", Pos.x, Pos.y, Pos.z, CamRot.y, -CamRot.x + 90.0, CamRot.z + 90.0, 1.0, false, false, false, true)
+							GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD("bullet_tracer_xs_sr", Pos.x, Pos.y, Pos.z, Rot.x - 90.0, Rot.y, Rot.z, 1.0, false, false, false, true)
+						end
+						Wait(49)
+					end
+				end
+			end
+			Wait()
+		end
+	end
+end)
+
+local WeaponizedVehiclesMenu = menu.list(menu.my_root(), "Weaponized Vehicles", {}, "")
+
+local HomingShootsAtPlayers = true
+menu.toggle(WeaponizedVehiclesMenu, "Homing Shoot At Players", {}, "Will focus players too.", function(toggle)
+	HomingShootsAtPlayers = toggle
+end, HomingShootsAtPlayers)
+local AvoidFocusingFriends = true
+menu.toggle(WeaponizedVehiclesMenu, "Homing Shoot Avoid Friends", {}, "Will not focus friend players.", function(toggle)
+	AvoidFocusingFriends = toggle
+end, AvoidFocusingFriends)
+local HomingShootsAtPeds = true
+menu.toggle(WeaponizedVehiclesMenu, "Homing Shoot At Peds", {}, "Will focus peds too.", function(toggle)
+	HomingShootsAtPeds = toggle
+end, HomingShootsAtPeds)
+
+local SetTurretPropInvisible = false
+menu.toggle(WeaponizedVehiclesMenu, "Set Turret Prop Invisible", {}, "To hide your powers!", function(toggle)
+	SetTurretPropInvisible = toggle
+end, SetTurretPropInvisible)
+
+local VehRemoteGuns = false
+menu.toggle(WeaponizedVehiclesMenu, "Weaponize Vehicle", {}, "With a turret prop with homing shoots button, press horn button to enable homing, press switch radio button to switch target, and fire button to attack.", function(toggle)
+	VehRemoteGuns = toggle
+	if not VehRemoteGuns then
+		local PlayerID = PLAYER.PLAYER_ID()
+		for index, objs in pairs(entities.get_all_objects_as_handles()) do
+			local DecorInt = DECORATOR.DECOR_GET_INT(objs, "Casino_Game_Info_Decorator")
+			if DecorInt == 31 or DecorInt == 32 then
+				local CanDelete = false
+				local EntOwner = get_entity_owner(objs)
+				if NETWORK.NETWORK_IS_PLAYER_CONNECTED(EntOwner) then
+					if EntOwner == PlayerID then
+						CanDelete = true
+					end
+				else
+					CanDelete = true
+				end
+				if CanDelete then
+					util.create_thread(function ()
+						local Tick = 0
+						while not RequestControlOfEntity(objs) and Tick < 1000 do
+							Tick = Tick + 1
+							Wait()
+						end
+						local NetID = NETWORK.OBJ_TO_NET(objs)
+						if NetID ~= 0 then
+							NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PLAYER.PLAYER_ID(), false)
+						end
+						entities.delete_by_handle(objs)
+					end)
+				end
+			end
+		end
+		GRAPHICS.SET_STREAMED_TEXTURE_DICT_AS_NO_LONGER_NEEDED("helicopterhud")
+	end
+	if VehRemoteGuns then
+		local TurretModel = joaat("p_rcss_folded")
+		local VehsWithTurret = {}
+		local Shooted = 0
+		local IsAircraft = false
+		local Weaps = {joaat("weapon_navyrevolver"), joaat("weapon_rpg")}
+		local Targets = {}
+		local SelectedTarget = 1
+		local TargetsState = 0
+		local TargetDied = false
+		local ScanPeds = false
+		local LastVeh = 0
+		while VehRemoteGuns do
+			local PlayerPed = PLAYER.PLAYER_PED_ID()
+			local Veh = PED.GET_VEHICLE_PED_IS_IN(PlayerPed, false)
+			PAD.DISABLE_CONTROL_ACTION(0, 85, true)
+			if not GRAPHICS.HAS_STREAMED_TEXTURE_DICT_LOADED("helicopterhud") then
+				GRAPHICS.REQUEST_STREAMED_TEXTURE_DICT("helicopterhud", false)
+			end
+			if PAD.IS_CONTROL_JUST_PRESSED(0, 46) or PAD.IS_CONTROL_JUST_PRESSED(0, 113) or ScanPeds then
+				if TargetsState == 0 then
+					local PedsT = entities.get_all_peds_as_handles()
+					local PlayerPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+					for index, peds in pairs(PedsT) do
+						if peds ~= PlayerPed then
+							if not ENTITY.IS_ENTITY_DEAD(peds) then
+								if not PED.IS_PED_DEAD_OR_DYING(peds, true) then
+									if ENTITY.IS_ENTITY_ON_SCREEN(peds) then
+										if not DECORATOR.DECOR_EXIST_ON(peds, "Casino_Game_Info_Decorator") then
+											if not PED.IS_PED_IN_VEHICLE(peds, Veh, true) then
+												if HomingShootsAtPeds then
+													if not PED.IS_PED_A_PLAYER(peds) then
+														local TargetRelHash = PED.GET_PED_RELATIONSHIP_GROUP_HASH(peds)
+														if PED.GET_RELATIONSHIP_BETWEEN_PEDS(peds, PlayerPed) ~= 1 then
+															local PedCoords = ENTITY.GET_ENTITY_COORDS(peds)
+															local Distance = MISC.GET_DISTANCE_BETWEEN_COORDS(PlayerPos.x, PlayerPos.y, PlayerPos.z, PedCoords.x, PedCoords.y, PedCoords.z, true)
+															Targets[#Targets+1] = {Handle = peds, Distance = Distance}
+														end
+													end
+												end
+												if HomingShootsAtPlayers then
+													if PED.IS_PED_A_PLAYER(peds) then
+														local CanInsert = true
+														if AvoidFocusingFriends then
+															local Player = NETWORK.NETWORK_GET_PLAYER_INDEX_FROM_PED(peds)
+															local Handle = memory.alloc(13)
+															NETWORK.NETWORK_HANDLE_FROM_PLAYER(Player, Handle, 13)
+															CanInsert = not NETWORK.NETWORK_IS_FRIEND(Handle)
+														end
+														if CanInsert then
+															local PedCoords = ENTITY.GET_ENTITY_COORDS(peds)
+															local Distance = MISC.GET_DISTANCE_BETWEEN_COORDS(PlayerPos.x, PlayerPos.y, PlayerPos.z, PedCoords.x, PedCoords.y, PedCoords.z, true)
+															Targets[#Targets+1] = {Handle = peds, Distance = Distance}
+														end
+													end
+												end
+											end
+										end
+									end
+								end
+							end
+						end
+					end
+					local ClosestDist = 10000.0
+					local ClosestHandle = 0
+					for i = 1, #Targets do
+						if Targets[i].Distance < ClosestDist then
+							ClosestDist = Targets[i].Distance
+							ClosestHandle = Targets[i].Handle
+							SelectedTarget = i
+						end
+					end
+					TargetsState = 1
+					ScanPeds = false
+				else
+					for i = 1, #Targets do
+						table.remove(Targets, #Targets)
+					end
+					TargetsState = 0
+				end
+			end
+			local IsInVeh = PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, true)
+			for i = 1, #Targets do
+				if Targets[i] ~= nil then
+					local PedCoords = ENTITY.GET_ENTITY_COORDS(Targets[i].Handle)
+					local ScreenX, ScreenY = memory.alloc(8), memory.alloc(8)
+					if GRAPHICS.GET_SCREEN_COORD_FROM_WORLD_COORD(PedCoords.x, PedCoords.y, PedCoords.z, ScreenX, ScreenY) then
+						local R, G, B = 255, 255, 255
+						local XSize = 0.05
+						local YSize = 0.1
+						local TXTName = "hud_lock"
+						if i == SelectedTarget then
+							R = 255
+							G = 255
+							B = 255
+							XSize = 0.025
+							YSize = 0.05
+							TXTName = "hud_target"
+						end
+						if IsInVeh then
+							if GRAPHICS.HAS_STREAMED_TEXTURE_DICT_LOADED("helicopterhud") then
+								GRAPHICS.DRAW_SPRITE("helicopterhud", TXTName, memory.read_float(ScreenX), memory.read_float(ScreenY), XSize, YSize, 0.0, R, G, B, 200, false, false)
+							end
+						end
+					end
+					if ENTITY.IS_ENTITY_DEAD(Targets[i].Handle) then
+						table.remove(Targets, i)
+						TargetDied = true
+					end
+				end
+			end
+			if #Targets > 0 then
+				if Targets[SelectedTarget] ~= nil then
+					if ENTITY.IS_ENTITY_DEAD(Targets[SelectedTarget].Handle) or not ENTITY.DOES_ENTITY_EXIST(Targets[SelectedTarget].Handle) then
+						table.remove(Targets, SelectedTarget)
+						TargetDied = true
+					end
+				end
+				if Targets[SelectedTarget] ~= nil then
+					if not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(PlayerPed, Targets[SelectedTarget].Handle, 17)
+					or not ENTITY.IS_ENTITY_ON_SCREEN(Targets[SelectedTarget].Handle) and PED.IS_PED_IN_VEHICLE(Targets[SelectedTarget].Handle, Veh, true) then
+						TargetDied = true
+					end
+				end
+			else
+				if TargetsState == 1 then
+					TargetsState = 0
+					ScanPeds = true
+				end
+			end
+			if PAD.IS_DISABLED_CONTROL_JUST_PRESSED(0, 85) then
+				SelectedTarget = SelectedTarget + 1
+				if SelectedTarget > #Targets then
+					SelectedTarget = 1
+				end
+			end
+			if TargetDied then
+				local ClosestDist = 10000.0
+				local ClosestHandle = 0
+				local PlayerPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+				for i = 1, #Targets do
+					local PedCoords = ENTITY.GET_ENTITY_COORDS(Targets[i].Handle)
+					local Distance = MISC.GET_DISTANCE_BETWEEN_COORDS(PlayerPos.x, PlayerPos.y, PlayerPos.z, PedCoords.x, PedCoords.y, PedCoords.z, true)
+					Targets[i].Distance = Distance
+					if Targets[i].Distance < ClosestDist then
+						ClosestDist = Targets[i].Distance
+						ClosestHandle = Targets[i].Handle
+						SelectedTarget = i
+					end
+				end
+				TargetDied = false
+			end
+			if Veh ~= 0 then
+				if VehsWithTurret[Veh] == nil then
+					if PED.IS_PED_IN_VEHICLE(PlayerPed, Veh, false) then
+						LastVeh = Veh
+						if not STREAMING.HAS_MODEL_LOADED(TurretModel) then
+							STREAMING.REQUEST_MODEL(TurretModel)
+						end
+						if STREAMING.HAS_MODEL_LOADED(TurretModel) then
+							local VehModel = ENTITY.GET_ENTITY_MODEL(Veh)
+							local Min, Max = v3.new(), v3.new()
+							MISC.GET_MODEL_DIMENSIONS(VehModel, Min, Max)
+							local VPos = ENTITY.GET_ENTITY_COORDS(Veh)
+							local Turret = OBJECT.CREATE_OBJECT(TurretModel, VPos.x, VPos.y, VPos.z + Max.z, true, true, true)
+							DECORATOR.DECOR_SET_INT(Turret, "Casino_Game_Info_Decorator", 31)
+							ENTITY.SET_ENTITY_AS_MISSION_ENTITY(Turret, false, true)
+							local NetID = NETWORK.OBJ_TO_NET(Turret)
+							if NetID ~= 0 then
+								NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PLAYER.PLAYER_ID(), true)
+							end
+							ENTITY.SET_ENTITY_HAS_GRAVITY(Turret, false)
+							if SetTurretPropInvisible then
+								ENTITY.SET_ENTITY_ALPHA(Turret, 0, false)
+							end
+							local OffsetY = 0.0
+							local OffsetZ = Max.z - 0.5
+							local IsPlane = VEHICLE.IS_THIS_MODEL_A_PLANE(VehModel)
+							local IsHeli = VEHICLE.IS_THIS_MODEL_A_HELI(VehModel)
+							if IsHeli then
+								OffsetZ = 0.0
+								OffsetY = Max.y - 3.0
+							end
+							if VEHICLE.IS_THIS_MODEL_A_BICYCLE(VehModel) or VEHICLE.IS_THIS_MODEL_A_BIKE(VehModel) then
+								OffsetZ = 0.0
+								OffsetY = Max.y
+							end
+							if IsPlane then
+								OffsetZ = -0.5
+								OffsetY = Max.y - 0.5
+							end
+							IsAircraft = IsPlane or IsHeli
+							--ENTITY.ATTACH_ENTITY_TO_ENTITY_PHYSICALLY(Turret, Veh, 0, 0, 0.0, OffsetY * 2, OffsetZ * 2, 0.0, 0.0, 0.0, 0.0, 0.0, 180.0, -1.0, false, true, false, true, 2)
+							ENTITY.ATTACH_ENTITY_TO_ENTITY(Turret, Veh, 0, 0.0, OffsetY, OffsetZ, 0.0, 0.0, 180.0, true, false, true, false, 2, true, true)
+							STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(TurretModel)
+							VehsWithTurret[Veh] = {Turret = Turret, OffsetY = OffsetY, OffsetZ = OffsetZ}
+						end
+					end
+				end
+				if VehsWithTurret[Veh] ~= nil then
+					if SetTurretPropInvisible then
+						ENTITY.SET_ENTITY_ALPHA(VehsWithTurret[Veh].Turret, 0, false)
+					end
+					local CamRot = CAM.GET_GAMEPLAY_CAM_ROT(2)
+					local FVect, RVect, UpVect, Vect = v3.new(), v3.new(), v3.new(), v3.new()
+					ENTITY.GET_ENTITY_MATRIX(VehsWithTurret[Veh].Turret, FVect, RVect, UpVect, Vect)
+					local EntSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(Veh, false)
+					local AdjustedX = Vect.x - ((FVect.x * 0.6) - (UpVect.x * 0.561) + (RVect.x * 0.0002)) + EntSpeed.x * 0.035
+					local AdjustedY = Vect.y - ((FVect.y * 0.6) - (UpVect.y * 0.561) + (RVect.y * 0.0002)) + EntSpeed.y * 0.035
+					local AdjustedZ = Vect.z - ((FVect.z * 0.6) - (UpVect.z * 0.561) + (RVect.z * 0.0002)) + EntSpeed.z * 0.035
+					local Pos = v3.new(AdjustedX, AdjustedY, AdjustedZ)
+					local RotToDir = v3.toDir(CamRot)
+					local AdjustedVect = {x = Pos.x + RotToDir.x * 1000.0, y = Pos.y + RotToDir.y * 1000.0, z = Pos.z + RotToDir.z * 1000.0}
+					if #Targets == 0 then
+						local ScreenEndCoords = ShapeTestNav(Veh, Pos, AdjustedVect)
+						local ScreenX, ScreenY = memory.alloc(8), memory.alloc(8)
+						if GRAPHICS.GET_SCREEN_COORD_FROM_WORLD_COORD(ScreenEndCoords.x, ScreenEndCoords.y, ScreenEndCoords.z, ScreenX, ScreenY) then
+							if GRAPHICS.HAS_STREAMED_TEXTURE_DICT_LOADED("helicopterhud") then
+								GRAPHICS.DRAW_SPRITE("helicopterhud", "hud_target", memory.read_float(ScreenX), memory.read_float(ScreenY), 0.025, 0.050, 0.0, 255, 255, 255, 200, false, false)
+							end
+						end
+						GRAPHICS.DRAW_LIGHT_WITH_RANGE(ScreenEndCoords.x, ScreenEndCoords.y, ScreenEndCoords.z, 255, 0, 0, 0.5, 555.0)
+						local EntRot = ENTITY.GET_ENTITY_ROTATION(Veh, 0)
+						local AdjustedZRot = (CamRot.z + 180.0) - EntRot.z
+						ENTITY.ATTACH_ENTITY_TO_ENTITY(VehsWithTurret[Veh].Turret, Veh, 0, 0.0, VehsWithTurret[Veh].OffsetY, VehsWithTurret[Veh].OffsetZ, 0.0, 0.0, AdjustedZRot, true, false, true, false, 2, true, true)
+					else
+						if Targets[SelectedTarget] ~= nil then
+							local PedCoords = ENTITY.GET_ENTITY_COORDS(Targets[SelectedTarget].Handle)
+							local ScreenEndCoords = ShapeTestNav(Veh, Pos, PedCoords)
+							GRAPHICS.DRAW_LIGHT_WITH_RANGE(ScreenEndCoords.x, ScreenEndCoords.y, ScreenEndCoords.z, 255, 0, 0, 0.5, 555.0)
+							local EntRot = ENTITY.GET_ENTITY_ROTATION(Veh, 0)
+							local NewVect = v3.new(Pos)
+							local NewVect2 = v3.new(ScreenEndCoords)
+							local NewSub = v3.sub(NewVect, NewVect2)
+							local ToRot = v3.toRot(NewSub)
+							local AdjustedZRot = (ToRot.z) - EntRot.z
+							ENTITY.ATTACH_ENTITY_TO_ENTITY(VehsWithTurret[Veh].Turret, Veh, 0, 0.0, VehsWithTurret[Veh].OffsetY, VehsWithTurret[Veh].OffsetZ, 0.0, 0.0, AdjustedZRot, true, false, true, false, 2, true, true)
+						end
+					end
+					local Pressed = false
+					if not IsAircraft then
+						Pressed = PAD.IS_CONTROL_PRESSED(0, 76) or PAD.IS_CONTROL_PRESSED(0, 69)
+					else
+						Pressed = PAD.IS_CONTROL_PRESSED(0, 70)
+					end
+					if Shooted <= 0 then
+						if PED.IS_PED_IN_VEHICLE(PlayerPed, Veh, false) and ENTITY.DOES_ENTITY_EXIST(LastVeh) and not ENTITY.IS_ENTITY_DEAD(Veh) then
+							if Pressed then
+								local EndCoords = nil
+								if #Targets > 0 then
+									if Targets[SelectedTarget] ~= nil then
+										local BoneCount = ENTITY.GET_ENTITY_BONE_COUNT(Targets[SelectedTarget].Handle)
+										EndCoords = ENTITY.GET_ENTITY_BONE_POSTION(Targets[SelectedTarget].Handle, math.random(0, BoneCount-1))--ENTITY.GET_ENTITY_COORDS(Targets[SelectedTarget].Handle)
+									else
+										EndCoords, DidHit = ShapeTestNav(Veh, Pos, AdjustedVect)
+									end
+								else
+									EndCoords, DidHit = ShapeTestNav(Veh, Pos, AdjustedVect)
+								end
+								local NewPos = v3.new(EndCoords)
+								local Sub = v3.sub(NewPos, Pos)
+								local Rot = v3.toRot(Sub)
+								--local EntRot = ENTITY.GET_ENTITY_ROTATION(VehsWithTurret, 2)
+								GRAPHICS.USE_PARTICLE_FX_ASSET("core")
+								GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD("muz_assault_rifle", Pos.x, Pos.y, Pos.z, Rot.x, Rot.y, Rot.z - 90.0, 1.0, false, false, false, false)
+								MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS_IGNORE_ENTITY(Pos.x, Pos.y, Pos.z, EndCoords.x, EndCoords.y, EndCoords.z, 200, false, joaat("weapon_navyrevolver"), PlayerPed, false--[[VFX]], true, -1.0, Veh, 0)
+								--MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS_IGNORE_ENTITY(Pos.x, Pos.y, Pos.z, EndCoords.x, EndCoords.y, EndCoords.z, 200, false, joaat("weapon_raycarbine"), PlayerPed, true--[[VFX]], true, -1.0, Veh, 0)
+								GRAPHICS.USE_PARTICLE_FX_ASSET("core")
+								GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD("bullet_tracer_railgun", Pos.x, Pos.y, Pos.z, Rot.x - 90.0, Rot.y, Rot.z, 1.0, false, false, false, false)
+								GRAPHICS.USE_PARTICLE_FX_ASSET("weap_xs_weapons")
+								GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD("bullet_tracer_xs_sr", Pos.x, Pos.y, Pos.z, Rot.x - 90.0, Rot.y, Rot.z, 1.0, false, false, false, true)
+								GRAPHICS.USE_PARTICLE_FX_ASSET("core")
+								GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD("bullet_tracer_jet", Pos.x, Pos.y, Pos.z, Rot.x - 90.0, Rot.y, Rot.z, 1.0, false, false, false, false)
+								Shooted = 4
+							end
+						else
+							if RequestControlOfEntity(VehsWithTurret[Veh].Turret) then
+								local NetID = NETWORK.OBJ_TO_NET(VehsWithTurret[Veh].Turret)
+								if NetID ~= 0 then
+									NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PLAYER.PLAYER_ID(), false)
+								end
+								entities.delete_by_handle(VehsWithTurret[Veh].Turret)
+								VehsWithTurret[Veh] = nil
+							end
+						end
+					else
+						Shooted = Shooted - 1
+					end
+				end
+			else
+				if VehsWithTurret[LastVeh] ~= nil then
+					if RequestControlOfEntity(VehsWithTurret[LastVeh]) then
+						local NetID = NETWORK.OBJ_TO_NET(VehsWithTurret[LastVeh])
+						if NetID ~= 0 then
+							NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PLAYER.PLAYER_ID(), false)
+						end
+						entities.delete_by_handle(VehsWithTurret[LastVeh])
+						VehsWithTurret[LastVeh] = nil
+						LastVeh = 0
+					end
+				end
+			end
+			Wait()
+		end
+	end
+end)
+
 util.create_tick_handler(function()
 	return true
 end)
-
---[[
-									
-]]
