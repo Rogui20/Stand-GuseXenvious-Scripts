@@ -3916,6 +3916,22 @@ menu.action(MiscMenu, "Enable All Dispatch Services", {}, "", function(toggle)
 	end
 end)
 
+local PersonalVehSp = false
+menu.toggle(MiscMenu, "Personal Vehicle Spawn Here", {}, "", function(toggle)
+	PersonalVehSp = toggle
+	if PersonalVehSp then
+		local SpawnAddr = SplitGlobals("Global_2635562.f_683")
+		SpawnAddr = memory.script_global(SpawnAddr)
+		local Pos = ENTITY.GET_ENTITY_COORDS(PLAYER.PLAYER_PED_ID())
+		while PersonalVehSp do
+			memory.write_float(SpawnAddr, Pos.x)
+			memory.write_float(SpawnAddr+0x8, Pos.y)
+			memory.write_float(SpawnAddr+0x10, Pos.z)
+			Wait()
+		end
+	end
+end)
+
 menu.toggle_loop(MiscMenu, "Network Door", {}, "Some doors you aim will be able to open by other players.", function(toggle)
 	local PlayerId = PLAYER.PLAYER_ID()
 	if PLAYER.IS_PLAYER_FREE_AIMING(PlayerId) then
