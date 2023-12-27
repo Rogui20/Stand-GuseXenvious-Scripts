@@ -5,6 +5,9 @@ joaat = util.joaat
 Print = util.toast
 json = require "json"
 
+local ArmoredVehsT = {}
+local ArmoredVehicle = false
+
 function LoadJSONFile(Path)
     local MyTable = {}
     local File = io.open( Path, "r" )
@@ -704,7 +707,7 @@ TaskStatusFunctionsT[28+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 											if ENTITY.GET_ENTITY_HEIGHT_ABOVE_GROUND(VehHandle) > 1.1 then --or EntSpeed.x > 1.0 or EntSpeed.x < -1.0 then
 												ForceZ = -1.50
 											end
-											ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, ForceZ, ForceZ, 0, false, true, false)
+											ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, 0.0, ForceZ, 0, false, true, false)
 											if EntSpeed.y >= 3.0 then
 												ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, NormZ * 0.005 * EntSpeed.y, -NormZAbs * 0.01 * EntSpeed.y, 0.0, 0, true, true, false)
 											end
@@ -1150,7 +1153,7 @@ local swatped_Addrs = {}
 local CanSetModels = false
 local RelPlayersBitsAddr = SplitGlobals("Global_2657704[PLAYER::PLAYER_ID() /*463*/].f_253")
 local RelAddrs = {}
-if NETWORK.GET_ONLINE_VERSION() == "1.67" then
+if NETWORK.GET_ONLINE_VERSION() == "1.68" then
 	--Addr = 0x7FF66E4E63F0
 	for i = 0, 29 do
 		RelAddrs[i+1] = memory.script_global(RelPlayersBitsAddr + 463 * i)
@@ -1159,10 +1162,9 @@ if NETWORK.GET_ONLINE_VERSION() == "1.67" then
 	--Print(string.format("%X", Addr))
 	--util.copy_to_clipboard(string.format("%X", Addr))
 	if Addr ~= 0 then
-		Addr = Addr+38
-		Addr2 = memory.read_long(Addr)
-		Addr3 = memory.read_long(Addr2+0x08)
-		police3_FirstAddr = memory.read_long(Addr3+0xB0)
+		Addr2 = memory.read_long(Addr+0x2E)
+		Addr3 = memory.read_long(Addr2+0x200)
+		police3_FirstAddr = Addr3 + 0x20
 		local AddressToScan = police3_FirstAddr - 8 * 1000
 		local MaxFoundAddrs = 7
 		for i = 0, 2000 do
@@ -1853,6 +1855,11 @@ end, CopsCustomRelationship)
 menu.text_input(CopCustomRelMenu, "Custom Relationship Name", {"copcustomrelationship"}, "Write a missing custom relationship name to set.", function(on_change)
 	CustomRelText = on_change
 end)
+
+local SetCopsMyRelationship = false
+menu.toggle(CopCustomRelMenu, "Set To My Relationship", {}, "", function(toggle)
+	SetCopsMyRelationship = toggle
+end, SetCopsMyRelationship)
 local SelectedTaskTXT = {
 	{TXT = "Everyone crouch near", ColourG = 255, Task = 1},
 	{TXT = "Follow in formation", ColourG = 255, Task = 12},
@@ -2327,6 +2334,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 	local CopAIMissionRelHash = -1235282855
 	local EnemyAIMissionRelHash = 671184796
 	local FriendlyAll = -607974925
+	local ScanTick = 0
 	if not ApplyCopSettings then
 		STREAMING.REMOVE_ANIM_DICT("move_ped_crouched")
 		for index, peds in pairs(entities.get_all_peds_as_handles()) do
@@ -2596,95 +2604,100 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					HasAppliedRandomModels = false
 				end
 			end
-			if CopsCustomRelationship then
-				if PED.DOES_RELATIONSHIP_GROUP_EXIST(joaat(CustomRelText)) then
-					CustomRelExists = true
-					SelectedTeam = joaat(CustomRelText)
-					if CopsAreAllies then
-						BlipColorToGive = 3
-					else
-						BlipColorToGive = 1
+			if not SetCopsMyRelationship then
+				if CopsCustomRelationship then
+					if PED.DOES_RELATIONSHIP_GROUP_EXIST(joaat(CustomRelText)) then
+						CustomRelExists = true
+						SelectedTeam = joaat(CustomRelText)
+						if CopsAreAllies then
+							BlipColorToGive = 3
+						else
+							BlipColorToGive = 1
+						end
 					end
 				end
-			end
-			if not CustomRelExists then
-				if CopsAreAllies then
-					BlipColorToGive = 3
-					if not CopsCanAttackPlayers then
-						if PED.DOES_RELATIONSHIP_GROUP_EXIST(FriendlyAll) then
-							SelectedTeam = FriendlyAll
-						else
-							if PED.DOES_RELATIONSHIP_GROUP_EXIST(joaat(AiLikeHateAiHateRel)) and PED.GET_RELATIONSHIP_BETWEEN_GROUPS(PlRel, joaat(AiLikeHateAiHateRel)) == 1 then
-								SelectedTeam = joaat(AiLikeHateAiHateRel)
+				if not CustomRelExists then
+					if CopsAreAllies then
+						BlipColorToGive = 3
+						if not CopsCanAttackPlayers then
+							if PED.DOES_RELATIONSHIP_GROUP_EXIST(FriendlyAll) then
+								SelectedTeam = FriendlyAll
 							else
-								SelectedTeam = PlRel
+								if PED.DOES_RELATIONSHIP_GROUP_EXIST(joaat(AiLikeHateAiHateRel)) and PED.GET_RELATIONSHIP_BETWEEN_GROUPS(PlRel, joaat(AiLikeHateAiHateRel)) == 1 then
+									SelectedTeam = joaat(AiLikeHateAiHateRel)
+								else
+									SelectedTeam = PlRel
+								end
+							end
+						else
+							local CanSetRel = false
+							local RelTarget = joaat("rgFM_Team"..PlayerID)
+							local RelHash = joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]")
+							if not AvoidAttackingFriends then
+								PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, RelHash, RelTarget)
+								PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, RelTarget, RelHash)
+							else
+								if FreemodeBackupHeliAddr ~= 0 then
+									if AvoidAttackSpeficPlayers then
+										if not is_bit_set(AvoidPlayerBits, PlayerID+1) then
+											AvoidPlayerBits = set_bit(AvoidPlayerBits, PlayerID+1)
+										end
+										memory.write_int(FreemodeBackupHeliAddr, AvoidPlayerBits)
+									end
+									if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("am_backup_heli")) == 0 then
+										if TriesTick <= 0 then
+											menu.trigger_commands("helibackup")
+											TriesTick = 50
+										else
+											if TriesTick > 0 then
+												TriesTick = TriesTick - 1
+											end
+										end
+									else
+										TriesTick = 0
+										CanSetRel = true
+									end
+								end
+							end
+							local MyRelTeam = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PlayerPed)
+							if CanSetRel then
+								MyRelTeam = RelHashBackup
+								RelTarget = RelHashBackup
+								RelHash = RelHashBackup
+							end
+							if MyRelTeam ~= RelTarget then
+								--SelectedTeam = joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]")
+								SelectedTeam = MyRelTeam
+							else
+								SelectedTeam = RelHash
+								if AvoidAttackingFriends then
+									if not CanSetRel then
+										if PED.GET_RELATIONSHIP_BETWEEN_GROUPS(SelectedTeam, MyRelTeam) ~= 1 then
+											SelectedTeam = joaat(AiLikeHateAiHateRel)
+											if PED.GET_RELATIONSHIP_BETWEEN_GROUPS(SelectedTeam, MyRelTeam) ~= 1 then
+												SelectedTeam = joaat(AiLikeRel)
+											end
+										end
+									end
+								end
 							end
 						end
 					else
-						local CanSetRel = false
-						local RelTarget = joaat("rgFM_Team"..PlayerID)
-						local RelHash = joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]")
-						if not AvoidAttackingFriends then
-							PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, RelHash, RelTarget)
-							PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, RelTarget, RelHash)
-						else
-							if FreemodeBackupHeliAddr ~= 0 then
-								if AvoidAttackSpeficPlayers then
-									if not is_bit_set(AvoidPlayerBits, PlayerID+1) then
-										AvoidPlayerBits = set_bit(AvoidPlayerBits, PlayerID+1)
-									end
-									memory.write_int(FreemodeBackupHeliAddr, AvoidPlayerBits)
-								end
-								if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("am_backup_heli")) == 0 then
-									if TriesTick <= 0 then
-										menu.trigger_commands("helibackup")
-										TriesTick = 50
-									else
-										if TriesTick > 0 then
-											TriesTick = TriesTick - 1
-										end
-									end
-								else
-									TriesTick = 0
-									CanSetRel = true
-								end
+						BlipColorToGive = 1
+						if CopsAttackEveryone or ZombieMode then
+							if PED.DOES_RELATIONSHIP_GROUP_EXIST(joaat(AiHateRel)) then
+								SelectedTeam = joaat(AiHateRel)
+							else
+								SelectedTeam = joaat("COP")
 							end
-						end
-						local MyRelTeam = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PlayerPed)
-						if CanSetRel then
-							MyRelTeam = RelHashBackup
-							RelTarget = RelHashBackup
-							RelHash = RelHashBackup
-						end
-						if MyRelTeam ~= RelTarget then
-							--SelectedTeam = joaat("rgFM_AiAmbientGangMerc[".. 0 .. "]")
-							SelectedTeam = MyRelTeam
-						else
-							SelectedTeam = RelHash
-							if AvoidAttackingFriends then
-								if not CanSetRel then
-									if PED.GET_RELATIONSHIP_BETWEEN_GROUPS(SelectedTeam, MyRelTeam) ~= 1 then
-										SelectedTeam = joaat(AiLikeHateAiHateRel)
-										if PED.GET_RELATIONSHIP_BETWEEN_GROUPS(SelectedTeam, MyRelTeam) ~= 1 then
-											SelectedTeam = joaat(AiLikeRel)
-										end
-									end
-								end
-							end
-						end
-					end
-				else
-					BlipColorToGive = 1
-					if CopsAttackEveryone or ZombieMode then
-						if PED.DOES_RELATIONSHIP_GROUP_EXIST(joaat(AiHateRel)) then
-							SelectedTeam = joaat(AiHateRel)
 						else
 							SelectedTeam = joaat("COP")
 						end
-					else
-						SelectedTeam = joaat("COP")
 					end
 				end
+			else
+				SelectedTeam = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PlayerPed)
+				BlipColorToGive = 3
 			end
 			TaskArgs.RelHash = SelectedTeam
 			if not PED.DOES_RELATIONSHIP_GROUP_EXIST(FriendlyAll) then
@@ -2707,7 +2720,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 								if not ENTITY.IS_ENTITY_DEAD(peds) and not PED.IS_PED_DEAD_OR_DYING(peds) then
 									local RelType = PED.GET_RELATIONSHIP_BETWEEN_PEDS(peds, PlayerPed)
 									local CombatTarget = PED.GET_PED_TARGET_FROM_COMBAT_PED(peds, 0)
-									if RelType == 5 or CombatTarget == PlayerPed then
+									if RelType ~= 1 or CombatTarget == PlayerPed then
 										if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 200.0, 200.0, 3000.0, false, true, false) then
 											FoundHostiles[#FoundHostiles+1] = peds
 										end
@@ -2732,6 +2745,12 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			end
 			if MissionCopCount < MaxCopsToEdit then
 				PedsT = entities.get_all_peds_as_handles()
+			else
+				if ScanTick <= 0 then
+					PedsT = entities.get_all_peds_as_handles()
+					ScanTick = 100
+				end
+				ScanTick = ScanTick - 1
 			end
 			if RenderCopCount then
 				directx.draw_text(0.7, 0.7, "Cops "..MissionCopCount, ALIGN_CENTRE, 1.0, {r = 0, g = 255 , b = 255, a = 200}, false)
@@ -3079,9 +3098,22 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 								end
 								if CopsAreAllies then
 									if CanEditCop then
+										if RequestControlOfEntity(peds) then
+											entities.set_can_migrate(peds, false)
+										end
 										local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
 										if OperationT[peds] == nil then
 											if not ENTITY.IS_ENTITY_DEAD(peds) then
+												if ArmoredVehicle then
+													if ENTITY.GET_ENTITY_MODEL(Veh) ~= joaat("technical") then
+														for a = 1, #ArmoredVehsT do
+															if VEHICLE.IS_VEHICLE_SEAT_FREE(ArmoredVehsT[a].Handle, 1, true) then
+																PED.SET_PED_INTO_VEHICLE(peds, ArmoredVehsT[a].Handle, 1)
+																PED.SET_PED_COMBAT_ATTRIBUTES(peds, 3, false)
+															end
+														end
+													end
+												end
 												local IsPedInGroup = PED.IS_PED_IN_GROUP(peds)
 												if not IsPedInGroup then
 													if not UseCustomsTasksKeys then
@@ -3553,7 +3585,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												if ENTITY.GET_ENTITY_HEIGHT_ABOVE_GROUND(VehHandle) > 1.1 then --or EntSpeed.x > 1.0 or EntSpeed.x < -1.0 then
 													ForceZ = -1.50
 												end
-												ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, ForceZ, ForceZ, 0, false, true, false)
+												ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, 0.0, ForceZ, 0, false, true, false)
 												if EntSpeed.y >= 3.0 then
 													ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, NormZ * 0.005 * EntSpeed.y, -NormZAbs * 0.01 * EntSpeed.y, 0.0, 0, true, true, false)
 												end
@@ -4083,17 +4115,17 @@ menu.action(DevMenu, "Relationship Hash", {}, "", function(toggle)
 end)
 
 menu.action(DevMenu, "Addr Test", {}, "", function(toggle)
-	local Addr = 0x7FF66E4E63F0
-	local Addr2 = memory.read_long(Addr)
-	local Addr3 = memory.read_long(Addr2+0x08)
-	local Addr4 = memory.read_long(Addr3+0xB0)
+	local Addr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42")
+	local Addr2 = memory.read_long(Addr+0x2E)
+	local Addr3 = memory.read_long(Addr2+0x200)
+	local Addr4 = Addr3 + 0x20
 	local FormatedString = string.format("%02X", Addr4)
 	util.copy_to_clipboard(FormatedString)
 	Print(FormatedString)
 end)
 
 menu.action(DevMenu, "Addr Get", {}, "", function(toggle)
-	local Addr = memory.scan("74 ? 3b 05 ? ? ? ? 74 ? 3b 05 ? ? ? ? 75 ? ? b0 01")
+	local Addr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42")
 	local FormatedString = string.format("%02X", Addr)
 	util.copy_to_clipboard(FormatedString)
 	Print(FormatedString)
@@ -4148,7 +4180,7 @@ menu.toggle(MiscMenu, "Mission Finisher", {}, "", function(toggle)
 	if MissionFinisher then
 		local nrl_Addrs = {}
 		for i = 0, 3 do
-			local Addr = memory.script_global(SplitGlobals("Global_4718592.f_1816[iVar0 /*24279*/].f_60") + 24279 * i)
+			local Addr = memory.script_global(SplitGlobals("Global_4718592.f_3318[i /*25763*/].f_60") + 25763 * i)
 			nrl_Addrs[i+1] = Addr
 		end
 		local goto_sz_Addrs = {}
@@ -4158,27 +4190,27 @@ menu.toggle(MiscMenu, "Mission Finisher", {}, "", function(toggle)
 			jtop_Addrs[k+1] = {}
 			jtop_Addrs[k+1].TeamAddrs = {}
 			for i = 0, 19 do
-				local Addr = memory.script_global(SplitGlobals("Global_4980736.f_5[bVar0 /*295*/].f_126[iVar1]") + ((k) + (295 * i)))
+				local Addr = memory.script_global(SplitGlobals("Global_4980736.f_5[num /*333*/].f_139[j]") + ((k) + (333 * i))) --goto
 				jtop_Addrs[k+1].TeamAddrs[#jtop_Addrs[k+1].TeamAddrs+1] = Addr
 				if k == 0 then
-					local Addr2 = memory.script_global(SplitGlobals("Global_4980736.f_5[bVar0 /*295*/].f_14[0]") + 295 * i)
+					local Addr2 = memory.script_global(SplitGlobals("Global_4980736.f_5[bVar0 /*333*/].f_14[0]") + 333 * i) --goto
 					goto_sz_Addrs[#goto_sz_Addrs+1] = Addr2
 				end
 			end
 			for i = 0, 31 do
-				local Addr = memory.script_global(SplitGlobals("Global_4980736.f_6204[bVar0 /*546*/].f_195[iVar2]") + ((k) + (546 * i)))
+				local Addr = memory.script_global(SplitGlobals("Global_4980736.f_97409[bVar0 /*586*/].f_225[iVar1]") + ((k) + (586 * i))) --veh
 				jtop_Addrs[k+1].TeamAddrs[#jtop_Addrs[k+1].TeamAddrs+1] = Addr
 			end
 			for i = 0, 31 do
-				local Addr = memory.script_global(SplitGlobals("Global_4980736.f_91874[bVar0 /*529*/].f_211[iVar1]") + ((k) + (529 * i)))
+				local Addr = memory.script_global(SplitGlobals("Global_4980736.f_7002[bVar0 /*591*/].f_209[iVar2]") + ((k) + (591 * i))) --obj
 				jtop_Addrs[k+1].TeamAddrs[#jtop_Addrs[k+1].TeamAddrs+1] = Addr
-			end
+			end	
 			for i = 0, 79 do
-				local Addr = memory.script_global(SplitGlobals("Global_4980736.f_110349[bVar3 /*1098*/].f_636[iVar2]") + ((k) + (1098 * i)))
+				local Addr = memory.script_global(SplitGlobals("Global_4980736.f_117913[bVar3 /*1162*/].f_648[iVar2]") + ((k) + (1162 * i))) --ene
 				jtop_Addrs[k+1].TeamAddrs[#jtop_Addrs[k+1].TeamAddrs+1] = Addr
 			end
 			for i = 0, 16 do
-				local Addr = memory.script_global(SplitGlobals("Global_4718592.f_1816[bVar0 /*24279*/].f_6956[bVar1]") + ((24279 * k) + (i)))
+				local Addr = memory.script_global(SplitGlobals("Global_4718592.f_3318[bVar0 /*25763*/].f_7241[bVar1]") + ((25763 * k) + (i)))
 				drpr_addrs[#drpr_addrs+1] = Addr
 			end
 		end
@@ -4208,6 +4240,93 @@ menu.toggle(MiscMenu, "Mission Finisher", {}, "", function(toggle)
 						local nrl_Value = memory.read_int(nrl_Addrs[i])
 						if nrl_Value > 0 then
 							nrl_Value = nrl_Value - 1
+						end
+						for k = 1, #jtop_Addrs[i].TeamAddrs do
+							memory.write_int(jtop_Addrs[i].TeamAddrs[k], nrl_Value)
+						end
+					end
+					for i = 1, 20 do
+						memory.write_float(goto_sz_Addrs[i], 30000.0)
+					end
+					for i = 1, 17 do
+						memory.write_float(drpr_addrs[i], 30000.0)
+					end
+					HasSetValues = true
+				end
+			else
+				HasSetValues = false
+			end
+			Wait()
+		end
+	end
+end)
+
+local MissionFinisher2 = false
+menu.toggle(MiscMenu, "Mission Finisher 2", {}, "", function(toggle)
+	MissionFinisher = toggle
+	if MissionFinisher then
+		local nrl_Addrs = {}
+		for i = 0, 3 do
+			local Addr = memory.script_global(SplitGlobals("Global_4718592.f_3318[i /*25763*/].f_60") + 25763 * i)
+			nrl_Addrs[i+1] = Addr
+		end
+		local goto_sz_Addrs = {}
+		local drpr_addrs = {}
+		local jtop_Addrs = {}
+		for k = 0, 3 do
+			jtop_Addrs[k+1] = {}
+			jtop_Addrs[k+1].TeamAddrs = {}
+			for i = 0, 19 do
+				local Addr = memory.script_global(SplitGlobals("Global_4980736.f_5[num /*333*/].f_139[j]") + ((k) + (333 * i))) --goto
+				jtop_Addrs[k+1].TeamAddrs[#jtop_Addrs[k+1].TeamAddrs+1] = Addr
+				if k == 0 then
+					local Addr2 = memory.script_global(SplitGlobals("Global_4980736.f_5[bVar0 /*333*/].f_14[0]") + 333 * i) --goto
+					goto_sz_Addrs[#goto_sz_Addrs+1] = Addr2
+				end
+			end
+			for i = 0, 31 do
+				local Addr = memory.script_global(SplitGlobals("Global_4980736.f_97409[bVar0 /*586*/].f_225[iVar1]") + ((k) + (586 * i))) --veh
+				jtop_Addrs[k+1].TeamAddrs[#jtop_Addrs[k+1].TeamAddrs+1] = Addr
+			end
+			for i = 0, 31 do
+				local Addr = memory.script_global(SplitGlobals("Global_4980736.f_7002[bVar0 /*591*/].f_209[iVar2]") + ((k) + (591 * i))) --obj
+				jtop_Addrs[k+1].TeamAddrs[#jtop_Addrs[k+1].TeamAddrs+1] = Addr
+			end	
+			for i = 0, 79 do
+				local Addr = memory.script_global(SplitGlobals("Global_4980736.f_117913[bVar3 /*1162*/].f_648[iVar2]") + ((k) + (1162 * i))) --ene
+				jtop_Addrs[k+1].TeamAddrs[#jtop_Addrs[k+1].TeamAddrs+1] = Addr
+			end
+			for i = 0, 16 do
+				local Addr = memory.script_global(SplitGlobals("Global_4718592.f_3318[bVar0 /*25763*/].f_7241[bVar1]") + ((25763 * k) + (i)))
+				drpr_addrs[#drpr_addrs+1] = Addr
+			end
+		end
+		local HasSetValues = false
+		while MissionFinisher do
+			if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller")) > 0
+			or SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller_2020")) > 0 then
+				util.spoof_script("fm_mission_controller", function()
+					if not NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+						NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+					end
+					if NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+						NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
+					end
+				end)
+				util.spoof_script("fm_mission_controller_2020", function()
+					if not NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+						NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+					end
+					if NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+						NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
+					end
+				end)
+				if not HasSetValues then
+					local nrl_Values = {}
+					for i = 1, 4 do
+						local nrl_Value = memory.read_int(nrl_Addrs[i])
+						if nrl_Value > 0 then
+							nrl_Value = nrl_Value
 						end
 						for k = 1, #jtop_Addrs[i].TeamAddrs do
 							memory.write_int(jtop_Addrs[i].TeamAddrs[k], nrl_Value)
@@ -4263,15 +4382,16 @@ menu.toggle(MiscMenu, "Improved Driving", {}, "", function(toggle)
 							if ENTITY.GET_ENTITY_HEIGHT_ABOVE_GROUND(VehHandle) > 1.1 then --or EntSpeed.x > 1.0 or EntSpeed.x < -1.0 then
 								ForceZ = -1.50
 							end
-							ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, ForceZ, ForceZ, 0, false, true, false)
+							ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, 0.0, ForceZ, 0, false, true, false)
 							if EntSpeed.y >= 3.0 then
-								ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, NormZ * 0.005 * EntSpeed.y, -NormZAbs * 0.01 * EntSpeed.y, 0.0, 0, true, true, false)
+								local BNormal = PAD.GET_CONTROL_NORMAL(0, 72)
+								ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, NormZ * 0.005 * EntSpeed.y, (-NormZAbs * 0.01 * EntSpeed.y) - BNormal, 0.0, 0, true, true, false)
 							end
-							local AdjustedVect2 = {x = VehPos.x + FVect.x * EntSpeed.y * DistanceMult, y = VehPos.y + FVect.y * EntSpeed.y * DistanceMult, z = VehPos.z + FVect.z * EntSpeed.y * DistanceMult}
-							local EndCoords2, DidHit2, EntHit2, SurfaceNormal2 = ShapeTestNav(VehHandle, VehPos, AdjustedVect2)
-							if DidHit2 and EntSpeed.y >= 2.0 then
-								ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -1.0, 0.0, 0, true, true, false)
-							end
+							--local AdjustedVect2 = {x = VehPos.x + FVect.x * EntSpeed.y * DistanceMult, y = VehPos.y + FVect.y * EntSpeed.y * DistanceMult, z = VehPos.z + FVect.z * EntSpeed.y * DistanceMult}
+							--local EndCoords2, DidHit2, EntHit2, SurfaceNormal2 = ShapeTestNav(VehHandle, VehPos, AdjustedVect2)
+							--if DidHit2 and EntSpeed.y >= 2.0 then
+							--	ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehHandle, 1, 0.0, -1.0, 0.0, 0, true, true, false)
+							--end
 							local AdjustedVect3 = {x = VehPos.x + RVect.x * 2.0, y = VehPos.y + RVect.y * 2.0, z = VehPos.z + RVect.z * 2.0}
 							local EndCoords3, DidHit3, EntHit3, SurfaceNormal3 = ShapeTestNav(VehHandle, VehPos, AdjustedVect3)
 							if DidHit3 then
@@ -5631,6 +5751,132 @@ menu.toggle(WeaponizedVehiclesMenu, "Weaponize Vehicle", {}, "With a turret prop
 						VehsWithTurret[LastVeh] = nil
 						LastVeh = 0
 					end
+				end
+			end
+			Wait()
+		end
+	end
+end)
+
+local BulletTracer = false
+menu.toggle(MiscMenu, "Bullet Tracer", {}, "", function(toggle)
+	BulletTracer = toggle
+	if BulletTracer then
+		while BulletTracer do
+			for index, peds in pairs(entities.get_all_peds_as_handles()) do
+				if PED.IS_PED_SHOOTING(peds) then
+					local Weap = WEAPON.GET_CURRENT_PED_WEAPON_ENTITY_INDEX(peds, 0)
+					if Weap ~= 0 then
+						local PPos = ENTITY.GET_ENTITY_COORDS(peds)
+						STREAMING.REQUEST_COLLISION_AT_COORD(PPos.x, PPos.y, PPos.z)
+						local BoneID = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(Weap, "gun_muzzle")
+						if BoneID ~= 0 then
+							local HitV3 = v3.new()
+							local Bool = WEAPON.GET_PED_LAST_WEAPON_IMPACT_COORD(peds, HitV3)
+							if Bool then
+								local Pos = ENTITY.GET_WORLD_POSITION_OF_ENTITY_BONE(Weap, BoneID)
+								local Rot = v3.lookAt(Pos, HitV3)
+								util.create_thread(function()
+									for i = 1, 10 do
+										--GRAPHICS.REMOVE_PARTICLE_FX_FROM_ENTITY(Weap)
+										--GRAPHICS.SET_PARTICLE_FX_NON_LOOPED_COLOUR(1.0, 1.0, 1.0) 
+										--GRAPHICS.SET_PARTICLE_FX_NON_LOOPED_ALPHA(1.0)
+										--local Rot = ENTITY.GET_ENTITY_ROTATION(Weap, 2)
+										--GRAPHICS.USE_PARTICLE_FX_ASSET("core")
+										--GRAPHICS.SET_PARTICLE_FX_NON_LOOPED_COLOUR(1.0, 1.0, 1.0) 
+										--GRAPHICS.SET_PARTICLE_FX_NON_LOOPED_ALPHA(1.0)
+										--GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD("muz_assault_rifle", Pos.x, Pos.y, Pos.z, Rot.x, Rot.y, Rot.z, 1.0, false, false, false, false)
+										GRAPHICS.USE_PARTICLE_FX_ASSET("core")
+										GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD("bullet_tracer_railgun", Pos.x, Pos.y, Pos.z, Rot.y, Rot.x - 90.0, Rot.z - 90.0, 1.0, false, false, false, false)
+										--local PTFXID = GRAPHICS.START_NETWORKED_PARTICLE_FX_LOOPED_ON_ENTITY_BONE("bullet_tracer_railgun", Weap, 0.0, 0.0, 0.0, Rot.x, Rot.y + 90.0, Rot.z, BoneID, 1.0, false, false, false, 255, 255, 255, 255) 
+										--GRAPHICS.USE_PARTICLE_FX_ASSET("weap_xs_weapons")
+										--GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD("bullet_tracer_xs_sr", Pos.x, Pos.y, Pos.z, Rot.x - 90.0, Rot.y, Rot.z, 1.0, false, false, false, true)
+										--GRAPHICS.USE_PARTICLE_FX_ASSET("core")
+										--GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD("bullet_tracer_jet", Pos.x, Pos.y, Pos.z, Rot.x, Rot.y, Rot.z, 1.0, false, false, false, false)
+										--GRAPHICS.SET_PARTICLE_FX_LOOPED_EVOLUTION(PTFXID, "LOD", 99.0, false)
+										--Wait()
+									end
+								end)
+							end
+						end
+					end
+				end
+			end
+			Wait()
+		end
+	end
+end)
+
+menu.toggle(MiscMenu, "Armored Vehicle 1", {}, "", function(toggle)
+	ArmoredVehicle = toggle
+	if not ArmoredVehicle then
+		for i = 1, #ArmoredVehsT do
+			entities.delete_by_handle(ArmoredVehsT[#ArmoredVehsT].Handle)
+			table.remove(ArmoredVehsT, #ArmoredVehsT)
+		end
+	end
+	if ArmoredVehicle then
+		local HasPlaced = false
+		local ArmoredModel = joaat("technical")
+		local OffsetZ = 0.0
+		while ArmoredVehicle do
+			local PlayerPed = PLAYER.PLAYER_PED_ID()
+			local Div = 0
+			local Ent = PlayerPed
+			if PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, true) then
+				local Veh = PED.GET_VEHICLE_PED_IS_IN(PlayerPed, true)
+				if Veh ~= 0 then
+					Ent = Veh
+					OffsetZ = 0.0
+					Div = 2
+				end
+			else
+				OffsetZ = -1.5
+				Div = 4
+			end
+			if not HasPlaced then
+				if not STREAMING.HAS_MODEL_LOADED(ArmoredModel) then
+					STREAMING.REQUEST_MODEL(ArmoredModel)
+				end
+				if STREAMING.HAS_MODEL_LOADED(ArmoredModel) then
+					local Pos = ENTITY.GET_ENTITY_COORDS(Ent)
+					local NewVeh = VEHICLE.CREATE_VEHICLE(ArmoredModel, Pos.x, Pos.y, Pos.z + 10.0, ENTITY.GET_ENTITY_HEADING(Ent), true, true, false)
+					local NewVeh2 = VEHICLE.CREATE_VEHICLE(ArmoredModel, Pos.x, Pos.y, Pos.z + 10.0, ENTITY.GET_ENTITY_HEADING(Ent), true, true, false)
+					local NewVeh3 = VEHICLE.CREATE_VEHICLE(ArmoredModel, Pos.x, Pos.y, Pos.z + 10.0, ENTITY.GET_ENTITY_HEADING(Ent), true, true, false)
+					local NewVeh4 = VEHICLE.CREATE_VEHICLE(ArmoredModel, Pos.x, Pos.y, Pos.z + 10.0, ENTITY.GET_ENTITY_HEADING(Ent), true, true, false)
+					local NewVeh5 = VEHICLE.CREATE_VEHICLE(ArmoredModel, Pos.x, Pos.y, Pos.z + 10.0, ENTITY.GET_ENTITY_HEADING(Ent), true, true, false)
+					local NewVeh6 = VEHICLE.CREATE_VEHICLE(ArmoredModel, Pos.x, Pos.y, Pos.z + 10.0, ENTITY.GET_ENTITY_HEADING(Ent), true, true, false)
+					local NewVeh7 = VEHICLE.CREATE_VEHICLE(ArmoredModel, Pos.x, Pos.y, Pos.z + 10.0, ENTITY.GET_ENTITY_HEADING(Ent), true, true, false)
+					ArmoredVehsT[#ArmoredVehsT+1] = {Handle = NewVeh, OffsetX = -3.0}
+					ArmoredVehsT[#ArmoredVehsT+1] = {Handle = NewVeh2, OffsetX = -2.0}
+					ArmoredVehsT[#ArmoredVehsT+1] = {Handle = NewVeh3, OffsetX = -1.0}
+					ArmoredVehsT[#ArmoredVehsT+1] = {Handle = NewVeh4, OffsetX = 0.0}
+					ArmoredVehsT[#ArmoredVehsT+1] = {Handle = NewVeh5, OffsetX = 1.0}
+					ArmoredVehsT[#ArmoredVehsT+1] = {Handle = NewVeh6, OffsetX = 2.0}
+					ArmoredVehsT[#ArmoredVehsT+1] = {Handle = NewVeh7, OffsetX = 3.0}
+					HasPlaced = true
+					STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(ArmoredModel)
+				end
+			end
+			
+			for i = 1, #ArmoredVehsT do
+				if RequestControlOfEntity(ArmoredVehsT[i].Handle) then
+					entities.set_can_migrate(ArmoredVehsT[i].Handle, false)
+					ENTITY.SET_ENTITY_COMPLETELY_DISABLE_COLLISION(ArmoredVehsT[i].Handle, false, false)
+					ENTITY.SET_ENTITY_HAS_GRAVITY(ArmoredVehsT[i].Handle, false)
+					ENTITY.SET_ENTITY_INVINCIBLE(ArmoredVehsT[i].Handle, true)
+					local Pos = ENTITY.GET_ENTITY_COORDS(ArmoredVehsT[i].Handle)
+					local FVect, RVect, UpVect, Vect = v3.new(), v3.new(), v3.new(), v3.new()
+					ENTITY.GET_ENTITY_MATRIX(Ent, FVect, RVect, UpVect, Vect)
+					local VehRot = ENTITY.GET_ENTITY_ROTATION(Ent, 2)
+					local AdjustedVect = {
+						x = ((Vect.x + ((FVect.x * 0.0) + (RVect.x * ArmoredVehsT[i].OffsetX / Div) + (UpVect.x * OffsetZ))) - Pos.x) * 10.0,
+						y = ((Vect.y + ((FVect.y * 0.0) + (RVect.y * ArmoredVehsT[i].OffsetX / Div) + (UpVect.y * OffsetZ))) - Pos.y) * 10.0,
+						z = ((Vect.z + ((FVect.z * 0.0) + (RVect.z * ArmoredVehsT[i].OffsetX / Div) + (UpVect.z * OffsetZ))) - Pos.z) * 10.0
+					}
+					ENTITY.SET_ENTITY_ROTATION(ArmoredVehsT[i].Handle, VehRot.x, VehRot.y, VehRot.z, 2)
+					ENTITY.SET_ENTITY_VELOCITY(ArmoredVehsT[i].Handle, AdjustedVect.x, AdjustedVect.y, AdjustedVect.z)
+
 				end
 			end
 			Wait()
