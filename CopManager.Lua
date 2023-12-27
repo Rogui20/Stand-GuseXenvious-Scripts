@@ -1394,6 +1394,7 @@ local CopSettingsMenu = menu.list(menu.my_root(), "Cop Settings", {}, "Which set
 local CopModelSettings = nil
 local RandomModels = false
 local HasAppliedRandomModels = false
+local RandomModelsEverytime = false
 if CanSetModels then
 	CopModelSettings = menu.list(CopSettingsMenu, "Cop Model Settings", {}, "Change cop ped and vehicles models.")
 	menu.list_select(CopModelSettings, "Police Helicopter", {"polmavmodel"}, "", VehicleModels, 1, function(OnChange)
@@ -1467,6 +1468,9 @@ if CanSetModels then
 			HasAppliedRandomModels = true
 		end
 	end, RandomModels)
+	menu.toggle(CopModelSettings, "Random Models Everytime", {}, "", function(toggle)
+		RandomModelsEverytime = toggle
+	end, RandomModelsEverytime)
 	menu.list_action(CopModelSettings, "Model Presets", {"copmodelpresets"}, "Set all models at once with defined presets.", ModelPresetsT, function(OnChange)
 		if OnChange == 1 then
 			SetCopModels("dune3", "mp_m_bogdangoon", "caracara", "savage", "csb_bogdan", "mp_m_bogdangoon", "dune3", "technical3")
@@ -2469,6 +2473,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		}
 		local NavsT = {}
 		local HostileNum = 1
+		local LastCopCount = 0
+		local ClearedWantedLevel = false
 		while ApplyCopSettings do
 			local PlayerPed = PLAYER.PLAYER_PED_ID()
 			local IsInVeh = PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false)
@@ -2742,6 +2748,15 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 							--end
 						end
 					end
+				end
+			end
+			ClearedWantedLevel = false
+			if RandomModelsEverytime then
+				if LastCopCount ~= MissionCopCount then
+					LastCopCount = MissionCopCount
+					PLAYER.SET_PLAYER_WANTED_LEVEL(PlayerID, 0, false)
+					PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(PlayerID, false)
+					ClearedWantedLevel = true
 				end
 			end
 			if MissionCopCount < MaxCopsToEdit then
@@ -3662,14 +3677,16 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			TaskArgs.MissionCopCount = MissionCopCount
 			if ApplyCopSettings then
 				if AutomaticGenCops then
-					if MissionCopCount >= MaxCopsToEdit then
-						PLAYER.SET_PLAYER_WANTED_LEVEL(PlayerID, 0, false)
-						PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(PlayerID, false)
-					else
-						PLAYER.SET_DISPATCH_COPS_FOR_PLAYER(PlayerID, true)
-						PLAYER.SET_MAX_WANTED_LEVEL(5)
-						PLAYER.SET_PLAYER_WANTED_LEVEL(PlayerID, 5, false)
-						PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(PlayerID, false)
+					if not ClearedWantedLevel then
+						if MissionCopCount >= MaxCopsToEdit then
+							PLAYER.SET_PLAYER_WANTED_LEVEL(PlayerID, 0, false)
+							PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(PlayerID, false)
+						else
+							PLAYER.SET_DISPATCH_COPS_FOR_PLAYER(PlayerID, true)
+							PLAYER.SET_MAX_WANTED_LEVEL(5)
+							PLAYER.SET_PLAYER_WANTED_LEVEL(PlayerID, 5, false)
+							PLAYER.SET_PLAYER_WANTED_LEVEL_NOW(PlayerID, false)
+						end
 					end
 				end
 			end
