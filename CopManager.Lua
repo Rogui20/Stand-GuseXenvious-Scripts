@@ -612,7 +612,7 @@ TaskStatusFunctionsT[27+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 	end
 end
 
-local CopsRushedFollow = true
+local CopsRushedFollow = false
 local DistanceMult = 0.5
 TaskStatusFunctionsT[28+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	if OperationT[peds].TaskStatus == 28 then
@@ -1158,13 +1158,14 @@ if NETWORK.GET_ONLINE_VERSION() == "1.68" then
 	for i = 0, 29 do
 		RelAddrs[i+1] = memory.script_global(RelPlayersBitsAddr + 463 * i)
 	end
-	Addr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42")
+	Addr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42 D0")
 	--Print(string.format("%X", Addr))
 	--util.copy_to_clipboard(string.format("%X", Addr))
 	if Addr ~= 0 then
-		Addr2 = memory.read_long(Addr+0x2E)
-		Addr3 = memory.read_long(Addr2+0x200)
-		police3_FirstAddr = Addr3 + 0x20
+		Addr2 = memory.read_long(Addr+0x16)
+		Addr3 = memory.read_long(Addr2+0x8)
+		Addr4 = memory.read_long(Addr3+0xB0)
+		police3_FirstAddr = Addr4
 		local AddressToScan = police3_FirstAddr - 8 * 1000
 		local MaxFoundAddrs = 7
 		for i = 0, 2000 do
@@ -2327,7 +2328,7 @@ local NavTest = false
 local NavZ = 0.0
 local NavRightOffset = 5.0
 local Crouch = false
-local RelHashBackupAddr = SplitGlobals("Global_1837231.f_6")
+local RelHashBackupAddr = SplitGlobals("Global_1837306.f_6")
 local ApplyCopSettings = false
 menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 	ApplyCopSettings = toggle
@@ -2426,7 +2427,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		PlayerID = PLAYER.PLAYER_ID()
 		local RelHashBackup = memory.read_int(memory.script_global(RelHashBackupAddr))
 		local HasSetHate = false
-		local FreemodeBackupHeliAddr = memory.script_local("freemode", 6916)
+		local FreemodeBackupHeliAddr = memory.script_local("freemode", 7041)
 		local TriesTick = 0
 		local TasksT = {}
 		local OperationT = {}
@@ -4022,8 +4023,8 @@ end)
 
 menu.toggle_loop(MiscMenu, "GB_FORTIFIED Spam Enemies", {}, "", function(toggle)
 	if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("gb_fortified")) > 0 then
-		memory.write_int(memory.script_local("gb_fortified", 1082+331-26), 3)
-		memory.write_int(memory.script_local("gb_fortified", 1082+331-7), 1)
+		memory.write_int(memory.script_local("gb_fortified", 1085+331-26), 3)
+		memory.write_int(memory.script_local("gb_fortified", 1085+331-7), 1)
 		util.spoof_script("gb_fortified", function()
 			if not NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
 				NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
@@ -4115,10 +4116,10 @@ menu.action(DevMenu, "Relationship Hash", {}, "", function(toggle)
 end)
 
 menu.action(DevMenu, "Addr Test", {}, "", function(toggle)
-	local Addr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42")
-	local Addr2 = memory.read_long(Addr+0x2E)
-	local Addr3 = memory.read_long(Addr2+0x200)
-	local Addr4 = Addr3 + 0x20
+	local Addr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42 D0")
+	local Addr2 = memory.read_long(Addr+0x16)
+	local Addr3 = memory.read_long(Addr2+0x8)
+	local Addr4 = memory.read_long(Addr3+0xB0)
 	local FormatedString = string.format("%02X", Addr4)
 	util.copy_to_clipboard(FormatedString)
 	Print(FormatedString)
