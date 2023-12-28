@@ -1098,7 +1098,7 @@ end
 
 local NULL <const> = 0
 
-local CayoCopsGlobalAddr = 2657704+1+442 --463
+local CayoCopsGlobalAddr = 2657921+1+442 --463
 
 function SplitGlobals(GlobalString)
 	local String = GlobalString
@@ -2475,6 +2475,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		local HostileNum = 1
 		local LastCopCount = 0
 		local ClearedWantedLevel = false
+		local HasSetCanTakeDamage = false
 		while ApplyCopSettings do
 			local PlayerPed = PLAYER.PLAYER_PED_ID()
 			local IsInVeh = PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false)
@@ -2771,6 +2772,27 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			if RenderCopCount then
 				directx.draw_text(0.7, 0.7, "Cops "..MissionCopCount, ALIGN_CENTRE, 1.0, {r = 0, g = 255 , b = 255, a = 200}, false)
 			end
+			if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller")) > 0 or
+				SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller_2020")) > 0 then
+				if not HasSetCanTakeDamage then
+					HasSetCanTakeDamage = true
+					SetMissionEntitiesCanTakeDamage()
+				end
+				util.spoof_script("fm_mission_controller", function()
+					NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+					if NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+						NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
+					end
+				end)
+				util.spoof_script("fm_mission_controller_2020", function()
+					NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+					if NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+						NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
+					end
+				end)
+			else
+				HasSetCanTakeDamage = false
+			end
 			for index, peds in pairs(PedsT) do
 				if peds ~= PlayerPed then
 					if ENTITY.DOES_ENTITY_EXIST(peds) then
@@ -2796,7 +2818,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 										end
 										ENTITY.SET_ENTITY_CAN_BE_DAMAGED_BY_RELATIONSHIP_GROUP(peds, true, SelectedTeam)
 										ENTITY.SET_ENTITY_CAN_ONLY_BE_DAMAGED_BY_SCRIPT_PARTICIPANTS(peds, false)
-										EditedDamageEnts[peds] = peds
+										--EditedDamageEnts[peds] = peds
 									end
 								end
 							end
@@ -5917,6 +5939,27 @@ menu.toggle(MiscMenu, "Armored Vehicle 1", {}, "", function(toggle)
 		end
 	end
 end)
+
+menu.toggle_loop(MiscMenu, "Set Can Damage Every Ped", {}, "", function(toggle)
+	for index, peds in pairs(entities.get_all_peds_as_handles()) do
+		if not PED.IS_PED_A_PLAYER(peds) then
+			if peds ~= PLAYER.PLAYER_PED_ID() then
+				if RequestControlOfEntity(peds) then
+					ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(peds, false)
+					ENTITY.SET_ENTITY_CAN_ONLY_BE_DAMAGED_BY_SCRIPT_PARTICIPANTS(peds, false)
+					ENTITY.SET_ENTITY_INVINCIBLE(peds, false)
+				end
+			end
+		end
+	end
+end)
+function SetMissionEntitiesCanTakeDamage()
+	local PedsGlobal = SplitGlobals("Global_4980736.f_117913[bParam0 /*1162*/].f_549")
+	for i = 0, 79 do
+		local Address = memory.script_global(PedsGlobal + 1162 * i)
+		memory.write_int(Address, clear_bit(memory.read_int(Address), 30))
+	end
+end
 
 util.create_tick_handler(function()
 	return true
