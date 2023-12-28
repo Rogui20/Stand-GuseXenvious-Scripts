@@ -1151,14 +1151,14 @@ local copped_Addrs = {}
 local sheriffped_Addrs = {}
 local swatped_Addrs = {}
 local CanSetModels = false
-local RelPlayersBitsAddr = SplitGlobals("Global_2657704[PLAYER::PLAYER_ID() /*463*/].f_253")
+--local RelPlayersBitsAddr = SplitGlobals("Global_2657704[PLAYER::PLAYER_ID() /*463*/].f_253")
 local RelAddrs = {}
 if NETWORK.GET_ONLINE_VERSION() == "1.68" then
 	--Addr = 0x7FF66E4E63F0
 	for i = 0, 29 do
-		RelAddrs[i+1] = memory.script_global(RelPlayersBitsAddr + 463 * i)
+		--RelAddrs[i+1] = memory.script_global(RelPlayersBitsAddr + 463 * i)
 	end
-	Addr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42 D0")
+	Addr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42 ?")
 	--Print(string.format("%X", Addr))
 	--util.copy_to_clipboard(string.format("%X", Addr))
 	if Addr ~= 0 then
@@ -4171,7 +4171,7 @@ menu.action(DevMenu, "Relationship Hash", {}, "", function(toggle)
 end)
 
 menu.action(DevMenu, "Addr Test", {}, "", function(toggle)
-	local Addr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42 D0")
+	local Addr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42 ?")
 	local Addr2 = memory.read_long(Addr+0x16)
 	local Addr3 = memory.read_long(Addr2+0x8)
 	local Addr4 = memory.read_long(Addr3+0xB0)
@@ -4181,7 +4181,7 @@ menu.action(DevMenu, "Addr Test", {}, "", function(toggle)
 end)
 
 menu.action(DevMenu, "Addr Get", {}, "", function(toggle)
-	local Addr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42")
+	local Addr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42 ?")
 	local FormatedString = string.format("%02X", Addr)
 	util.copy_to_clipboard(FormatedString)
 	Print(FormatedString)
