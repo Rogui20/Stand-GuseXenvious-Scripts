@@ -22,6 +22,7 @@ function LoadJSONFile(Path)
     return nil
 end
 local CopsAimAtHead = true
+local CopsSwitchToNearestTarget = true
 
 local TaskStatusFunctionsT = {}
 	
@@ -479,13 +480,19 @@ TaskStatusFunctionsT[25+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 			Target = PED.GET_PED_TARGET_FROM_COMBAT_PED(peds, 0)
 		end
 		if Target ~= 0 then
+			if CopsSwitchToNearestTarget then
+				local NewTarget = GetPedNearestTarget(peds)
+				if NewTarget ~= 0 then
+					Target = NewTarget
+				end
+			end
 			OperationT[peds].Target = Target
 			if not ENTITY.IS_ENTITY_DEAD(Target) and not PED.IS_PED_DEAD_OR_DYING(Target) and ENTITY.DOES_ENTITY_EXIST(Target) then
 				if RequestControlOfEntity(peds) then
 					local VehHandle = OperationT[peds].VehHandle
 					if not PED.IS_PED_IN_ANY_VEHICLE(peds, false) then
 						if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, Target, 17) then
-							local BonePos = PED.GET_PED_BONE_COORDS(Target, 0x322C --[[head]], 0.0, 0.0, 0.0)
+							--local BonePos = PED.GET_PED_BONE_COORDS(Target, 0x322C --[[head]], 0.0, 0.0, 0.0)
 							if CopsAimAtHead then
 								PED.SET_PED_RESET_FLAG(Target, 108, true)
 							end
@@ -532,6 +539,12 @@ TaskStatusFunctionsT[25+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 end
 TaskStatusFunctionsT[26+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	if OperationT[peds].TaskStatus == 26 then
+		if CopsSwitchToNearestTarget then
+			local NewTarget = GetPedNearestTarget(peds)
+			if NewTarget ~= 0 then
+				OperationT[peds].Target = NewTarget
+			end
+		end
 		if OperationT[peds].Target ~= 0 then
 			if not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) and not PED.IS_PED_DEAD_OR_DYING(OperationT[peds].Target) and ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target) then
 				if CopsAimAtHead then
@@ -623,6 +636,13 @@ TaskStatusFunctionsT[28+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 			Target = PED.GET_PED_TARGET_FROM_COMBAT_PED(peds, 0)
 		end
 		if Target ~= 0 then
+			if CopsSwitchToNearestTarget then
+				local NewTarget = GetPedNearestTarget(peds)
+				if NewTarget ~= 0 then
+					OperationT[peds].Target = NewTarget
+					Target = NewTarget
+				end
+			end
 			if not ENTITY.IS_ENTITY_DEAD(Target) and not PED.IS_PED_DEAD_OR_DYING(Target) and ENTITY.DOES_ENTITY_EXIST(Target) then
 				if RequestControlOfEntity(peds) then
 					local VehHandle = PED.GET_VEHICLE_PED_IS_IN(peds, false)
@@ -756,6 +776,12 @@ TaskStatusFunctionsT[28+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 end
 TaskStatusFunctionsT[29+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	if OperationT[peds].TaskStatus == 29 then
+		if CopsSwitchToNearestTarget then
+			local NewTarget = GetPedNearestTarget(peds)
+			if NewTarget ~= 0 then
+				OperationT[peds].Target = NewTarget
+			end
+		end
 		if OperationT[peds].Target ~= 0 then
 			if not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) and not PED.IS_PED_DEAD_OR_DYING(OperationT[peds].Target) and ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target) then
 				if PED.IS_PED_SHOOTING(peds) then
@@ -779,6 +805,12 @@ TaskStatusFunctionsT[30+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 		else
 			if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_GO_TO_ENTITY")) == 7 then
 				OperationT[peds].TaskAttempts = OperationT[peds].TaskAttempts + 1
+			end
+		end
+		if CopsSwitchToNearestTarget then
+			local NewTarget = GetPedNearestTarget(peds)
+			if NewTarget ~= 0 then
+				OperationT[peds].Target = NewTarget
 			end
 		end
 		if OperationT[peds].Target ~= 0 and OperationT[peds].TaskAttempts < 10 then
@@ -812,6 +844,12 @@ TaskStatusFunctionsT[30+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 end
 TaskStatusFunctionsT[31+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	if OperationT[peds].TaskStatus == 31 then
+		if CopsSwitchToNearestTarget then
+			local NewTarget = GetPedNearestTarget(peds)
+			if NewTarget ~= 0 then
+				OperationT[peds].Target = NewTarget
+			end
+		end
 		if OperationT[peds].Target ~= 0 then
 			if not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) and not PED.IS_PED_DEAD_OR_DYING(OperationT[peds].Target) and ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target) then
 				if CopsAimAtHead then
@@ -906,6 +944,12 @@ end
 
 TaskStatusFunctionsT[34+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	if OperationT[peds].TaskStatus == 34 then
+		if CopsSwitchToNearestTarget then
+			local NewTarget = GetPedNearestTarget(peds)
+			if NewTarget ~= 0 then
+				OperationT[peds].Target = NewTarget
+			end
+		end
 		--if ENTITY.IS_ENTITY_AT_COORD(peds, OperationT[peds].X, OperationT[peds].Y, OperationT[peds].Z, 3.0, 3.0, 3.0, false, true, 0) then
 		if TaskArgs.IsAiming or TASK.GET_SCRIPT_TASK_STATUS(peds, "SCRIPT_TASK_FOLLOW_TO_OFFSET_OF_ENTITY") == 7
 		or OperationT[peds].Target ~= nil then
@@ -920,6 +964,12 @@ TaskStatusFunctionsT[35+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 		OperationT[peds].Y = TaskArgs.PlayerCoords.y + ((TaskArgs.RVect.y * OperationT[peds].XOffset) - (TaskArgs.FVect.y * (OperationT[peds].YOffset)))
 		OperationT[peds].Z = TaskArgs.PlayerCoords.z + ((TaskArgs.RVect.z * OperationT[peds].XOffset) - (TaskArgs.FVect.z * (OperationT[peds].YOffset)))
 		local Target = 0
+		if CopsSwitchToNearestTarget then
+			local NewTarget = GetPedNearestTarget(peds)
+			if NewTarget ~= 0 then
+				OperationT[peds].Target = NewTarget
+			end
+		end
 		if OperationT[peds].Target == nil then
 			Target = PED.GET_PED_TARGET_FROM_COMBAT_PED(peds, 0)
 		else
@@ -1348,7 +1398,9 @@ local VehicleModels = {
 	"longfin",
 	"dinghy5",
 	"marquis",
-	"tug"
+	"tug",
+	"hydra",
+	"lazer"
 }
 local PedModels = {
 	"mp_m_bogdangoon",
@@ -1387,7 +1439,8 @@ local ModelPresetsT = {
 	"Casino Guards",
 	"Heist Crews",
 	"Cayo Perico Guards",
-	"Space Rangers"
+	"Space Rangers",
+	"Hydra Bogdans"
 }
 
 local CopSettingsMenu = menu.list(menu.my_root(), "Cop Settings", {}, "Which settings apply to cops.")
@@ -1492,6 +1545,9 @@ if CanSetModels then
 		end
 		if OnChange == 7 then
 			SetCopModels("dominator5", "u_m_y_rsranger_01", "imperator2", "annihilator", "s_m_m_movspace_01", "u_m_y_rsranger_01", "dominator5", "imperator2")
+		end
+		if OnChange == 8 then
+			SetCopModels("hydra", "mp_m_bogdangoon", "hydra", "hydra", "csb_bogdan", "mp_m_bogdangoon", "hydra", "hydra")
 		end
 	end)
 end
@@ -1807,6 +1863,9 @@ local CopsRushToNearestTarget = true
 menu.toggle(AllyCopSettingsMenu, "Cops Rush To Nearest Enemy", {}, "Works with custom tasks keys.", function(toggle)
 	CopsRushToNearestTarget = toggle
 end, CopsRushToNearestTarget)
+menu.toggle(AllyCopSettingsMenu, "Cops Switch To Nearest Target", {}, "Devastation.", function(toggle)
+	CopsSwitchToNearestTarget = toggle
+end, CopsSwitchToNearestTarget)
 local CopsRushWithTP = false
 menu.toggle(AllyCopSettingsMenu, "Cops Rush With Teleport", {}, "Works with custom tasks keys. Will teleport if far from target.", function(toggle)
 	CopsRushWithTP = toggle
@@ -1814,6 +1873,11 @@ end, CopsRushWithTP)
 menu.toggle(AllyCopSettingsMenu, "Set Cops Aim At Head", {}, "One hit kill.", function(toggle)
 	CopsAimAtHead = toggle
 end, CopsAimAtHead)
+local ControlVehicle = false
+menu.toggle(AllyCopSettingsMenu, "Control Vehicle Being Passenger", {}, "Useful for using turrets.", function(toggle)
+	ControlVehicle = toggle
+end, ControlVehicle)
+
 local MiscCustomTasksMenu = menu.list(AllyCopSettingsMenu, "Misc Custom Behaviour", {}, "")
 local CopsShootWhereYouShoot = false
 menu.toggle(MiscCustomTasksMenu, "Cops Shoot Where You Shoot", {}, "", function(toggle)
@@ -2435,7 +2499,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		local TriesTick = 0
 		local TasksT = {}
 		local OperationT = {}
-		local TaskNum = 1
+		local TaskNum = 4
 		local SelectedTask = SelectedTaskTXT[TaskNum].Task
 		local OperationsTable = {}
 		local NumCreatedTasks = 12
@@ -2778,18 +2842,18 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					HasSetCanTakeDamage = true
 					SetMissionEntitiesCanTakeDamage()
 				end
-				util.spoof_script("fm_mission_controller", function()
-					NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
-					if NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
-						NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
-					end
-				end)
-				util.spoof_script("fm_mission_controller_2020", function()
-					NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
-					if NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
-						NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
-					end
-				end)
+				--util.spoof_script("fm_mission_controller", function()
+				--	NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+				--	if NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+				--		NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
+				--	end
+				--end)
+				--util.spoof_script("fm_mission_controller_2020", function()
+				--	NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+				--	if NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+				--		NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
+				--	end
+				--end)
 			else
 				HasSetCanTakeDamage = false
 			end
@@ -2896,7 +2960,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																		end
 																	end
 																	FoundCopVehs[Veh] = Veh
-																	CopVehsT[#CopVehsT+1] = {Handle = Veh, HasSetToMissionEnt = false, Passengers = Peds}
+																	CopVehsT[#CopVehsT+1] = {Handle = Veh, HasSetToMissionEnt = false, Passengers = Peds, Tick = 0}
 																end
 																OwnedCopVehsT[peds] = Veh
 															end
@@ -3678,6 +3742,30 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 								end
 								if IsDead then
 									DeadCount = DeadCount + 1
+								else
+									if ControlVehicle then
+										if CopVehsT[i].Tick <= 0 then
+											if PlayerVeh == CopVehsT[i].Handle then
+												if VEHICLE.GET_PED_IN_VEHICLE_SEAT(CopVehsT[i].Handle, -1, false) == Peds[k] then
+													local LRNormal = PAD.GET_CONTROL_NORMAL(0, 30)
+													local UDNormal = -PAD.GET_CONTROL_NORMAL(0, 31)
+													if LRNormal ~= 0.0 or UDNormal ~= 0.0 then
+														local FVect, RVect, UpVect, Vect = v3.new(), v3.new(), v3.new(), v3.new()
+														ENTITY.GET_ENTITY_MATRIX(CopVehsT[i].Handle, FVect, RVect, UpVect, Vect)
+														local AdjustedVect = {
+															x = Vect.x + ((FVect.x * 10.0 * UDNormal) + (RVect.x * 5.0 * LRNormal)),
+															y = Vect.y + ((FVect.y * 10.0 * UDNormal) + (RVect.y * 5.0 * LRNormal)),
+															z = Vect.z + ((FVect.z * 10.0 * UDNormal) + (RVect.z * 5.0 * LRNormal))
+														}
+														TASK.TASK_VEHICLE_DRIVE_TO_COORD(Peds[k], CopVehsT[i].Handle, AdjustedVect.x, AdjustedVect.y, AdjustedVect.z, 100.0, 1, ENTITY.GET_ENTITY_MODEL(CopVehsT[i].Handle), 262144, 1.0, 40000.0)
+														CopVehsT[i].Tick = 2
+													end
+												end
+											end
+										else
+											CopVehsT[i].Tick = CopVehsT[i].Tick - 1
+										end
+									end
 								end
 							end
 						end
@@ -4098,8 +4186,8 @@ menu.toggle_loop(MiscMenu, "Business Battles Chaos", {""}, "Enemies will rush an
 			end
 		end)
 		for i = 0, 29 do
-			memory.write_int(memory.script_local("fm_content_business_battles", (215+129+1+2) + 21 * i), 1024)
-			memory.write_float(memory.script_local("fm_content_business_battles", (215+129+1+21) + 21 * i), -1)
+			memory.write_int(memory.script_local("fm_content_business_battles", (217+129+1+2) + 21 * i), 1024)
+			memory.write_float(memory.script_local("fm_content_business_battles", (217+129+1+21) + 21 * i), -1)
 		end
 	end
 end)
@@ -5286,8 +5374,8 @@ function RequestControlOfEntity(Entity)
 	end
 end
 
-local WhichMissionStartGlobal = SplitGlobals("Global_1895156[bParam0 /*609*/].f_10.f_32")
-local InteriorsGlobal = SplitGlobals("Global_1895156[PLAYER::PLAYER_ID() /*609*/].f_536")
+local WhichMissionStartGlobal = SplitGlobals("Global_1886967[bParam0 /*609*/].f_10.f_32")
+local InteriorsGlobal = SplitGlobals("Global_1886967[PLAYER::PLAYER_ID() /*609*/].f_536")
 local MissionMenu = menu.list(menu.my_root(), "Missions", {}, "This will start some existing missions but edited to have something to do with cops in your side.")
 local CalledTimes = 0
 menu.action(MissionMenu, "Juggernaut Hunter Raid", {}, "Head Hunter but with powerful juggernauts, inside Life Invader.", function(toggle)
@@ -5407,6 +5495,140 @@ menu.action(MissionMenu, "Juggernaut Hunter Raid", {}, "Head Hunter but with pow
 		memory.write_int(memory.script_global(WhichMissionStartGlobal + 609 * PlayerID), 166)
 	end
 end)
+
+menu.action(MissionMenu, "Fortified Tampa3", {}, "Instead of a Boxville, will be another vehicle.", function(toggle)
+	if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("gb_fortified")) > 0 then
+		local Model = "cargobob2"
+		local BoxvilleNetID = SplitGlobals("Local_1085.f_13[bParam0]")
+		local NetID = memory.read_int(memory.script_local("gb_fortified", BoxvilleNetID))
+		if NetID ~= 0 then
+			local VehHandle = 0
+			util.spoof_script("gb_fortified", function()
+				VehHandle = NETWORK.NET_TO_VEH(NetID)
+			end)
+			if VehHandle ~= 0 then
+				STREAMING.REQUEST_MODEL(joaat(Model))
+				while not STREAMING.HAS_MODEL_LOADED(joaat(Model)) do
+					Wait()
+				end
+				local OldPos = ENTITY.GET_ENTITY_COORDS(VehHandle)
+				local Heading = ENTITY.GET_ENTITY_HEADING(VehHandle)
+				local NewVeh = 0
+				local NewNetID = 0
+				util.spoof_script("gb_fortified", function()
+					NewVeh = VEHICLE.CREATE_VEHICLE(joaat(Model), OldPos.x, OldPos.y, OldPos.z, Heading, true, true, false)
+					ENTITY.SET_ENTITY_AS_MISSION_ENTITY(NewVeh, false, true)
+					NewNetID = NETWORK.VEH_TO_NET(NewVeh)
+				end)
+				if NewNetID ~= 0 then
+					NETWORK.SET_NETWORK_ID_EXISTS_ON_ALL_MACHINES(NewNetID, true)
+    				NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NewNetID, PLAYER.PLAYER_ID(), true)
+					memory.write_int(memory.script_local("gb_fortified", BoxvilleNetID), NewNetID)
+					VEHICLE.SET_VEHICLE_PETROL_TANK_HEALTH(NewVeh, 5000)
+					VEHICLE.SET_VEHICLE_BODY_HEALTH(NewVeh, 5000)
+					VEHICLE.SET_VEHICLE_ENGINE_HEALTH(NewVeh, 5000)
+					VEHICLE.SET_VEHICLE_COLOURS(NewVeh, 17, 12)
+					VEHICLE.SET_VEHICLE_EXTRA_COLOURS(NewVeh, 1, 156)
+					VEHICLE.SET_VEHICLE_TYRES_CAN_BURST(NewVeh, false)
+					VEHICLE.SET_VEHICLE_AUTOMATICALLY_ATTACHES(NewVeh, false, 0)
+					VEHICLE.SET_VEHICLE_DOORS_LOCKED_FOR_NON_SCRIPT_PLAYERS(NewVeh, true)
+					VEHICLE.SET_DONT_ALLOW_PLAYER_TO_ENTER_VEHICLE_IF_LOCKED_FOR_PLAYER(NewVeh, true)
+					VEHICLE.SET_VEHICLE_CAN_BE_USED_BY_FLEEING_PEDS(NewVeh, false)
+					VEHICLE.SET_VEHICLE_EXPLODES_ON_HIGH_EXPLOSION_DAMAGE(NewVeh, false)
+					VEHICLE.SET_VEHICLE_USES_MP_PLAYER_DAMAGE_MULTIPLIER(NewVeh, 0)
+					VEHICLE.SET_VEHICLE_STRONG(NewVeh, true)
+					VEHICLE.SET_VEHICLE_DAMAGE_SCALE(NewVeh, 0.1)
+					VEHICLE.SET_VEHICLE_ALLOW_HOMING_MISSLE_LOCKON_SYNCED(NewVeh, false, false)
+					VEHICLE.SET_VEHICLE_PETROL_TANK_HEALTH(NewVeh, 2000)
+					VEHICLE.SET_VEHICLE_BODY_HEALTH(NewVeh, 2000)
+					VEHICLE.SET_VEHICLE_ENGINE_HEALTH(NewVeh, 2000)
+					VEHICLE.SET_DISABLE_VEHICLE_ENGINE_FIRES(NewVeh, true)
+					VEHICLE.VEHICLE_SET_RAMP_AND_RAMMING_CARS_TAKE_DAMAGE(NewVeh, false)
+					ENTITY.SET_ENTITY_PROOFS(NewVeh, false, true, false, false, true, false, false, false)
+					VEHICLE.SET_VEHICLE_MOD_KIT(NewVeh, 1)
+					VEHICLE.SET_VEHICLE_WHEEL_TYPE(NewVeh, math.random(0, 12))
+					util.create_thread(function()
+						while ENTITY.DOES_ENTITY_EXIST(NewVeh) do
+							VEHICLE.SET_VEHICLE_DOOR_CONTROL(NewVeh, 5, 360, 360.0)
+							VEHICLE.SET_TRAILER_ATTACHMENT_ENABLED(NewVeh, true)
+							Wait()
+						end
+					end)
+					for k = 0, 47 do
+						local NumMods = entities.get_upgrade_max_value(NewVeh, k)
+						entities.set_upgrade_value(NewVeh, k, NumMods, false)
+					end
+					NETWORK.NETWORK_SET_ENTITY_CAN_BLEND(NewVeh, true)
+					NETWORK.NETWORK_ENABLE_EXTRA_VEHICLE_ORIENTATION_BLEND_CHECKS(NewNetID, true)
+					entities.delete_by_handle(VehHandle)
+				else
+					entities.delete_by_handle(NewVeh)
+				end
+				STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(joaat(Model))
+			else
+				STREAMING.REQUEST_MODEL(joaat(Model))
+				while not STREAMING.HAS_MODEL_LOADED(joaat(Model)) do
+					Wait()
+				end
+				local PlayerPed = PLAYER.PLAYER_PED_ID()
+				local OldPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+				local Heading = ENTITY.GET_ENTITY_HEADING(PlayerPed)
+				local NewVeh = 0
+				local NewNetID = 0
+				util.spoof_script("gb_fortified", function()
+					NewVeh = VEHICLE.CREATE_VEHICLE(joaat(Model), OldPos.x, OldPos.y, OldPos.z, Heading, true, true, false)
+					ENTITY.SET_ENTITY_AS_MISSION_ENTITY(NewVeh, false, true)
+					NewNetID = NETWORK.VEH_TO_NET(NewVeh)
+				end)
+				if NewNetID ~= 0 then
+					NETWORK.SET_NETWORK_ID_EXISTS_ON_ALL_MACHINES(NewNetID, true)
+    				NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NewNetID, PLAYER.PLAYER_ID(), true)
+					memory.write_int(memory.script_local("gb_fortified", BoxvilleNetID), NewNetID)
+					VEHICLE.SET_VEHICLE_PETROL_TANK_HEALTH(NewVeh, 5000)
+					VEHICLE.SET_VEHICLE_BODY_HEALTH(NewVeh, 5000)
+					VEHICLE.SET_VEHICLE_ENGINE_HEALTH(NewVeh, 5000)
+					VEHICLE.SET_VEHICLE_COLOURS(NewVeh, 17, 12)
+					VEHICLE.SET_VEHICLE_EXTRA_COLOURS(NewVeh, 1, 156)
+					VEHICLE.SET_VEHICLE_TYRES_CAN_BURST(NewVeh, false)
+					VEHICLE.SET_VEHICLE_AUTOMATICALLY_ATTACHES(NewVeh, false, 0)
+					VEHICLE.SET_VEHICLE_DOORS_LOCKED_FOR_NON_SCRIPT_PLAYERS(NewVeh, true)
+					VEHICLE.SET_DONT_ALLOW_PLAYER_TO_ENTER_VEHICLE_IF_LOCKED_FOR_PLAYER(NewVeh, true)
+					VEHICLE.SET_VEHICLE_CAN_BE_USED_BY_FLEEING_PEDS(NewVeh, false)
+					VEHICLE.SET_VEHICLE_EXPLODES_ON_HIGH_EXPLOSION_DAMAGE(NewVeh, false)
+					VEHICLE.SET_VEHICLE_USES_MP_PLAYER_DAMAGE_MULTIPLIER(NewVeh, 0)
+					VEHICLE.SET_VEHICLE_STRONG(NewVeh, true)
+					VEHICLE.SET_VEHICLE_DAMAGE_SCALE(NewVeh, 0.1)
+					VEHICLE.SET_VEHICLE_ALLOW_HOMING_MISSLE_LOCKON_SYNCED(NewVeh, false, false)
+					VEHICLE.SET_VEHICLE_PETROL_TANK_HEALTH(NewVeh, 2000)
+					VEHICLE.SET_VEHICLE_BODY_HEALTH(NewVeh, 2000)
+					VEHICLE.SET_VEHICLE_ENGINE_HEALTH(NewVeh, 2000)
+					VEHICLE.SET_DISABLE_VEHICLE_ENGINE_FIRES(NewVeh, true)
+					VEHICLE.VEHICLE_SET_RAMP_AND_RAMMING_CARS_TAKE_DAMAGE(NewVeh, false)
+					ENTITY.SET_ENTITY_PROOFS(NewVeh, false, true, false, false, true, false, false, false)
+					VEHICLE.SET_VEHICLE_MOD_KIT(NewVeh, 0)
+					VEHICLE.SET_VEHICLE_WHEEL_TYPE(NewVeh, math.random(0, 12))
+					for k = 0, 47 do
+						local NumMods = entities.get_upgrade_max_value(NewVeh, k)
+						entities.set_upgrade_value(NewVeh, k, NumMods, false)
+					end
+					util.create_thread(function()
+						while ENTITY.DOES_ENTITY_EXIST(NewVeh) do
+							VEHICLE.SET_VEHICLE_DOOR_CONTROL(NewVeh, 5, 360, 360.0)
+							VEHICLE.SET_TRAILER_ATTACHMENT_ENABLED(NewVeh, true)
+							Wait()
+						end
+					end)
+					NETWORK.NETWORK_SET_ENTITY_CAN_BLEND(NewVeh, true)
+					NETWORK.NETWORK_ENABLE_EXTRA_VEHICLE_ORIENTATION_BLEND_CHECKS(NewNetID, true)
+				else
+					entities.delete_by_handle(NewVeh)
+				end
+				STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(joaat(Model))
+			end
+		end
+	end
+end)
+
 
 local VehGuns = false
 menu.toggle(MiscMenu, "Vehicle Guns", {}, "", function(toggle)
@@ -5953,6 +6175,112 @@ menu.toggle_loop(MiscMenu, "Set Can Damage Every Ped", {}, "", function(toggle)
 		end
 	end
 end)
+
+local AlertMode_Num = SplitGlobals("Local_21434")
+local AlertMode2_Num = SplitGlobals("Local_50527")
+local AlertMode3_Num = SplitGlobals("Local_35078")
+local AlertMode4_Nums = {
+	SplitGlobals("Local_32915"),
+	SplitGlobals("Local_33347"),
+	SplitGlobals("Local_33351"),
+	SplitGlobals("Local_35122"),
+	SplitGlobals("Local_35160"),
+	SplitGlobals("Local_35164"),
+	SplitGlobals("Local_35180"),
+	SplitGlobals("Local_35196"),
+	SplitGlobals("Local_35204"),
+	SplitGlobals("Local_35216"),
+	SplitGlobals("Local_50524"),
+	SplitGlobals("Local_50528"),
+	SplitGlobals("Local_50556"),
+	SplitGlobals("Local_50879")
+}
+menu.toggle_loop(MiscMenu, "Set Maintain Stealth", {}, "", function(toggle)
+	for index, peds in pairs(entities.get_all_peds_as_handles()) do
+		if not PED.IS_PED_A_PLAYER(peds) then
+			if peds ~= PLAYER.PLAYER_PED_ID() then
+				if RequestControlOfEntity(peds) then
+					entities.set_can_migrate(peds, false)
+					TASK.TASK_SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
+					PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
+					PED.SET_PED_ALERTNESS(peds, 0)
+					TASK.CLEAR_PED_TASKS(peds)
+					PED.SET_PED_RESET_FLAG(peds, 180, true)
+				end
+			end
+		end
+	end
+	local Addr = memory.script_local("fm_mission_controller", AlertMode_Num)
+	if Addr ~= 0 then
+		if PLAYER.IS_PLAYER_CONTROL_ON(PLAYER.PLAYER_ID()) then
+			util.spoof_script("fm_mission_controller", function()
+				NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+				if NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+					NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
+				end
+			end)
+		end
+		memory.write_int(Addr, 0)
+	end
+	local Addr2 = memory.script_local("fm_mission_controller_2020", AlertMode2_Num)
+	if Addr2 ~= 0 then
+		if PLAYER.IS_PLAYER_CONTROL_ON(PLAYER.PLAYER_ID()) then
+			util.spoof_script("fm_mission_controller_2020", function()
+				NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+				if NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+					NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
+				end
+			end)
+		end
+		memory.write_int(Addr2, 0)
+		memory.write_int(Addr2+8, 0)
+		memory.write_int(Addr2+16, 0)
+		for i = 0, 79 do
+			local Addr3 = memory.script_local("fm_mission_controller_2020", AlertMode3_Num+i)
+			memory.write_int(Addr3, 0)
+		end
+		for i = 1, #AlertMode4_Nums do
+			local Addr4 = memory.script_local("fm_mission_controller_2020", AlertMode4_Nums[i])
+			memory.write_int(Addr4, 0)
+		end
+	end
+end)
+
+local CargoPlane = 0
+local CargoPlaneBlend = false
+menu.toggle(MiscMenu, "Veh Blend", {}, "", function(toggle)
+	CargoPlaneBlend = toggle
+	if not CargoPlaneBlend then
+		while not RequestControlOfEntity(CargoPlane) do
+			Wait()
+		end
+		entities.delete_by_handle(CargoPlane)
+	end
+	if CargoPlaneBlend then
+		local ModelName = joaat("cargoplane")
+		STREAMING.REQUEST_MODEL(ModelName)
+		while not STREAMING.HAS_MODEL_LOADED(ModelName) do
+			Wait()
+		end
+		local Pos = ENTITY.GET_ENTITY_COORDS(PLAYER.PLAYER_PED_ID())
+		CargoPlane =  VEHICLE.CREATE_VEHICLE(ModelName, Pos.x, Pos.y, Pos.z, ENTITY.GET_ENTITY_HEADING(PLAYER.PLAYER_PED_ID()), true, true, false)
+		PED.SET_PED_INTO_VEHICLE(PLAYER.PLAYER_PED_ID(), CargoPlane, -1)
+		STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(ModelName)
+		ENTITY.SET_ENTITY_AS_MISSION_ENTITY(CargoPlane, false, true)
+		NETWORK.NETWORK_SET_ENTITY_CAN_BLEND(CargoPlane, true)
+		ENTITY.SET_ENTITY_INVINCIBLE(CargoPlane, true)
+		VEHICLE.SET_DOOR_ALLOWED_TO_BE_BROKEN_OFF(CargoPlane, 2, false)
+		NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NETWORK.VEH_TO_NET(CargoPlane), true, PLAYER.PLAYER_ID())
+		entities.set_can_migrate(CargoPlane, false)
+		NETWORK.NETWORK_ENABLE_EXTRA_VEHICLE_ORIENTATION_BLEND_CHECKS(NETWORK.VEH_TO_NET(CargoPlane), true)
+		while CargoPlaneBlend do
+			VEHICLE.SET_VEHICLE_DOOR_CONTROL(CargoPlane, 2, 360, 180.0)
+			--NETWORK.NETWORK_USE_LOGARITHMIC_BLENDING_THIS_FRAME(CargoPlane)
+			Wait()
+		end
+	end
+end)
+
 function SetMissionEntitiesCanTakeDamage()
 	local PedsGlobal = SplitGlobals("Global_4980736.f_117913[bParam0 /*1162*/].f_549")
 	for i = 0, 79 do
@@ -5964,3 +6292,104 @@ end
 util.create_tick_handler(function()
 	return true
 end)
+
+local MoreCopsOnly = false
+menu.toggle(menu.my_root(), "More Cops Only", {}, "Only.", function(toggle)
+	MoreCopsOnly = toggle
+	if MoreCopsOnly then
+		local TrackedPeds = {}
+		local TrackedVehs = {}
+		local VehsT = {}
+		while MoreCopsOnly do
+			for index, peds in pairs(entities.get_all_peds_as_handles()) do
+				if not PED.IS_PED_A_PLAYER(peds) then
+					if IsWithCopRel(peds) then
+						if not ENTITY.IS_ENTITY_A_MISSION_ENTITY(peds) then
+							ENTITY.SET_ENTITY_AS_MISSION_ENTITY(peds, false, true)
+							local NetID = NETWORK.PED_TO_NET(peds)
+							if NetID ~= 0 then
+								NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PLAYER.PLAYER_ID(), false)
+							end
+							TrackedPeds[#TrackedPeds+1] = peds
+							local VehHandle = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+							if VehHandle ~= 0 then
+								if VehsT[VehHandle] == nil then
+									VehsT[VehHandle] = 0
+									TrackedVehs[#TrackedVehs+1] = VehHandle
+								end
+							end
+						end
+					end
+				end
+			end
+			for i = 1, #TrackedPeds do
+				if TrackedPeds[i] ~= nil then
+					if ENTITY.DOES_ENTITY_EXIST(TrackedPeds[i]) then
+						if ENTITY.IS_ENTITY_DEAD(TrackedPeds[i]) then
+							if RequestControlOfEntity(TrackedPeds[i]) then
+								set_entity_as_no_longer_needed(TrackedPeds[i])
+								table.remove(TrackedPeds, i)
+								break
+							end
+						end
+					else
+						table.remove(TrackedPeds, i)
+						break
+					end
+				end
+			end
+			Wait()
+		end
+		for i = 1, #TrackedPeds do
+			entities.delete_by_handle(TrackedPeds[i])
+		end
+	end
+end)
+
+---@param ped Ped
+---@param maxPeds? integer
+---@param ignore? integer
+---@return Entity[]
+function get_ped_nearby_peds(ped, maxPeds, ignore)
+	maxPeds = maxPeds or 16
+	local pEntityList = memory.alloc((maxPeds + 1) * 8)
+	memory.write_int(pEntityList, maxPeds)
+	local pedsList = {}
+	for i = 1, PED.GET_PED_NEARBY_PEDS(ped, pEntityList, ignore or -1), 1 do
+		pedsList[i] = memory.read_int(pEntityList + i*8)
+	end
+	return pedsList
+end
+
+function GetPedNearestTarget(Ped)
+	local PedPos = ENTITY.GET_ENTITY_COORDS(Ped)
+	local Dist = 1000.0
+	local PedRel = PED.GET_PED_RELATIONSHIP_GROUP_HASH(Ped)
+	local Peds = get_ped_nearby_peds(Ped, 80, -1)
+	local ClosestPed = 0
+	for index, peds in pairs(Peds) do
+		if not ENTITY.IS_ENTITY_DEAD(peds) then
+			if not PED.IS_PED_DEAD_OR_DYING(peds, true) then
+				if not DECORATOR.DECOR_EXIST_ON(peds, "Casino_Game_Info_Decorator") then
+					local TargetRelHash = PED.GET_PED_RELATIONSHIP_GROUP_HASH(peds)
+					if PED.GET_RELATIONSHIP_BETWEEN_GROUPS(PedRel, TargetRelHash) ~= 1 then
+						local PedCoords = ENTITY.GET_ENTITY_COORDS(peds)
+						local Distance = DistanceBetween(PedPos.x, PedPos.y, PedPos.z, PedCoords.x, PedCoords.y, PedCoords.z)
+						if Distance < Dist then
+							ClosestPed = peds
+							Dist = Distance
+						end
+					end
+				end
+			end
+		end
+	end
+	return ClosestPed
+end
+
+function DistanceBetween(x1, y1, z1, x2, y2, z2)
+	local dx = x1 - x2
+	local dy = y1 - y2
+	local dz = z1 - z2
+	return math.sqrt ( dx * dx + dy * dy + dz * dz)
+end
