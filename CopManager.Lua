@@ -847,7 +847,14 @@ TaskStatusFunctionsT[31+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 		if CopsSwitchToNearestTarget then
 			local NewTarget = GetPedNearestTarget(peds)
 			if NewTarget ~= 0 then
-				OperationT[peds].Target = NewTarget
+				if OperationT[peds].Target ~= NewTarget then
+				
+					if RequestControlOfEntity(peds) then
+						OperationT[peds].TaskStatus = 28
+						PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+						TASK.CLEAR_PED_TASKS(peds)
+					end
+				end
 			end
 		end
 		if OperationT[peds].Target ~= 0 then
@@ -4079,11 +4086,17 @@ end)
 menu.toggle_loop(MiscMenu, "Set Aimed Entity Invincible", {}, "", function(toggle)
 	local PlayerId = PLAYER.PLAYER_ID()
 	if PLAYER.IS_PLAYER_FREE_AIMING(PlayerId) then
-		local Entity = get_entity_player_is_aiming_at(PlayerId)
-		if Entity ~= nil then
+		local Entity, Ped = get_entity_player_is_aiming_at(PlayerId)
+		if Entity ~= 0 then
 			if RequestControlOfEntity(Entity) then
 				ENTITY.SET_ENTITY_INVINCIBLE(Entity, true)
 				Print("Is invincible now.")
+			end
+		end
+		if Ped ~= 0 then
+			if RequestControlOfEntity(Ped) then
+				ENTITY.SET_ENTITY_INVINCIBLE(Ped, true)
+				Print("Ped is invincible now.")
 			end
 		end
 	end
@@ -4670,14 +4683,16 @@ function get_entity_player_is_aiming_at(player)
 	if not PLAYER.IS_PLAYER_FREE_AIMING(player) then
 		return NULL
 	end
+	local Ped = 0
 	local entity, pEntity = NULL, memory.alloc_int()
 	if PLAYER.GET_ENTITY_PLAYER_IS_FREE_AIMING_AT(player, pEntity) then
 		entity = memory.read_int(pEntity)
 	end
 	if entity ~= NULL and ENTITY.IS_ENTITY_A_PED(entity) and PED.IS_PED_IN_ANY_VEHICLE(entity, false) then
+		Ped = entity
 		entity = PED.GET_VEHICLE_PED_IS_IN(entity, false)
 	end
-	return entity
+	return entity, Ped
 end
 
 function GetPedGroupSize(Group)
