@@ -1407,7 +1407,13 @@ local VehicleModels = {
 	"marquis",
 	"tug",
 	"hydra",
-	"lazer"
+	"lazer",
+	"polgauntlet",
+	"aleutian",
+	"asterope2",
+	"dorado",
+	"turismo3",
+	"vivanite"
 }
 local PedModels = {
 	"mp_m_bogdangoon",
@@ -1434,7 +1440,9 @@ local PedModels = {
 	"s_m_m_snowcop_01",
 	"csb_bogdan",
 	"csb_avon",
-	"hc_gunman"
+	"hc_gunman",
+	"mp_m_freemode_01",
+	"mp_f_freemode_01"
 }
 
 local SelectedVehicleModels = {"nightshark"}
@@ -1447,7 +1455,8 @@ local ModelPresetsT = {
 	"Heist Crews",
 	"Cayo Perico Guards",
 	"Space Rangers",
-	"Hydra Bogdans"
+	"Hydra Bogdans",
+	"MP_M_FREEMODE"
 }
 
 local CopSettingsMenu = menu.list(menu.my_root(), "Cop Settings", {}, "Which settings apply to cops.")
@@ -1455,6 +1464,7 @@ local CopModelSettings = nil
 local RandomModels = false
 local HasAppliedRandomModels = false
 local RandomModelsEverytime = false
+local CopyPlayerOutfitToCop = false
 if CanSetModels then
 	CopModelSettings = menu.list(CopSettingsMenu, "Cop Model Settings", {}, "Change cop ped and vehicles models.")
 	menu.list_select(CopModelSettings, "Police Helicopter", {"polmavmodel"}, "", VehicleModels, 1, function(OnChange)
@@ -1536,7 +1546,7 @@ if CanSetModels then
 			SetCopModels("dune3", "mp_m_bogdangoon", "caracara", "savage", "csb_bogdan", "mp_m_bogdangoon", "dune3", "technical3")
 		end
 		if OnChange == 2 then
-			SetCopModels("police2", "s_m_y_cop_01", "fbi", "buzzard", "s_m_y_swat_01", "s_m_y_cop_01", "police2", "fbi")
+			SetCopModels("police2", "s_m_y_cop_01", "polgauntlet", "buzzard", "s_m_y_swat_01", "s_m_y_cop_01", "police2", "polgauntlet")
 		end
 		if OnChange == 3 then
 			SetCopModels("tampa3", "s_m_y_cop_01", "speedo4", "buzzard", "s_m_y_swat_01", "s_m_y_cop_01", "tampa3", "speedo4")
@@ -1556,7 +1566,14 @@ if CanSetModels then
 		if OnChange == 8 then
 			SetCopModels("hydra", "mp_m_bogdangoon", "hydra", "hydra", "csb_bogdan", "mp_m_bogdangoon", "hydra", "hydra")
 		end
+		if OnChange == 9 then
+			SetCopModels("polgauntlet", "mp_m_freemode_01", "police2", "annihilator2", "mp_m_freemode_01", "mp_m_freemode_01", "polgauntlet", "police2")
+		end
 	end)
+	local CopOutfitSettingsMenu = menu.list(CopModelSettings, "Cop Outfit Settings", {}, "If cop model is mp_m_freemode_01 or mp_f_freemode_01 then this menu section is usable.")
+	menu.toggle(CopOutfitSettingsMenu, "Copy My Outfit To Cop", {}, "", function(toggle)
+		CopyPlayerOutfitToCop = toggle
+	end, CopyPlayerOutfitToCop)
 end
 local AllyCopSettingsMenu = menu.list(CopSettingsMenu, "Ally Cop Settings", {}, "Which settings apply to ally cops.")
 local HostileCopSettingsMenu = menu.list(CopSettingsMenu, "Hostile Cop Settings", {}, "Which settings apply to hostile cops.")
@@ -1770,6 +1787,11 @@ local CopsCanAttackPlayers = false
 menu.toggle(AllyCopSettingsMenu, "Cops Can Attack Players", {}, "", function(toggle)
 	CopsCanAttackPlayers = toggle
 end, CopsCanAttackPlayers)
+
+local CopsCanAttackPlayersV2 = false
+menu.toggle(AllyCopSettingsMenu, "Cops Can Attack Players V2", {}, "", function(toggle)
+	CopsCanAttackPlayersV2 = toggle
+end, CopsCanAttackPlayersV2)
 
 local AvoidAttackingFriends = true
 menu.toggle(AllyCopSettingsMenu, "Avoid Attacking Friends", {}, "Automatically will avoid attacking people of your CEO or Biker Club.", function(toggle)
@@ -2761,6 +2783,25 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 								end
 							end
 						end
+						if CopsCanAttackPlayersV2 then
+							local MyRelTeam = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PlayerPed)
+							SelectedTeam = joaat(AiHateRel)
+							for i = 1, 30 do
+								if NETWORK.NETWORK_IS_PLAYER_CONNECTED(i-1) then
+									if is_bit_set(AvoidPlayerBits, i) then
+										local TargetRel = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(i-1))
+										PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, SelectedTeam, TargetRel)
+										PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, TargetRel, SelectedTeam)
+									else
+										local TargetRel = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(i-1))
+										PED.SET_RELATIONSHIP_BETWEEN_GROUPS(5, SelectedTeam, TargetRel)
+										PED.SET_RELATIONSHIP_BETWEEN_GROUPS(5, TargetRel, SelectedTeam)
+									end
+								end
+							end
+							PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, SelectedTeam, MyRelTeam)
+							PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, MyRelTeam, SelectedTeam)
+						end
 					else
 						BlipColorToGive = 1
 						if CopsAttackEveryone or ZombieMode then
@@ -2782,6 +2823,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			if not PED.DOES_RELATIONSHIP_GROUP_EXIST(FriendlyAll) then
 				HasSetHate = false
 			end
+			--Print(SelectedTeam == joaat(AiHateRel))
 			local InteriorPlayerPed = INTERIOR.GET_INTERIOR_FROM_ENTITY(PlayerPed)
 			for index, peds in pairs(PedsT) do
 				if DECORATOR.DECOR_GET_INT(peds, "Casino_Game_Info_Decorator") == 31 then
@@ -2841,7 +2883,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 				ScanTick = ScanTick - 1
 			end
 			if RenderCopCount then
-				directx.draw_text(0.7, 0.7, "Cops "..MissionCopCount, ALIGN_CENTRE, 1.0, {r = 0, g = 255 , b = 255, a = 200}, false)
+				directx.draw_text(0.7, 0.7, "Cops "..MissionCopCount, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
 			end
 			if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller")) > 0 or
 				SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller_2020")) > 0 then
@@ -3041,19 +3083,23 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															--end
 														end
 													end
-													local AppliedOutfit = false
-													if RandomCopModelComponents then
-														if IsCopModel then
-															SetPedRandomOutfit(peds)
-															AppliedOutfit = true
-														end
-													end
-													if RandomCopComponents then
-														if not AppliedOutfit then
-															if HaveCopRel then
+													if not CopyPlayerOutfitToCop then
+														local AppliedOutfit = false
+														if RandomCopModelComponents then
+															if IsCopModel then
 																SetPedRandomOutfit(peds)
+																AppliedOutfit = true
 															end
 														end
+														if RandomCopComponents then
+															if not AppliedOutfit then
+																if HaveCopRel then
+																	SetPedRandomOutfit(peds)
+																end
+															end
+														end
+													else
+														CopyPlayerOutfit(peds, PlayerPed)
 													end
 													local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
 													if Veh ~= 0 then
@@ -3093,6 +3139,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																		VEHICLE.SET_VEHICLE_COLOURS(Veh, math.random(0, 160), math.random(0, 160))
 																		DECORATOR.DECOR_SET_INT(Veh, "Casino_Game_Info_Decorator", 31)
 																	end
+																	VEHICLE.MODIFY_VEHICLE_TOP_SPEED(Veh, 1000.0)
 																end
 															end
 															if SetCopPassengersIntoTurretSeat then
@@ -3844,7 +3891,7 @@ menu.toggle(menu.my_root(), "Only Show Cop Blips", {}, "", function(toggle)
 			end
 		end
 		if RenderCopCount then
-			directx.draw_text(0.7, 0.7, "Cops "..MissionCopCount, ALIGN_CENTRE, 1.0, {r = 0, g = 255 , b = 255, a = 200}, false)
+			directx.draw_text(0.7, 0.7, "Cops "..MissionCopCount, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
 		end
 	end
 end, OnlyShowCopBlips)
@@ -4255,6 +4302,32 @@ menu.action(DevMenu, "Bypass Law Vehicles", {}, "To spawn cops and SWATS inside 
 	end
 end)
 
+menu.action(DevMenu, "Component Variation", {}, "", function(toggle)
+	local PlayerPed = PLAYER.PLAYER_PED_ID()
+	local i = 0
+	--local Drawable = PED.GET_PED_DRAWABLE_VARIATION(PlayerPed, i)
+	--local Texture = PED.GET_PED_TEXTURE_VARIATION(PlayerPed, i)
+	--Print("Drawable "..Drawable)
+	--Print("Texture "..Texture)
+	--if PED.IS_PED_COMPONENT_VARIATION_VALID(PlayerPed, i, Drawable, Texture) then
+	--	Print("Valid")
+	--end
+	local Prop = PED.GET_PED_PROP_INDEX(PlayerPed, i)
+	local Texture = PED.GET_PED_PROP_TEXTURE_INDEX(PlayerPed, i)
+	Print("Drawable "..Prop)
+	Print("Texture "..Texture)
+	if Prop ~= 255 then
+		--PED.SET_PED_PROP_INDEX(PlayerPed, i, Prop, Texture, true, 0)
+	end
+end)
+
+menu.action(MiscMenu, "Car Speed Increased", {}, "", function(toggle)
+	local Veh = PED.GET_VEHICLE_PED_IS_IN(PLAYER.PLAYER_PED_ID())
+	if Veh ~= 0 then
+		VEHICLE.MODIFY_VEHICLE_TOP_SPEED(Veh, 1000.0)
+	end
+end)
+
 menu.toggle_loop(DevMenu, "Get Events", {}, "", function(toggle)
 	Print(SCRIPT.GET_NUMBER_OF_EVENTS(0))
 end)
@@ -4302,13 +4375,13 @@ menu.toggle_loop(DevMenu, "Wheel Heading", {}, "", function(toggle)
 end)
 
 menu.action(DevMenu, "B Battle2 Args", {}, "", function(Toggle)
-    memory.write_int(memory.script_global(SplitGlobals("Global_2756336.f_183")), 1)
-    memory.write_int(memory.script_global(SplitGlobals("Global_2756336.f_184")), 2)
+	memory.write_int(memory.script_global(SplitGlobals("Global_2698947.f_183")), 1)
+    memory.write_int(memory.script_global(SplitGlobals("Global_2698947.f_184")), 2)
 end)
 
 menu.action(DevMenu, "B Battle2 Args Solo", {}, "", function(Toggle)
-    memory.write_int(memory.script_global(SplitGlobals("Global_2756336.f_183")), -1)
-    memory.write_int(memory.script_global(SplitGlobals("Global_2756336.f_184")), 2)
+	memory.write_int(memory.script_global(SplitGlobals("Global_2698947.f_183")), 1)
+    memory.write_int(memory.script_global(SplitGlobals("Global_2698947.f_184")), 2)
 end)
 
 menu.action(DevMenu, "Set Population Budget 3", {}, "", function(Toggle)
@@ -6407,4 +6480,28 @@ function DistanceBetween(x1, y1, z1, x2, y2, z2)
 	local dy = y1 - y2
 	local dz = z1 - z2
 	return math.sqrt ( dx * dx + dy * dy + dz * dz)
+end
+
+function CopyPlayerOutfit(Ped, PlayerPed)
+	local Model = ENTITY.GET_ENTITY_MODEL(Ped)
+	if Model == joaat("mp_m_freemode_01") or Model == joaat("mp_f_freemode_01") then
+		for i = 0, 11 do
+			--if i ~= 0 and i ~= 2 and i ~= 7 then
+				local Drawable = PED.GET_PED_DRAWABLE_VARIATION(PlayerPed, i)
+				local Texture = PED.GET_PED_TEXTURE_VARIATION(PlayerPed, i)
+				if Drawable ~= 255 and Texture ~= 255 then
+					if PED.IS_PED_COMPONENT_VARIATION_VALID(PlayerPed, i, Drawable, Texture) then
+						PED.SET_PED_COMPONENT_VARIATION(Ped, i, Drawable, Texture, 0)
+					end
+				end
+			--end
+		end
+		for i = 0, 8 do
+			--local Prop = PED.GET_PED_PROP_INDEX(PlayerPed, i)
+			--local Texture = PED.GET_PED_PROP_TEXTURE_INDEX(PlayerPed, i)
+			--if Prop ~= 255 and Texture ~= 255 then
+			--	PED.SET_PED_PROP_INDEX(Ped, i, Prop, Texture, true, 0)
+			--end
+		end
+	end
 end
