@@ -1413,7 +1413,8 @@ local VehicleModels = {
 	"asterope2",
 	"dorado",
 	"turismo3",
-	"vivanite"
+	"vivanite",
+	"fbi"
 }
 local PedModels = {
 	"mp_m_bogdangoon",
@@ -1441,6 +1442,7 @@ local PedModels = {
 	"csb_bogdan",
 	"csb_avon",
 	"hc_gunman",
+	"mp_m_fibsec_01",
 	"mp_m_freemode_01",
 	"mp_f_freemode_01"
 }
@@ -1456,7 +1458,7 @@ local ModelPresetsT = {
 	"Cayo Perico Guards",
 	"Space Rangers",
 	"Hydra Bogdans",
-	"MP_M_FREEMODE"
+	"FIB"
 }
 
 local CopSettingsMenu = menu.list(menu.my_root(), "Cop Settings", {}, "Which settings apply to cops.")
@@ -1567,7 +1569,7 @@ if CanSetModels then
 			SetCopModels("hydra", "mp_m_bogdangoon", "hydra", "hydra", "csb_bogdan", "mp_m_bogdangoon", "hydra", "hydra")
 		end
 		if OnChange == 9 then
-			SetCopModels("polgauntlet", "mp_m_freemode_01", "police2", "annihilator2", "mp_m_freemode_01", "mp_m_freemode_01", "polgauntlet", "police2")
+			SetCopModels("fbi", "mp_m_fibsec_01", "fbi", "frogger", "mp_m_fibsec_01", "mp_m_fibsec_01", "fib", "fib")
 		end
 	end)
 	local CopOutfitSettingsMenu = menu.list(CopModelSettings, "Cop Outfit Settings", {}, "If cop model is mp_m_freemode_01 or mp_f_freemode_01 then this menu section is usable.")
@@ -1716,6 +1718,11 @@ local EliteCops = true
 menu.toggle(CopAttributesSettingsMenu, "Set Elite Cops", {}, "More HP, no ragdoll and no critical hits.", function(toggle)
 	EliteCops = toggle
 end, EliteCops)
+
+local StrongCops = true
+menu.toggle(CopAttributesSettingsMenu, "Set Strong Cops", {}, "No cover, no LOS to shoot.", function(toggle)
+	StrongCops = toggle
+end, StrongCops)
 local MiscCopSettings = menu.list(CopSettingsMenu, "Misc Settings", {}, "")
 local BulletTracerOverride = false
 menu.toggle(MiscCopSettings, "Bullet Tracer Override", {}, "Railgun tracer.", function(toggle)
@@ -1919,6 +1926,10 @@ end, CopsShootWhereYouAim)
 menu.toggle(MiscCustomTasksMenu, "Cops Rushed Follow", {}, "", function(toggle)
 	CopsRushedFollow = toggle
 end, CopsRushedFollow)
+local CopsFollowLikeSnake = false
+menu.toggle(MiscCustomTasksMenu, "Cops Follow Like Snake", {}, "", function(toggle)
+	CopsFollowLikeSnake = toggle
+end, CopsFollowLikeSnake)
 --menu.list_select(AllyCopSettingsMenu, "Cop Relationship Type", {"allycoprelationship"}, "Set if cops will be able to attack players or only npcs.", table<int, table> options, 1, function on_change)
 
 local RenderCopCount = true
@@ -2536,6 +2547,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		local CopVehsT = {}
 		local OwnedCopVehsT = {}
 		local PedsT = {}
+		local StoredCoordsT = {}
 		local IterationsNumber = 0
 		for i = 1, NumCreatedTasks do
 			OperationsTable[i] = 0
@@ -3059,6 +3071,14 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															PED.SET_PED_SUFFERS_CRITICAL_HITS(peds, false)
 															PED.SET_RAGDOLL_BLOCKING_FLAGS(peds, 1)
 														end
+														if StrongCops then
+															PED.SET_PED_COMBAT_MOVEMENT(peds, 2)
+															PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
+															PED.SET_PED_CONFIG_FLAG(peds, 208, true)
+															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 23, false)
+															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 0, false)
+															PED.SET_COMBAT_FLOAT(peds, 2, 400.0)
+														end
 														if CopsShootWhereYouShoot or CopsShootWhereYouAim or UseCustomsTasksKeys then
 															PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
 															PED.SET_PED_CONFIG_FLAG(peds, 113, false)
@@ -3107,6 +3127,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															if UpgradeCopCars then
 																if DECORATOR.DECOR_GET_INT(Veh, "Casino_Game_Info_Decorator") ~= 31 then
 																	RequestControlOfEntity(Veh)
+																	DECORATOR.DECOR_SET_INT(Veh, "Casino_Game_Info_Decorator", 31)
 																	VEHICLE.SET_VEHICLE_WHEEL_TYPE(Veh, math.random(0, 12))
 																	VEHICLE.SET_VEHICLE_MOD_KIT(Veh, 0)
 																	for k = 0, 48 do
@@ -3137,11 +3158,12 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																		VEHICLE.SET_VEHICLE_CUSTOM_PRIMARY_COLOUR(Veh, PRed, PGreen, PBlue)
 																		VEHICLE.SET_VEHICLE_CUSTOM_SECONDARY_COLOUR(Veh, SRed, SGreen, SBlue)
 																		VEHICLE.SET_VEHICLE_COLOURS(Veh, math.random(0, 160), math.random(0, 160))
-																		DECORATOR.DECOR_SET_INT(Veh, "Casino_Game_Info_Decorator", 31)
 																	end
 																	VEHICLE.MODIFY_VEHICLE_TOP_SPEED(Veh, 1000.0)
 																end
 															end
+															RequestControlOfEntity(Veh)
+															DECORATOR.DECOR_SET_INT(Veh, "Casino_Game_Info_Decorator", 31)
 															if SetCopPassengersIntoTurretSeat then
 																local HasSetInTurretSeat = false
 																if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) ~= peds then
@@ -3701,9 +3723,40 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			TaskArgs.OffsetsAttach = nil
 			TaskArgs.RotsAttach = nil
 			TaskArgs.OffsetBringedPeds = 0
+			if CopsFollowLikeSnake then
+				if ENTITY.GET_ENTITY_SPEED(PlayerPed) > 0.0 then
+					local PlayerPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+					local PlayerRot = ENTITY.GET_ENTITY_ROTATION(PlayerPed, 2)
+					if #StoredCoordsT < 5000 then
+						StoredCoordsT[#StoredCoordsT+1] = {Pos = PlayerPos, Rot = PlayerRot}
+					else
+						table.remove(StoredCoordsT, 1)
+						StoredCoordsT[#StoredCoordsT+1] = {Pos = PlayerPos, Rot = PlayerRot}
+					end
+				end
+			end
 			for i = 1, #CopVehsT do
 				if CopVehsT[i] ~= nil then
 					if ENTITY.DOES_ENTITY_EXIST(CopVehsT[i].Handle) then
+						if CopsFollowLikeSnake then
+							if #StoredCoordsT > 200 then
+								local Index = (#StoredCoordsT - 50) - 50 * i
+								if StoredCoordsT[Index] ~= nil then
+									if not ENTITY.IS_ENTITY_AT_COORD(CopVehsT[i].Handle, StoredCoordsT[Index].Pos.x, StoredCoordsT[Index].Pos.y, StoredCoordsT[Index].Pos.z, 20.0, 20.0, 20.0, false, true, 0) then
+										ENTITY.SET_ENTITY_COORDS(CopVehsT[i].Handle, StoredCoordsT[Index].Pos.x, StoredCoordsT[Index].Pos.y, StoredCoordsT[Index].Pos.z)
+									end
+									ENTITY.SET_ENTITY_ROTATION(CopVehsT[i].Handle, StoredCoordsT[Index].Rot.x, StoredCoordsT[Index].Rot.y, StoredCoordsT[Index].Rot.z, 2)
+									local VehPos = ENTITY.GET_ENTITY_COORDS(CopVehsT[i].Handle)
+									local AdjustedVect = {
+										x = (StoredCoordsT[Index].Pos.x - VehPos.x) * 20.0,
+										y = (StoredCoordsT[Index].Pos.y - VehPos.y) * 20.0,
+										z = (StoredCoordsT[Index].Pos.z - VehPos.z) * 20.0
+									}
+									--ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(CopVehsT[i].Handle, 1, AdjustedVect.x, AdjustedVect.y, AdjustedVect.z, 0, false, true, false)
+									ENTITY.SET_ENTITY_VELOCITY(CopVehsT[i].Handle, AdjustedVect.x, AdjustedVect.y, AdjustedVect.z)
+								end
+							end
+						end
 						if CopsRushedFollow then
 							if CopVehsT[i].Passengers[1] ~= nil then
 								if OperationT[CopVehsT[i].Passengers[1]] == nil then
@@ -4379,6 +4432,11 @@ menu.action(DevMenu, "B Battle2 Args", {}, "", function(Toggle)
     memory.write_int(memory.script_global(SplitGlobals("Global_2698947.f_184")), 2)
 end)
 
+menu.action(DevMenu, "B Battle2 0 Args", {}, "", function(Toggle)
+	memory.write_int(memory.script_global(SplitGlobals("Global_2698947.f_183")), 0)
+    memory.write_int(memory.script_global(SplitGlobals("Global_2698947.f_184")), 0)
+end)
+
 menu.action(DevMenu, "B Battle2 Args Solo", {}, "", function(Toggle)
 	memory.write_int(memory.script_global(SplitGlobals("Global_2698947.f_183")), 1)
     memory.write_int(memory.script_global(SplitGlobals("Global_2698947.f_184")), 2)
@@ -4657,6 +4715,29 @@ menu.toggle(MiscMenu, "Improved Driving", {}, "", function(toggle)
 		end
 	end
 end, FastDriving)
+
+local DirectionDriving = false
+menu.toggle(MiscMenu, "Direction Driving", {}, "", function(toggle)
+	DirectionDriving = toggle
+	if DirectionDriving then
+		local MaxSpeed = 80.0
+		while DirectionDriving do
+			local PlayerPed = PLAYER.PLAYER_PED_ID()
+			local VehHandle = PED.GET_VEHICLE_PED_IS_IN(PlayerPed, false)
+			if VehHandle ~= 0 then
+				if VEHICLE.GET_PED_IN_VEHICLE_SEAT(VehHandle, -1, false) == PlayerPed then
+					local Pos = ENTITY.GET_ENTITY_COORDS(VehHandle)
+					local EntVel = ENTITY.GET_ENTITY_VELOCITY(VehHandle)
+					local NewV3 = v3.new(Pos.x + EntVel.x, Pos.y + EntVel.y, Pos.z + EntVel.z)
+					local NewHeading = Pos:lookAt(NewV3)
+					local CurRot = ENTITY.GET_ENTITY_ROTATION(VehHandle, 2)
+					ENTITY.SET_ENTITY_ROTATION(VehHandle, NewHeading.x, NewHeading.y, NewHeading.z, 2)
+				end
+			end
+			Wait()
+		end
+	end
+end)
 
 local CrouchAim = false
 menu.toggle(MiscMenu, "Stealth Crouch Aim", {}, "When pressing stealth button, will crouch.", function(toggle)
@@ -5717,6 +5798,136 @@ menu.action(MissionMenu, "Fortified Tampa3", {}, "Instead of a Boxville, will be
 	end
 end)
 
+local BB_Locals = {
+	SPD = SplitGlobals("Local_217.f_1298.f_4"),
+	RSPD = SplitGlobals("Local_217.f_1298.f_5"),
+	GoTo = {
+		Pos = SplitGlobals("Local_217.f_1306.f_1[iVar4 /*11*/]"),
+		Radius = SplitGlobals("Local_217.f_1306.f_1[iVar4 /*11*/].f_3")
+	},
+	Objects = {
+		NextObject = 13,
+		Model = SplitGlobals("Local_217.f_19.f_5[iVar4 /*13*/].f_2"),
+		Pos = SplitGlobals("Local_217.f_19.f_5[iVar4 /*13*/].f_3"),
+		Head = SplitGlobals("Local_217.f_19.f_5[iVar4 /*13*/].f_6"),
+		Rot = SplitGlobals("Local_217.f_19.f_5[iVar4 /*13*/].f_7")
+	},
+	Peds = {
+		NextPed = 21,
+		Bits = SplitGlobals("Local_217.f_129.f_1[iVar4 /*21*/][iVar5]"),
+		Model = SplitGlobals("Local_217.f_129.f_1[iVar4 /*21*/].f_2"),
+		SpawnPos = SplitGlobals("Local_217.f_129.f_1[iVar4 /*21*/].f_3"),
+		Head = SplitGlobals("Local_217.f_129.f_1[iVar4 /*21*/].f_6"),
+		WeaponHash = SplitGlobals("Local_217.f_129.f_1[iVar4 /*21*/].f_7"),
+		DefenseSphere = SplitGlobals("Local_217.f_129.f_1[iVar4 /*21*/].f_20")
+	}
+}
+local LifeInvaderBattle = false
+menu.toggle(MissionMenu, "LifeInvader B Battle", {}, "Inside LifeInvader business battle.", function(toggle)
+	LifeInvaderBattle = toggle
+	if LifeInvaderBattle then
+		local HasSetValues = 0
+		local WeaponHash = joaat("weapon_assaultrifle_mk2")
+		local PedsModel = joaat("s_m_y_valet_01")
+		local ObjsModel = joaat("prop_large_gold")
+		local ObjectivePos = {x = -1080.8048095703, y = -261.60684204102, z = 37.799789428711}
+		local ObjectiveRadius = 50.0
+		local PedsPos = {
+			{x = -1087.6712646484, y = -256.28527832031, z = 37.763282775879, heading = 317.04412841797},
+			{x = -1085.9385986328, y = -254.39859008789, z = 37.763282775879, heading = 137.29330444336},
+			{x = -1075.9951171875, y = -252.33447265625, z = 37.763282775879, heading = 91.073524475098},
+			{x = -1077.7125244141, y = -245.17630004883, z = 37.763282775879, heading = 194.17456054688},
+			{x = -1081.5103759766, y = -244.91067504883, z = 37.763282775879, heading = 219.81864929199},
+			{x = -1066.537109375, y = -243.16424560547, z = 39.73314666748, heading = 189.76692199707},
+			{x = -1065.4976806641, y = -245.53004455566, z = 39.73314666748, heading = 21.478647232056},
+			{x = -1072.6848144531, y = -241.59085083008, z = 42.271343231201, heading = 313.80578613281},
+			{x = -1077.9658203125, y = -243.78364562988, z = 44.021301269531, heading = 193.70272827148},
+			{x = -1080.2751464844, y = -253.29470825195, z = 44.021152496338, heading = 353.45077514648},
+			{x = -1072.3813476562, y = -250.5845489502, z = 44.021144866943, heading = 43.232421875},
+			{x = -1067.2326660156, y = -246.84761047363, z = 44.021144866943, heading = 163.3111114502},
+			{x = -1059.3846435547, y = -239.62316894531, z = 44.021137237549, heading = 142.5703125},
+			{x = -1048.9936523438, y = -241.72116088867, z = 44.021068572998, heading = 114.12253570557},
+			{x = -1057.2109375, y = -246.17663574219, z = 44.021068572998, heading = 79.579582214355},
+			{x = -1056.1311035156, y = -238.80665588379, z = 39.733184814453, heading = 80.411964416504},
+			{x = -1052.5837402344, y = -234.63899230957, z = 39.733177185059, heading = 222.48593139648},
+			{x = -1046.2181396484, y = -238.91163635254, z = 37.964950561523, heading = 298.96002197266},
+			{x = -1043.1195068359, y = -236.90420532227, z = 37.964950561523, heading = 124.09884643555},
+			{x = -1048.3940429688, y = -230.18333435059, z = 39.01439666748, heading = 245.88464355469},
+			{x = -1046.9338378906, y = -232.75114440918, z = 39.013687133789, heading = 64.511749267578},
+			{x = -1068.4056396484, y = -241.455078125, z = 39.733180999756, heading = 247.36938476562},
+			{x = -1088.3804931641, y = -252.01094055176, z = 37.763282775879, heading = 260.53143310547},
+			{x = -1088.1639404297, y = -249.92352294922, z = 37.763282775879, heading = 216.87854003906},
+			{x = -1079.8618164062, y = -250.39491271973, z = 44.021152496338, heading = 290.35891723633},
+			{x = -1053.9376220703, y = -230.67840576172, z = 44.020931243896, heading = 144.04750061035},
+			{x = -1052.9289550781, y = -232.97819519043, z = 44.020961761475, heading = 101.76502990723},
+			{x = -1048.2755126953, y = -238.07299804688, z = 44.021068572998, heading = 160.03353881836},
+			{x = -1067.9248046875, y = -243.18556213379, z = 44.021152496338, heading = 282.78820800781},
+			{x = -1063.9366455078, y = -250.69804382324, z = 44.27201461792, heading = 14.506971359253}
+		}
+		local ObjsPos = {
+			{x = -1053.1213378906, y = -233.37078857422, z = 44.020977020264, heading = 109.95386505127},
+			{x = -1055.0378417969, y = -231.60066223145, z = 44.021026611328, heading = 217.24800109863},
+			{x = -1057.1375732422, y = -239.30308532715, z = 44.021148681641, heading = 126.23188781738},
+			{x = -1056.8336181641, y = -245.90200805664, z = 44.021072387695, heading = 7.0497169494629},
+			{x = -1059.4187011719, y = -246.88134765625, z = 44.021064758301, heading = 123.00937652588},
+			{x = -1052.2106933594, y = -236.50311279297, z = 44.021133422852, heading = 310.19027709961},
+			{x = -1049.0280761719, y = -238.1633605957, z = 44.021064758301, heading = 168.87643432617},
+			{x = -1048.44140625, y = -241.09480285645, z = 44.021064758301, heading = 118.88693237305}
+		}
+		while LifeInvaderBattle do
+			local PlayerID = PLAYER.PLAYER_ID()
+			local Bits = memory.read_int(memory.script_global((InteriorsGlobal + 1) + 609 * PlayerID))
+			if not is_bit_set(Bits, 28) then
+				memory.write_int(memory.script_global((InteriorsGlobal + 1) + 609 * PlayerID), set_bit(Bits, 28))
+			end
+			if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_content_business_battles")) > 0 then
+				util.spoof_script("fm_content_business_battles", function()
+					NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+				end)
+				if HasSetValues < 100 then
+					HasSetValues = HasSetValues + 1
+					for i = 1, 30 do
+						local ModelAddrLocal = memory.script_local("fm_content_business_battles", BB_Locals.Peds.Model + BB_Locals.Peds.NextPed * (i - 1))
+						memory.write_int(ModelAddrLocal, PedsModel)
+						local BitsAddrLocal = memory.script_local("fm_content_business_battles", BB_Locals.Peds.Bits + BB_Locals.Peds.NextPed * (i - 1))
+						memory.write_int(BitsAddrLocal, 1024)
+						local PosAddrLocal = memory.script_local("fm_content_business_battles", BB_Locals.Peds.SpawnPos + BB_Locals.Peds.NextPed * (i - 1))
+						memory.write_float(PosAddrLocal, PedsPos[i].x)
+						memory.write_float(PosAddrLocal + 0x8, PedsPos[i].y)
+						memory.write_float(PosAddrLocal + 0x10, PedsPos[i].z)
+						local HeadAddrLocal = memory.script_local("fm_content_business_battles", BB_Locals.Peds.Head + BB_Locals.Peds.NextPed * (i - 1))
+						memory.write_float(HeadAddrLocal, PedsPos[i].heading)
+						local WeaponAddrLocal = memory.script_local("fm_content_business_battles", BB_Locals.Peds.WeaponHash + BB_Locals.Peds.NextPed * (i - 1))
+						memory.write_int(WeaponAddrLocal, WeaponHash)
+						local DefenseSphereAddrLocal = memory.script_local("fm_content_business_battles", BB_Locals.Peds.DefenseSphere + BB_Locals.Peds.NextPed * (i - 1))
+						memory.write_float(DefenseSphereAddrLocal, -1.0)
+					end
+					for i = 1, 8 do
+						local ModelAddrLocal = memory.script_local("fm_content_business_battles", BB_Locals.Objects.Model + BB_Locals.Objects.NextObject * (i - 1))
+						memory.write_int(ModelAddrLocal, ObjsModel)
+						local PosAddrLocal = memory.script_local("fm_content_business_battles", BB_Locals.Objects.Pos + BB_Locals.Objects.NextObject * (i - 1))
+						memory.write_float(PosAddrLocal, ObjsPos[i].x)
+						memory.write_float(PosAddrLocal + 0x8, ObjsPos[i].y)
+						memory.write_float(PosAddrLocal + 0x10, ObjsPos[i].z)
+						local HeadAddrLocal = memory.script_local("fm_content_business_battles", BB_Locals.Objects.Head + BB_Locals.Objects.NextObject * (i - 1))
+						memory.write_float(HeadAddrLocal, ObjsPos[i].heading)
+					end
+					local GoToPosAddrLocal = memory.script_local("fm_content_business_battles", BB_Locals.GoTo.Pos)
+					memory.write_float(GoToPosAddrLocal, ObjectivePos.x)
+					memory.write_float(GoToPosAddrLocal + 0x8, ObjectivePos.y)
+					memory.write_float(GoToPosAddrLocal + 0x10, ObjectivePos.z)
+					local RSPDAddrLocal = memory.script_local("fm_content_business_battles", BB_Locals.RSPD)
+					memory.write_int(RSPDAddrLocal, 0)
+					local SPDAddrLocal = memory.script_local("fm_content_business_battles", BB_Locals.SPD)
+					memory.write_int(SPDAddrLocal, 0)
+				end
+			else
+				HasSetValues = 0
+			end
+			Wait()
+		end
+	end
+end)
 
 local VehGuns = false
 menu.toggle(MiscMenu, "Vehicle Guns", {}, "", function(toggle)
@@ -6505,3 +6716,59 @@ function CopyPlayerOutfit(Ped, PlayerPed)
 		end
 	end
 end
+
+--[[
+
+local NewVehicles = menu.list(menu.my_root(), "Custom Vehicles", {}, "")
+
+local WasteBob = false
+menu.toggle(NewVehicles, "Wastebob", {}, "", function(toggle)
+	WasteBob = toggle
+	if WasteBob then
+		local Attachments = {}
+		local Bob = joaat("buzzard")
+		local Waste = joaat("prop_fncsec_03b")
+		STREAMING.REQUEST_MODEL(Bob)
+		STREAMING.REQUEST_MODEL(Waste)		
+		while not STREAMING.HAS_MODEL_LOADED(Bob) or not STREAMING.HAS_MODEL_LOADED(Waste) do
+			Wait()
+		end
+		local PlayerPed = PLAYER.PLAYER_PED_ID()
+		local Pos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+		local Head = ENTITY.GET_ENTITY_HEADING(PlayerPed)
+
+		local BobHandle = VEHICLE.CREATE_VEHICLE(Bob, Pos.x, Pos.y, Pos.z, Head, true, true, false)
+		STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(Bob)
+		for i = 1, 3 do
+			local Obj = OBJECT.CREATE_OBJECT(Waste, Pos.x, Pos.y, Pos.z, true, true, true)
+			ENTITY.SET_ENTITY_AS_MISSION_ENTITY(Obj, false, true)
+			entities.set_can_migrate(BobHandle, false)
+			Attachments[#Attachments+1] = Obj
+			ENTITY.ATTACH_ENTITY_TO_ENTITY_PHYSICALLY(Obj, BobHandle, 0, 0, 0.0 + 3.0 * i, 0.0, -1.0, 0.0, 0.0, 0.0, 90.0, 0.0, 90.0, -1.0, true, true, false, true, 2)
+			ENTITY.SET_ENTITY_HAS_GRAVITY(Obj, false)
+		end
+
+		STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(Waste)
+		ENTITY.SET_ENTITY_AS_MISSION_ENTITY(BobHandle, false, true)
+		ENTITY.SET_ENTITY_SHOULD_FREEZE_WAITING_ON_COLLISION(BobHandle, false)
+		entities.set_can_migrate(BobHandle, false)
+		ENTITY.SET_ENTITY_INVINCIBLE(BobHandle, true)
+		
+		NETWORK.SET_NETWORK_ID_EXISTS_ON_ALL_MACHINES(NETWORK.VEH_TO_NET(BobHandle), true)
+		NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NETWORK.VEH_TO_NET(BobHandle), players.user(), true)
+
+		ENTITY.SET_ENTITY_HAS_GRAVITY(BobHandle, false)
+		PED.SET_PED_INTO_VEHICLE(PlayerPed, BobHandle, -1)
+		
+		NETWORK.NETWORK_SET_ENTITY_CAN_BLEND(BobHandle)
+		
+		while WasteBob do
+			Wait()
+		end
+		entities.delete_by_handle(BobHandle)
+		for i = 1, #Attachments do
+			entities.delete_by_handle(Attachments[i])
+		end
+	end
+end)
+]]
