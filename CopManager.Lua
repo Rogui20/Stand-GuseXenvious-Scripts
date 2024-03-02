@@ -1632,6 +1632,21 @@ menu.toggle(CopWeaponsMenu, "Enable Weapon Explosive Guns", {}, "", function(tog
 	AllowExplosives = toggle
 end, AllowExplosives)
 
+local GivePistol = true
+menu.toggle(CopWeaponsMenu, "Give Pistol", {}, "", function(toggle)
+	GivePistol = toggle
+end, GivePistol)
+
+local UseBestWeapon = true
+menu.toggle(CopWeaponsMenu, "Use Best Weapon", {}, "", function(toggle)
+	UseBestWeapon = toggle
+end, UseBestWeapon)
+
+local FirstRemoveWeaps = false
+menu.toggle(CopWeaponsMenu, "First Remove Weaps", {}, "", function(toggle)
+	FirstRemoveWeaps = toggle
+end, FirstRemoveWeaps)
+
 local AutomaticGenCops = true
 menu.toggle(CopSettingsMenu, "Automatically Generate Cops", {}, "If this is enabled, wanted level will be set to 5 stars and will set 0 stars when 50 cops is generated.", function(toggle)
 	AutomaticGenCops = toggle
@@ -1723,6 +1738,11 @@ local StrongCops = true
 menu.toggle(CopAttributesSettingsMenu, "Set Strong Cops", {}, "No cover, no LOS to shoot.", function(toggle)
 	StrongCops = toggle
 end, StrongCops)
+
+local RushedCops = true
+menu.toggle(CopAttributesSettingsMenu, "Maintain Min Distance", {}, "To rush.", function(toggle)
+	RushedCops = toggle
+end, RushedCops)
 local MiscCopSettings = menu.list(CopSettingsMenu, "Misc Settings", {}, "")
 local BulletTracerOverride = false
 menu.toggle(MiscCopSettings, "Bullet Tracer Override", {}, "Railgun tracer.", function(toggle)
@@ -3053,7 +3073,15 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													PED.SET_PED_RELATIONSHIP_GROUP_HASH(peds, SelectedTeam)
 													--PED.SET_PED_FLEE_ATTRIBUTES(peds, 512, true)
 													if not ZombieMode then
-														WEAPON.GIVE_WEAPON_TO_PED(peds, joaat("weapon_pistol"), 99999, false, false)
+														if FirstRemoveWeaps then
+															WEAPON.REMOVE_ALL_PED_WEAPONS(peds, false)
+														end
+														if GivePistol then
+															WEAPON.GIVE_WEAPON_TO_PED(peds, joaat("weapon_pistol"), 99999, false, false)
+														end
+														if UseBestWeapon then
+															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 54, true)
+														end
 														if EnableWeaponSettsForCops then
 															GiveCorrectWeaponsToPed(peds)
 														end
@@ -3077,7 +3105,15 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															PED.SET_PED_CONFIG_FLAG(peds, 208, true)
 															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 23, false)
 															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 0, false)
+															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 13, true)
+															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 28, true)
+															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 30, true)
+															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 83, false)
+															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 26, true)
 															PED.SET_COMBAT_FLOAT(peds, 2, 400.0)
+														end
+														if RushedCops then
+															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 31, true)
 														end
 														if CopsShootWhereYouShoot or CopsShootWhereYouAim or UseCustomsTasksKeys then
 															PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
@@ -3369,11 +3405,13 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													if not IsPedInVeh then
 														if not IsPedInGroup then
 															if OperationT[peds] == nil and NavsT[peds] == nil then
-																if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_SHOOT_AT_COORD")) == 7 then
-																	if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 50.0, 50.0, 50.0, false, true, false) then
-																		if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_FOLLOW_TO_OFFSET_OF_ENTITY")) == 7 then
-																			if RequestControlOfEntity(peds) then
-																				TASK.TASK_FOLLOW_TO_OFFSET_OF_ENTITY(peds, PlayerPed, math.random(-10, 10), math.random(-10, 10), math.random(-10, 10), 100.0, -1, 5.0, true)
+																if not PED.IS_PED_IN_COMBAT(peds, 0) then
+																	if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_SHOOT_AT_COORD")) == 7 then
+																		if ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 50.0, 50.0, 50.0, false, true, false) then
+																			if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_FOLLOW_TO_OFFSET_OF_ENTITY")) == 7 then
+																				if RequestControlOfEntity(peds) then
+																					TASK.TASK_FOLLOW_TO_OFFSET_OF_ENTITY(peds, PlayerPed, math.random(-10, 10), math.random(-10, 10), math.random(-10, 10), 100.0, -1, 5.0, true)
+																				end
 																			end
 																		end
 																	end
