@@ -7030,7 +7030,9 @@ menu.toggle(NewWeapons, "Pro Movements", {}, "", function(toggle)
 				end
 			end
 			if PED.IS_PED_SWITCHING_WEAPON(PlayerPed) then
-				PED.FORCE_PED_MOTION_STATE(PlayerPed, 1063765679, false, 1, false)
+				if not PED.IS_PED_SWIMMING(PlayerPed) and not PED.IS_PED_SWIMMING_UNDER_WATER(PlayerPed) then
+					PED.FORCE_PED_MOTION_STATE(PlayerPed, 1063765679, false, 1, false)
+				end
 			end
 			if HasWeap then
 				--if memory.read_int(CurWeap) == joaat("weapon_assaultrifle") then
@@ -7078,7 +7080,7 @@ menu.toggle_loop(NewWeapons, "Car Speed Increased", {}, "", function(toggle)
 		VEHICLE.MODIFY_VEHICLE_TOP_SPEED(Veh, 1000.0)
 		VEHICLE.SET_VEHICLE_BRAKE(Veh, 1000.0)
 		VEHICLE.SET_VEHICLE_MOD_KIT(Veh, 0)
-		entities.set_upgrade_value(Veh, 0, entities.get_upgrade_max_value(Veh, 0), true)
+		--entities.set_upgrade_value(Veh, 0, entities.get_upgrade_max_value(Veh, 0), true)
 		entities.set_upgrade_value(Veh, 11, entities.get_upgrade_max_value(Veh, 11), true)
 		entities.set_upgrade_value(Veh, 12, entities.get_upgrade_max_value(Veh, 12), true)
 		entities.set_upgrade_value(Veh, 13, entities.get_upgrade_max_value(Veh, 13), true)
@@ -7088,7 +7090,7 @@ menu.toggle_loop(NewWeapons, "Car Speed Increased", {}, "", function(toggle)
 		entities.set_upgrade_value(Veh, 18, entities.get_upgrade_max_value(Veh, 18), true)
 		entities.set_upgrade_value(Veh, 21, entities.get_upgrade_max_value(Veh, 21), true)
 		entities.set_upgrade_value(Veh, 22, entities.get_upgrade_max_value(Veh, 22), true)
-		entities.set_upgrade_value(Veh, 23, entities.get_upgrade_max_value(Veh, 23), true)
+		--entities.set_upgrade_value(Veh, 23, entities.get_upgrade_max_value(Veh, 23), true)
 		entities.set_upgrade_value(Veh, 24, entities.get_upgrade_max_value(Veh, 24), true)
 	end
 end)
