@@ -1444,7 +1444,8 @@ local PedModels = {
 	"hc_gunman",
 	"mp_m_fibsec_01",
 	"mp_m_freemode_01",
-	"mp_f_freemode_01"
+	"mp_f_freemode_01",
+	"u_m_y_zombie_01"
 }
 
 local SelectedVehicleModels = {"nightshark"}
@@ -1686,6 +1687,10 @@ local UpgradeCopCars = true
 menu.toggle(CopSettingsMenu, "Upgrade Cop Cars", {}, "Cop cars will have a random upgrade.", function(toggle)
 	UpgradeCopCars = toggle
 end, UpgradeCopCars)
+local IncreaseCopCarSpeed = false
+menu.toggle(CopSettingsMenu, "Increase Cop Car Speed 1000x", {}, "Super fast!", function(toggle)
+	IncreaseCopCarSpeed = toggle
+end, IncreaseCopCarSpeed)
 
 local SetCopCarsColours = true
 menu.toggle(CopSettingsMenu, "Set Cop Cars Colours", {}, "Random colors.", function(toggle)
@@ -1739,18 +1744,31 @@ menu.toggle(CopAttributesSettingsMenu, "Set Strong Cops", {}, "No cover, no LOS 
 	StrongCops = toggle
 end, StrongCops)
 
+local InvincibleCops = false
+menu.toggle(CopAttributesSettingsMenu, "Set Invincible Cops", {}, "", function(toggle)
+	InvincibleCops = toggle
+end, InvincibleCops)
+
 local RushedCops = true
 menu.toggle(CopAttributesSettingsMenu, "Maintain Min Distance", {}, "To rush.", function(toggle)
 	RushedCops = toggle
 end, RushedCops)
-local RamMode = true
+local RamMode = false
 menu.toggle(CopAttributesSettingsMenu, "Ram Mode", {}, "To crush.", function(toggle)
 	RamMode = toggle
 end, RamMode)
-local ChaseWithNav = true
+local ChaseWithNav = false
 menu.toggle(CopAttributesSettingsMenu, "Chase using navmesh", {}, "", function(toggle)
 	ChaseWithNav = toggle
 end, ChaseWithNav)
+local ThrowSmokeGrenade = false
+menu.toggle(CopAttributesSettingsMenu, "Throw Smoke Grenade", {}, "", function(toggle)
+	ThrowSmokeGrenade = toggle
+end, ThrowSmokeGrenade)
+local InstantAim = true
+menu.toggle(CopAttributesSettingsMenu, "Instant Aim", {}, "", function(toggle)
+	InstantAim = toggle
+end, InstantAim)
 local MiscCopSettings = menu.list(CopSettingsMenu, "Misc Settings", {}, "")
 local BulletTracerOverride = false
 menu.toggle(MiscCopSettings, "Bullet Tracer Override", {}, "Railgun tracer.", function(toggle)
@@ -2577,6 +2595,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		local PedsT = {}
 		local StoredCoordsT = {}
 		local IterationsNumber = 0
+		local ZombiesT = {}
+		local FoundZombiesT = {}
 		for i = 1, NumCreatedTasks do
 			OperationsTable[i] = 0
 		end
@@ -2630,7 +2650,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			TaskArgs.CopsRushWithTP = CopsRushWithTP
 			local FVect, RVect, UpVect, Vect = v3.new(), v3.new(), v3.new(), v3.new()
 			if UseCustomsTasksKeys then
-				local SwitchReleased = PAD.IS_CONTROL_JUST_RELEASED(0, 47)
+				local SwitchReleased = PAD.IS_CONTROL_JUST_RELEASED(0, 47) or PAD.IS_DISABLED_CONTROL_JUST_RELEASED(0, 47)
 				if SwitchReleased then
 					TaskNum = TaskNum + 1
 					if TaskNum > #SelectedTaskTXT then
@@ -2849,6 +2869,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 								SelectedTeam = joaat(AiHateRel)
 							else
 								SelectedTeam = joaat("COP")
+								if ZombieMode then
+									SelectedTeam = joaat("GANG_1")
+								end
 							end
 						else
 							SelectedTeam = joaat("COP")
@@ -3081,6 +3104,11 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 													PED.SET_PED_RELATIONSHIP_GROUP_HASH(peds, SelectedTeam)
 													--PED.SET_PED_FLEE_ATTRIBUTES(peds, 512, true)
 													if not ZombieMode then
+														PED.SET_PED_CONFIG_FLAG(peds, 134, true)
+														PED.SET_PED_CONFIG_FLAG(peds, 173, true)
+														PED.SET_PED_CONFIG_FLAG(peds, 251, true)
+														PED.SET_PED_CONFIG_FLAG(peds, 255, true)
+														PED.SET_PED_CONFIG_FLAG(peds, 400, true)
 														if FirstRemoveWeaps then
 															WEAPON.REMOVE_ALL_PED_WEAPONS(peds, false)
 														end
@@ -3122,6 +3150,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 7, false)
 															PED.SET_COMBAT_FLOAT(peds, 2, 400.0)
 														end
+														if InvincibleCops then
+															ENTITY.SET_ENTITY_INVINCIBLE(peds, true)
+														end
 														if RushedCops then
 															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 31, true)
 														end
@@ -3131,6 +3162,10 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 														if ChaseWithNav then
 															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 69, true)
 														end
+														if ThrowSmokeGrenade then
+															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 60, true)
+															--PED.SET_PED_CONFIG_FLAG(peds, 300, true)
+														end
 														if CopsShootWhereYouShoot or CopsShootWhereYouAim or UseCustomsTasksKeys then
 															PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
 															PED.SET_PED_CONFIG_FLAG(peds, 113, false)
@@ -3138,13 +3173,18 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															PED.SET_PED_COMBAT_ATTRIBUTES(peds, 2, true)
 														end
 													else
-														ENTITY.SET_ENTITY_PROOFS(peds, false, false, false, false, true, false, false, false)
+														--ENTITY.SET_ENTITY_PROOFS(peds, false, false, false, false, true, false, false, false)
 														WEAPON.REMOVE_ALL_PED_WEAPONS(peds, false)
 														SetPedCombatAbilities(peds)
-														PED.SET_PED_SUFFERS_CRITICAL_HITS(peds, false)
-														PED.SET_RAGDOLL_BLOCKING_FLAGS(peds, 1)
-														SetPedHealth(peds, 400)
+														--PED.SET_PED_SUFFERS_CRITICAL_HITS(peds, false)
+														--PED.SET_RAGDOLL_BLOCKING_FLAGS(peds, 1)
+														SetPedHealth(peds, 150)
+														PED.SET_PED_ARMOUR(peds, 0)
+														--ZombieMode
 														WEAPON.GIVE_WEAPON_TO_PED(peds, joaat("weapon_knife"), 99999, false, false)
+														--PED.SET_PED_CONFIG_FLAG(peds, 314, true)
+														PED.SET_PED_CONFIG_FLAG(peds, 435, true)
+														PED.SET_COMBAT_FLOAT(peds, 7, 1.0)
 													end
 													local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
 													if Veh ~= 0 then
@@ -3211,8 +3251,10 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																		VEHICLE.SET_VEHICLE_CUSTOM_SECONDARY_COLOUR(Veh, SRed, SGreen, SBlue)
 																		VEHICLE.SET_VEHICLE_COLOURS(Veh, math.random(0, 160), math.random(0, 160))
 																	end
-																	VEHICLE.MODIFY_VEHICLE_TOP_SPEED(Veh, 1000.0)
 																end
+															end
+															if IncreaseCopCarSpeed then
+																VEHICLE.MODIFY_VEHICLE_TOP_SPEED(Veh, 1000.0)
 															end
 															RequestControlOfEntity(Veh)
 															DECORATOR.DECOR_SET_INT(Veh, "Casino_Game_Info_Decorator", 31)
@@ -3309,6 +3351,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 									end
 								end
 								if CanEditCop then
+									if InstantAim then
+										PED.SET_PED_RESET_FLAG(peds, 56, true)
+									end
 									if CanAddBlip then
 										if not HUD.DOES_PED_HAVE_AI_BLIP(peds) then
 											RequestControlOfEntity(peds)
@@ -3715,23 +3760,36 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 											end
 										end
 										if ZombieMode then
-											if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
-												if RequestControlOfEntity(peds) then
-													local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-													local OutPos, FoundCoords = find_right_spawn_normal(PPos.x, PPos.y, PPos.z, 40.0, 70.0)
-													if FoundCoords then
-														if not MISC.IS_POSITION_OCCUPIED(OutPos.x, OutPos.y, OutPos.z, 1.0, false, true, true, false, false, PlayerPed, true) then
-															ENTITY.SET_ENTITY_COORDS(peds, OutPos.x, OutPos.y, OutPos.z)
-															ENTITY.SET_ENTITY_HEADING(peds, math.random(0, 360))
-														end
-													end
+											if not ENTITY.IS_ENTITY_DEAD(peds) then
+												if FoundZombiesT[peds] == nil then
+													FoundZombiesT[peds] = peds
+													ZombiesT[#ZombiesT+1] = {
+														Handle = peds,
+														Task = 0,
+														Bits = 0,
+														Target = 0
+													}
 												end
 											end
-											if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT_HATED_TARGETS_AROUND_PED")) == 7 then
-												if RequestControlOfEntity(peds) then
-													TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, 1000.0, 0)
-												end
-											end
+											--if not PED.IS_PED_IN_COMBAT(peds, 0) then
+											--	if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, 0) then
+											--		if RequestControlOfEntity(peds) then
+											--			local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+											--			local OutPos, FoundCoords = find_right_spawn_normal(PPos.x, PPos.y, PPos.z, 40.0, 70.0)
+											--			if FoundCoords then
+											--				if not MISC.IS_POSITION_OCCUPIED(OutPos.x, OutPos.y, OutPos.z, 1.0, false, true, true, false, false, PlayerPed, true) then
+											--					ENTITY.SET_ENTITY_COORDS(peds, OutPos.x, OutPos.y, OutPos.z)
+											--					ENTITY.SET_ENTITY_HEADING(peds, math.random(0, 360))
+											--				end
+											--			end
+											--		end
+											--	end
+											--end
+											--if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_COMBAT_HATED_TARGETS_AROUND_PED")) == 7 then
+											--	if RequestControlOfEntity(peds) then
+											--		TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, 1000.0, 0)
+											--	end
+											--end
 										end
 									end
 								end
@@ -3944,6 +4002,73 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					else
 						FoundCopVehs[CopVehsT[i].Handle] = nil
 						table.remove(CopVehsT, i)
+					end
+				end
+			end
+			--ZombieMode
+			if ZombieMode then
+				if not STREAMING.HAS_CLIP_SET_LOADED("move_characters@orleans@core@") then 
+					STREAMING.REQUEST_CLIP_SET("move_characters@orleans@core@")
+				end
+			end
+			for i = 1, #ZombiesT do
+				if ZombiesT[i] ~= nil then
+					if ENTITY.DOES_ENTITY_EXIST(ZombiesT[i].Handle) then
+						if not ENTITY.IS_ENTITY_DEAD(ZombiesT[i].Handle) then
+							if STREAMING.HAS_CLIP_SET_LOADED("move_characters@orleans@core@") then
+								PED.SET_PED_MOVEMENT_CLIPSET(ZombiesT[i].Handle, "move_characters@orleans@core@", 0.25)
+							end
+							PED.SET_PED_USING_ACTION_MODE(ZombiesT[i].Handle, false, -1, 0)
+							if ZombiesT[i].Target == 0 then
+								TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(ZombiesT[i].Handle, 100.0, 0)
+								Target = PED.GET_PED_TARGET_FROM_COMBAT_PED(ZombiesT[i].Handle, 0)
+								if Target ~= 0 then
+									ZombiesT[i].Target = Target
+								else
+									ZombiesT[i].Target = GetPedNearestTarget(ZombiesT[i].Handle, false)
+								end
+								if not ENTITY.IS_ENTITY_AT_ENTITY(ZombiesT[i].Handle, PlayerPed, 100.0, 100.0, 100.0, false, true, 0) then
+									if RequestControlOfEntity(ZombiesT[i].Handle) then
+										local PPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+										local OutPos, FoundCoords = find_right_spawn_normal(PPos.x, PPos.y, PPos.z, 40.0, 70.0)
+										if FoundCoords then
+											if not MISC.IS_POSITION_OCCUPIED(OutPos.x, OutPos.y, OutPos.z, 1.0, false, true, true, false, false, PlayerPed, true) then
+												ENTITY.SET_ENTITY_COORDS(ZombiesT[i].Handle, OutPos.x, OutPos.y, OutPos.z)
+												ENTITY.SET_ENTITY_HEADING(ZombiesT[i].Handle, math.random(0, 360))
+											end
+										end
+									end
+								end
+							end
+							if ZombiesT[i].Target ~= 0 then
+								if ENTITY.DOES_ENTITY_EXIST(ZombiesT[i].Target) and not ENTITY.IS_ENTITY_DEAD(ZombiesT[i].Target)
+								and ENTITY.IS_ENTITY_AT_ENTITY(ZombiesT[i].Handle, ZombiesT[i].Target, 100.0, 100.0, 100.0, false, true, 0) then
+									TASK.TASK_GO_TO_ENTITY(ZombiesT[i].Handle, ZombiesT[i].Target, -1, 0.5, 3.0, 0.1, 0)
+									TASK.TASK_COMBAT_PED(ZombiesT[i].Handle, ZombiesT[i].Target, 134217728, 0)
+									if PED.IS_PED_ON_VEHICLE(ZombiesT[i].Target) then
+										if not ENTITY.IS_ENTITY_AT_ENTITY(ZombiesT[i].Handle, ZombiesT[i].Target, 3.0, 3.0, 3.0, false, true, 0) then
+											local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(ZombiesT[i].Target)
+											local Cors = ENTITY.GET_ENTITY_COORDS(ZombiesT[i].Target)
+											local NewCors = {x = Cors.x + FVect.x, y = Cors.y + FVect.y, z = Cors.z + FVect.z}
+											if not MISC.IS_POSITION_OCCUPIED(NewCors.x, NewCors.y, NewCors.z, 1.0, false, false, true, false, false, ZombiesT[i].Target, true) then
+												ENTITY.SET_ENTITY_COORDS(ZombiesT[i].Handle, NewCors.x, NewCors.y, NewCors.z, true, false, false, true)
+											end
+										end
+									end
+									ZombiesT[i].Target = GetPedNearestTarget(ZombiesT[i].Handle, false)
+								else
+									ZombiesT[i].Target = 0
+									TASK.CLEAR_PED_TASKS(ZombiesT[i].Handle)
+								end
+							end
+						else
+							set_entity_as_no_longer_needed(ZombiesT[i].Handle)
+							table.remove(ZombiesT, i)
+							break
+						end
+					else
+						table.remove(ZombiesT, i)
+						break
 					end
 				end
 			end
@@ -4427,13 +4552,6 @@ menu.action(DevMenu, "Component Variation", {}, "", function(toggle)
 	Print("Texture "..Texture)
 	if Prop ~= 255 then
 		--PED.SET_PED_PROP_INDEX(PlayerPed, i, Prop, Texture, true, 0)
-	end
-end)
-
-menu.action(MiscMenu, "Car Speed Increased", {}, "", function(toggle)
-	local Veh = PED.GET_VEHICLE_PED_IS_IN(PLAYER.PLAYER_PED_ID())
-	if Veh ~= 0 then
-		VEHICLE.MODIFY_VEHICLE_TOP_SPEED(Veh, 1000.0)
 	end
 end)
 
@@ -5195,7 +5313,7 @@ end
 
 function find_right_spawn_normal(posX, posY, posZ, minDist, maxDist)
 	local outpos = v3.new()
-	local foundCoord = PATHFIND.GET_SAFE_COORD_FOR_PED(posX + (math.random() < 0.5 and math.random(-maxDist, -minDist) or math.random(minDist, maxDist)), posY + (math.random() < 0.5 and math.random(-maxDist, -minDist) or math.random(minDist, maxDist)), posZ, false, outpos, 16)
+	local foundCoord = PATHFIND.GET_SAFE_COORD_FOR_PED(posX + (math.random() < 0.5 and math.random(-maxDist, -minDist) or math.random(minDist, maxDist)), posY + (math.random() < 0.5 and math.random(-maxDist, -minDist) or math.random(minDist, maxDist)), posZ, false, outpos, 0)
 	return outpos, foundCoord
 end
 
@@ -6716,12 +6834,16 @@ function get_ped_nearby_peds(ped, maxPeds, ignore)
 	return pedsList
 end
 
-function GetPedNearestTarget(Ped)
+function GetPedNearestTarget(Ped, IgnoreInVeh)
 	local PedPos = ENTITY.GET_ENTITY_COORDS(Ped)
 	local Dist = 1000.0
 	local PedRel = PED.GET_PED_RELATIONSHIP_GROUP_HASH(Ped)
 	local Peds = get_ped_nearby_peds(Ped, 80, -1)
 	local ClosestPed = 0
+	local CheckInVeh = false
+	if IgnoreInVeh ~= nil then
+		CheckInVeh = IgnoreInVeh
+	end
 	for index, peds in pairs(Peds) do
 		if not ENTITY.IS_ENTITY_DEAD(peds) then
 			if not PED.IS_PED_DEAD_OR_DYING(peds, true) then
@@ -6731,8 +6853,15 @@ function GetPedNearestTarget(Ped)
 						local PedCoords = ENTITY.GET_ENTITY_COORDS(peds)
 						local Distance = DistanceBetween(PedPos.x, PedPos.y, PedPos.z, PedCoords.x, PedCoords.y, PedCoords.z)
 						if Distance < Dist then
-							ClosestPed = peds
-							Dist = Distance
+							if not CheckInVeh then
+								ClosestPed = peds
+								Dist = Distance
+							else
+								if not PED.IS_PED_IN_ANY_VEHICLE(peds, true) then
+									ClosestPed = peds
+									Dist = Distance
+								end
+							end
 						end
 					end
 				end
@@ -6828,3 +6957,325 @@ menu.toggle(NewVehicles, "Wastebob", {}, "", function(toggle)
 	end
 end)
 ]]
+
+
+local NewWeapons = menu.list(menu.my_root(), "Misc 2", {}, "")
+
+local AK47 = false
+menu.toggle(NewWeapons, "Pro Movements", {}, "", function(toggle)
+	AK47 = toggle
+	if AK47 then
+		local Scope = joaat("w_at_scope_small")
+		local SScope = joaat("w_at_scope_max_luxe")
+		local Silencer = joaat("w_at_ar_supp")
+		local Body = joaat("w_ar_assaultrifle")
+		local Mag = joaat("w_ar_assaultriflemk2_mag_tr")
+		local Flashlight = joaat("w_me_flashlight_flash")
+		local PropsT = {}
+		local HasPlaced = false
+		local AttachsT = {
+			--{Created = false, Func = function(WIndex) return CreateAttachment(Scope, PropsT, {x = 0.0, y = 0.0, z = 0.08}, WIndex) end},
+			--{Created = false, Func = function(WIndex) return CreateAttachment(SScope, PropsT, {x = 0.0, y = 0.0, z = 0.08}, WIndex, 0, nil, {x = 0.0, y = 0.0, z = 0.0}) end},
+			--{Created = false, Func = function(WIndex) return CreateAttachment(Silencer, PropsT, {x = 0.5, y = 0.0, z = 0.05}, WIndex, 0, nil, {x = 0.0, y = 0.0, z = 0.0}) end},
+			--{Created = false, Func = function(WIndex) return CreateAttachment(Body, PropsT, {x = 0.0, y = 0.0, z = 0.0}, WIndex, 0, nil, {x = 0.0, y = 0.0, z = 0.0}) end},
+			--{Created = false, Func = function(WIndex) return CreateAttachment(Mag, PropsT, {x = 0.11, y = 0.0, z = 0.01}, WIndex, 5, "gun_magazine") end}
+			--{Created = false, Func = function(WIndex) return CreateAttachment(Flashlight, PropsT, {x = 0.0, y = 0.1, z = 0.0}, WIndex, 0, nil, {x = 90.0, y = 0.0, z = 90.0}) end}
+		}
+		while AK47 do
+			local PlayerPed = PLAYER.PLAYER_PED_ID()
+			--local CurWeap = memory.alloc(8)
+			local HasWeap = false --WEAPON.GET_CURRENT_PED_WEAPON(PlayerPed, CurWeap, false)
+			PED.SET_PED_RESET_FLAG(PlayerPed, 156, true)
+			PED.SET_PED_RESET_FLAG(PlayerPed, 401, true)
+			PED.SET_PED_RESET_FLAG(PlayerPed, 237, true)
+			PED.SET_PED_CONFIG_FLAG(PlayerPed, 95, true)
+			PED.SET_PED_CONFIG_FLAG(PlayerPed, 427, true)
+			if PED.GET_VEHICLE_PED_IS_TRYING_TO_ENTER(PlayerPed) ~= 0 or PAD.IS_CONTROL_PRESSED(1, 75) then
+				PED.FORCE_PED_AI_AND_ANIMATION_UPDATE(PlayerPed, false, false)
+			else
+				--PLAYER.SET_PLAYER_CONTROL(PLAYER.PLAYER_ID(), true, -1)
+			end
+			--PAD.ENABLE_ALL_CONTROL_ACTIONS(0)
+			--PAD.ENABLE_ALL_CONTROL_ACTIONS(1)
+			if not PLAYER.IS_PLAYER_FREE_AIMING(PLAYER.PLAYER_ID()) then
+				if not TASK.IS_PED_SPRINTING(PlayerPed) then
+		 	        if PAD.IS_CONTROL_JUST_PRESSED(0, 21) then
+						if not PED.IS_PED_SWIMMING(PlayerPed) and not PED.IS_PED_SWIMMING_UNDER_WATER(PlayerPed) then
+							if not PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, true) then
+								local Cam = CAM.GET_GAMEPLAY_CAM_ROT(2)
+								local X = PAD.GET_CONTROL_NORMAL(0, 30)
+								local Y = -PAD.GET_CONTROL_NORMAL(0, 31)
+								if X ~= 0.0 or Y ~= 0.0 then
+									local V3 = v3.new(X, Y, 0.0)
+									local Rot = V3:toRot()
+									ENTITY.SET_ENTITY_HEADING(PlayerPed, Cam.z + Rot.z)
+								end
+							end
+							PED.FORCE_PED_MOTION_STATE(PlayerPed, -1115154469, false, 1, false)
+						end
+					end
+				else
+					if not PED.IS_PED_SWIMMING(PlayerPed) and not PED.IS_PED_SWIMMING_UNDER_WATER(PlayerPed) then
+						if not PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, true) then
+							local Cam = CAM.GET_GAMEPLAY_CAM_ROT(2)
+							local X = PAD.GET_CONTROL_NORMAL(0, 30)
+							local Y = -PAD.GET_CONTROL_NORMAL(0, 31)
+							if X ~= 0.0 or Y ~= 0.0 then
+								local V3 = v3.new(X, Y, 0.0)
+								local Rot = V3:toRot()
+								ENTITY.SET_ENTITY_HEADING(PlayerPed, Cam.z + Rot.z)
+							end
+						end
+					end
+				end
+			end
+			if PED.IS_PED_SWITCHING_WEAPON(PlayerPed) then
+				PED.FORCE_PED_MOTION_STATE(PlayerPed, 1063765679, false, 1, false)
+			end
+			if HasWeap then
+				--if memory.read_int(CurWeap) == joaat("weapon_assaultrifle") then
+					local WIndex = WEAPON.GET_CURRENT_PED_WEAPON_ENTITY_INDEX(PlayerPed, false)
+					for i = 1, #AttachsT do
+						if not AttachsT[i].Created then
+							AttachsT[i].Created = AttachsT[i].Func(WIndex)
+						end
+					end
+					--if PED.IS_PED_SHOOTING(PlayerPed) then
+						--local Coords = RaycastFromCamera(PlayerPed, 1000.0, -1)
+					--	PED. SET_PED_SHOOTS_AT_COORD(PlayerPed, Coords.x, Coords.y, Coords.z, false)
+					--	Print("S")
+						--MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS(VECTOR VecStartCoors, VECTOR VecEndCoors, INT DamageCaused, BOOL bPerfectAccuracy = FALSE, WEAPON_TYPE Weapon = WEAPONTYPE_ASSAULTRIFLE, PED_INDEX PedIndex = NULL, BOOL bCreateTraceVfx = TRUE, BOOL bAllowRumble = TRUE, FLOAT InitialVelocity = -1.0)
+					--end
+					--STREAMING.REQUEST_MODEL(Scope)
+					--if STREAMING.HAS_MODEL_LOADED(Scope) then
+					--	local WIndex = WEAPON.GET_CURRENT_PED_WEAPON_ENTITY_INDEX(PlayerPed, false)
+					--	local Pos = ENTITY.GET_ENTITY_COORDS(WIndex)
+					--	local Obj = OBJECT.CREATE_OBJECT(Scope, Pos.x, Pos.y, Pos.z, true, true, true)
+					--	ENTITY.ATTACH_ENTITY_TO_ENTITY(Obj, WIndex, 0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, true, false, true, false, 2, true, true)
+					--	STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(Scope)
+					--	HasPlaced = true
+					--	PropsT[#PropsT+1] = Obj
+					--end
+				--end
+			else
+				for i = 1, #AttachsT do
+					AttachsT[i].Created = false
+				end
+			end
+			Wait()
+		end
+		for i = 1, #PropsT do
+			if ENTITY.DOES_ENTITY_EXIST(PropsT[i]) then
+				entities.delete_by_handle(PropsT[i])
+			end
+		end
+	end
+end)
+
+menu.toggle_loop(NewWeapons, "Car Speed Increased", {}, "", function(toggle)
+	local Veh = PED.GET_VEHICLE_PED_IS_IN(PLAYER.PLAYER_PED_ID())
+	if Veh ~= 0 then
+		VEHICLE.MODIFY_VEHICLE_TOP_SPEED(Veh, 1000.0)
+		VEHICLE.SET_VEHICLE_BRAKE(Veh, 1000.0)
+		VEHICLE.SET_VEHICLE_MOD_KIT(Veh, 0)
+		entities.set_upgrade_value(Veh, 0, entities.get_upgrade_max_value(Veh, 0), true)
+		entities.set_upgrade_value(Veh, 11, entities.get_upgrade_max_value(Veh, 11), true)
+		entities.set_upgrade_value(Veh, 12, entities.get_upgrade_max_value(Veh, 12), true)
+		entities.set_upgrade_value(Veh, 13, entities.get_upgrade_max_value(Veh, 13), true)
+		entities.set_upgrade_value(Veh, 15, entities.get_upgrade_max_value(Veh, 15), true)
+		entities.set_upgrade_value(Veh, 16, entities.get_upgrade_max_value(Veh, 16), true)
+		entities.set_upgrade_value(Veh, 17, entities.get_upgrade_max_value(Veh, 17), true)
+		entities.set_upgrade_value(Veh, 18, entities.get_upgrade_max_value(Veh, 18), true)
+		entities.set_upgrade_value(Veh, 21, entities.get_upgrade_max_value(Veh, 21), true)
+		entities.set_upgrade_value(Veh, 22, entities.get_upgrade_max_value(Veh, 22), true)
+		entities.set_upgrade_value(Veh, 23, entities.get_upgrade_max_value(Veh, 23), true)
+		entities.set_upgrade_value(Veh, 24, entities.get_upgrade_max_value(Veh, 24), true)
+	end
+end)
+
+local CutsceneMesser = false
+menu.toggle(NewWeapons, "Cutscene Messer", {}, "", function(toggle)
+	CutsceneMesser = toggle
+	if CutsceneMesser then
+		local PropsT = {}
+		local ModelsToRequestT = {
+			joaat("prop_table_03"),
+			joaat("prop_table_para_comb_05"),
+			joaat("prop_table_para_comb_04"),
+			joaat("prop_table_para_comb_01"),
+			joaat("prop_table_03b"),
+			joaat("prop_table_para_comb_01"),
+			joaat("prop_picnictable_01"),
+			joaat("prop_table_para_comb_02"),
+			joaat("prop_table_01_chr_b"),
+			joaat("prop_table_03_chr"),
+			joaat("prop_table_01_chr_a"),
+			joaat("prop_table_03b_chr"),
+			joaat("prop_table_02_chr")
+		}
+		local CreatePropsPressed = false
+		local PropsState = 0
+		local DeletePropsPressed = false
+		local RagdollPeds = false
+		local KeyPressed1 = false
+		local KeyPressed2 = false
+		local KeyPressed3 = false
+		while CutsceneMesser do
+			if util.is_key_down(0x31) then
+				if not KeyPressed1 then
+					KeyPressed1 = true
+					CreatePropsPressed = true
+				end
+			else
+				KeyPressed1 = false
+			end
+			if util.is_key_down(0x32) then
+				if not KeyPressed2 then
+					KeyPressed2 = true
+					DeletePropsPressed = true
+				end
+			else
+				KeyPressed2 = false
+			end
+			if util.is_key_down(0x33) then
+				if not KeyPressed3 then
+					KeyPressed3 = true
+					RagdollPeds = true
+				end
+			else
+				KeyPressed3 = false
+			end
+			if CreatePropsPressed then
+				if #PropsT == 0 then
+					local ModelsLoaded = 0
+					for i = 1, #ModelsToRequestT do
+						STREAMING.REQUEST_MODEL(ModelsToRequestT[i])
+						if STREAMING.HAS_MODEL_LOADED(ModelsToRequestT[i]) then
+							ModelsLoaded = ModelsLoaded + 1
+						end
+					end
+					if ModelsLoaded >= #ModelsToRequestT then
+						local Pos = ENTITY.GET_ENTITY_COORDS(PLAYER.PLAYER_PED_ID())
+						for i = 0, 5 do
+							for k = 0, 5 do
+								local Obj = OBJECT.CREATE_OBJECT(ModelsToRequestT[math.random(#ModelsToRequestT)],
+								(Pos.x - 3.0) + 2.0 * i, (Pos.y - 3.0) + 2.0 * k, Pos.z,
+								true, true, true)
+								PropsT[#PropsT+1] = Obj
+								ENTITY.FREEZE_ENTITY_POSITION(Obj, false)
+								set_entity_as_no_longer_needed(Obj)
+								PHYSICS.ACTIVATE_PHYSICS(Obj)
+							end
+						end
+						for i = 1, #ModelsToRequestT do
+							STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(ModelsToRequestT[i])
+						end
+						CreatePropsPressed = false
+					end
+				else
+					for i = 1, #PropsT do
+						if ENTITY.DOES_ENTITY_EXIST(PropsT[i]) then
+							local Pos = ENTITY.GET_ENTITY_COORDS(PropsT[i])
+							FIRE.ADD_EXPLOSION(Pos.x, Pos.y, Pos.z, 96, 1.0, true, false, 1.0, false)
+							PHYSICS.ACTIVATE_PHYSICS(Obj)
+							local PPos = ENTITY.GET_ENTITY_COORDS(PLAYER.PLAYER_PED_ID())
+							local NewV = {
+								x = PPos.x - Pos.x,
+								y = PPos.y - Pos.y,
+								z = PPos.z - Pos.z
+							}
+							ENTITY.SET_ENTITY_VELOCITY(PropsT[i], NewV.x * 25.0, NewV.y * 25.0, NewV.z * 25.0)
+							MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS(Pos.x, Pos.y, Pos.z + 1.5, Pos.x, Pos.y, Pos.z, 0, true, joaat("weapon_rpg"), 0, true, true, 5.0)
+						end
+					end
+					CreatePropsPressed = false
+				end
+			end
+			if DeletePropsPressed then
+				for i = 1, #PropsT do
+					if ENTITY.DOES_ENTITY_EXIST(PropsT[i]) then
+						entities.delete_by_handle(PropsT[i])
+					end
+				end
+				for i = 1, #PropsT do
+					table.remove(PropsT, #PropsT)
+				end
+				DeletePropsPressed = false
+			end
+			if RagdollPeds then
+				for index, peds in pairs(entities.get_all_peds_as_handles()) do
+					PED.SET_RAGDOLL_BLOCKING_FLAGS(peds, 0)
+					--ENTITY.SET_ENTITY_CAN_BE_DAMAGED(peds, true)
+					--ENTITY.SET_ENTITY_INVINCIBLE(peds, false)
+					PED.SET_PED_TO_RAGDOLL(peds, 1000, 1000, 3, true, false, false)
+					local FV = ENTITY.GET_ENTITY_FORWARD_VECTOR(peds)
+					ENTITY.SET_ENTITY_VELOCITY(peds, FV.x * 2.0, FV.y * 2.0, FV.z * 2.0)
+					--local Pos = ENTITY.GET_ENTITY_COORDS(peds)
+					--MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS(Pos.x, Pos.y, Pos.z + 1.5, Pos.x, Pos.y, Pos.z, 0, true, joaat("weapon_rpg"), 0, true, true, 5.0)
+				end
+				RagdollPeds = false
+			end
+			Wait()
+		end
+	end
+end)
+
+local FM_2020_SceneID = SplitGlobals("Local_28883.f_9")
+local FastGrab = false
+menu.toggle(NewWeapons, "Fast Synchronised Scene", {}, "", function(toggle)
+	FastGrab = toggle
+	--if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller_2020")) > 0 then
+	--	local AddrValue = memory.read_int(memory.script_local("fm_mission_controller_2020", FM_2020_SceneID))
+	--	if AddrValue ~= 0 then
+	--		local SceneID = NETWORK.NETWORK_GET_LOCAL_SCENE_FROM_NETWORK_ID(AddrValue)
+	--		Print(SceneID)
+	--		if SceneID ~= 0 then
+	--			if PED.GET_SYNCHRONIZED_SCENE_RATE(SceneID) ~= 0.0 then
+	--				PED.SET_SYNCHRONIZED_SCENE_RATE(SceneID, 5.0)
+	--			end
+	--		end
+	--	end
+	--end
+	if FastGrab then
+		local Tick = 0
+		local ScenesT = {}
+		while FastGrab do
+			if Tick <= 0 then
+				for i = 5000, 7000 do
+					if PED.IS_SYNCHRONIZED_SCENE_RUNNING(i) then
+						ScenesT[i] = i
+					end
+				end
+				Tick = 100
+			else
+				Tick = Tick - 1
+			end
+			for index, scenes in pairs(ScenesT) do
+				if PED.GET_SYNCHRONIZED_SCENE_RATE(scenes) ~= 0.0 then
+					PED.SET_SYNCHRONIZED_SCENE_RATE(scenes, 3.0)
+				end
+			end
+			Wait()
+		end
+	end
+end)
+
+function CreateAttachment(Model, PropsT, Offset, WIndex, TexV, BID, Rot)
+	STREAMING.REQUEST_MODEL(Model)
+	if STREAMING.HAS_MODEL_LOADED(Model) then
+		local Pos = ENTITY.GET_ENTITY_COORDS(WIndex)
+		local Obj = OBJECT.CREATE_OBJECT(Model, Pos.x, Pos.y, Pos.z, true, true, true)
+		local BoneIndex = 0
+		if BID ~= nil then
+			BoneIndex = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(WIndex, BID)
+		end
+		ENTITY.ATTACH_ENTITY_TO_ENTITY(Obj, WIndex, BoneIndex, Offset.x, Offset.y, Offset.z, Rot.x, Rot.y, Rot.z, true, false, true, false, 2, true, true)
+		STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(Model)
+		PropsT[#PropsT+1] = Obj
+		if TexV ~= nil then
+			OBJECT.SET_OBJECT_TINT_INDEX(Obj, TexV)
+		end
+		return true
+	end
+	return false
+end
