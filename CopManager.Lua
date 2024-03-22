@@ -1949,7 +1949,7 @@ menu.toggle(AllyCopSettingsMenu, "Cops Switch To Nearest Target", {}, "Devastati
 	CopsSwitchToNearestTarget = toggle
 end, CopsSwitchToNearestTarget)
 local CopsRushWithTP = false
-menu.toggle(AllyCopSettingsMenu, "Cops Rush With Teleport", {}, "Works with custom tasks keys. Will teleport if far from target.", function(toggle)
+menu.toggle(AllyCopSettingsMenu, "Cops Rush With Teleport", {}, "", function(toggle)
 	CopsRushWithTP = toggle
 end, CopsRushWithTP)
 menu.toggle(AllyCopSettingsMenu, "Set Cops Aim At Head", {}, "One hit kill.", function(toggle)
@@ -3181,7 +3181,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 														SetPedHealth(peds, 150)
 														PED.SET_PED_ARMOUR(peds, 0)
 														--ZombieMode
-														WEAPON.GIVE_WEAPON_TO_PED(peds, joaat("weapon_knife"), 99999, false, false)
+														--WEAPON.GIVE_WEAPON_TO_PED(peds, joaat("weapon_knife"), 99999, false, false)
 														--PED.SET_PED_CONFIG_FLAG(peds, 314, true)
 														PED.SET_PED_CONFIG_FLAG(peds, 435, true)
 														PED.SET_COMBAT_FLOAT(peds, 7, 1.0)
@@ -3484,6 +3484,31 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 												if AllyAttacksHostiles then
 													if not PED.IS_PED_IN_COMBAT(peds, 0) then
 														TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(peds, DistanceNeededToAttack, 0)
+													end
+												end
+												if CopsRushWithTP then
+													local TargetPed = PED.GET_PED_TARGET_FROM_COMBAT_PED(peds, 0)
+													if TargetPed ~= 0 then
+														if not ENTITY.IS_ENTITY_DEAD(TargetPed) then
+															if not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, TargetPed, 17) or not ENTITY.IS_ENTITY_AT_ENTITY(peds, TargetPed, 30.0, 30.0, 30.0, false, true, 0) then
+																local PedPos = ENTITY.GET_ENTITY_COORDS(peds)
+																local TargetPos = ENTITY.GET_ENTITY_COORDS(TargetPed)
+																TargetPos.z = TargetPos.z + 1.0
+																local NewVAdjusted = {
+																	x = TargetPos.x - PedPos.x,
+																	y = TargetPos.y - PedPos.y,
+																	z = TargetPos.z - PedPos.z
+																}
+																ENTITY.SET_ENTITY_COLLISION(peds, false, false)
+																ENTITY.SET_ENTITY_VELOCITY(peds, NewVAdjusted.x, NewVAdjusted.y, NewVAdjusted.z)
+															else
+																ENTITY.SET_ENTITY_COLLISION(peds, true, true)
+															end
+														else
+															ENTITY.SET_ENTITY_COLLISION(peds, true, true)
+														end
+													else
+														ENTITY.SET_ENTITY_COLLISION(peds, true, true)
 													end
 												end
 												if BringFarCopsCloser then
@@ -4006,18 +4031,22 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 				end
 			end
 			--ZombieMode
+			local MoveDict = "move_characters@ballas@core"
 			if ZombieMode then
-				if not STREAMING.HAS_CLIP_SET_LOADED("move_characters@orleans@core@") then 
-					STREAMING.REQUEST_CLIP_SET("move_characters@orleans@core@")
-				end
+				--if not STREAMING.HAS_CLIP_SET_LOADED(MoveDict) then 
+				--	STREAMING.REQUEST_CLIP_SET(MoveDict)
+				--end
 			end
 			for i = 1, #ZombiesT do
 				if ZombiesT[i] ~= nil then
 					if ENTITY.DOES_ENTITY_EXIST(ZombiesT[i].Handle) then
 						if not ENTITY.IS_ENTITY_DEAD(ZombiesT[i].Handle) then
-							if STREAMING.HAS_CLIP_SET_LOADED("move_characters@orleans@core@") then
-								PED.SET_PED_MOVEMENT_CLIPSET(ZombiesT[i].Handle, "move_characters@orleans@core@", 0.25)
-							end
+							--if STREAMING.HAS_CLIP_SET_LOADED(MoveDict) then
+							--	PED.SET_PED_MOVEMENT_CLIPSET(ZombiesT[i].Handle, MoveDict, 0.25)
+							--end
+							--PED.SET_PED_MOVEMENT_CLIPSET(ZombiesT[i].Handle, "move_m@multiplayer", 0.25)
+							PED.SET_PED_MIN_MOVE_BLEND_RATIO(ZombiesT[i].Handle, 3.0)
+							--PED.SET_PED_MAX_MOVE_BLEND_RATIO(ZombiesT[i].Handle, 3.0)
 							PED.SET_PED_USING_ACTION_MODE(ZombiesT[i].Handle, false, -1, 0)
 							if ZombiesT[i].Target == 0 then
 								TASK.TASK_COMBAT_HATED_TARGETS_AROUND_PED(ZombiesT[i].Handle, 100.0, 0)
@@ -4043,8 +4072,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 							if ZombiesT[i].Target ~= 0 then
 								if ENTITY.DOES_ENTITY_EXIST(ZombiesT[i].Target) and not ENTITY.IS_ENTITY_DEAD(ZombiesT[i].Target)
 								and ENTITY.IS_ENTITY_AT_ENTITY(ZombiesT[i].Handle, ZombiesT[i].Target, 100.0, 100.0, 100.0, false, true, 0) then
-									TASK.TASK_GO_TO_ENTITY(ZombiesT[i].Handle, ZombiesT[i].Target, -1, 0.5, 3.0, 0.1, 0)
-									TASK.TASK_COMBAT_PED(ZombiesT[i].Handle, ZombiesT[i].Target, 134217728, 0)
+									--TASK.TASK_GO_TO_ENTITY(ZombiesT[i].Handle, ZombiesT[i].Target, -1, 0.5, 3.0, 0.1, 0)
+									--TASK.TASK_COMBAT_PED(ZombiesT[i].Handle, ZombiesT[i].Target, 134217728, 0)
 									if PED.IS_PED_ON_VEHICLE(ZombiesT[i].Target) then
 										if not ENTITY.IS_ENTITY_AT_ENTITY(ZombiesT[i].Handle, ZombiesT[i].Target, 3.0, 3.0, 3.0, false, true, 0) then
 											local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(ZombiesT[i].Target)
@@ -6643,10 +6672,62 @@ menu.toggle_loop(MiscMenu, "Set Can Damage Every Ped", {}, "", function(toggle)
 					ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(peds, false)
 					ENTITY.SET_ENTITY_CAN_ONLY_BE_DAMAGED_BY_SCRIPT_PARTICIPANTS(peds, false)
 					ENTITY.SET_ENTITY_INVINCIBLE(peds, false)
+					ENTITY.SET_ENTITY_CAN_BE_DAMAGED(peds, true)
+					ENTITY.SET_ENTITY_PROOFS(peds, false, false, false, false, false, false, false, false)
+					ENTITY.FREEZE_ENTITY_POSITION(peds, false)
+					PED.SET_RAGDOLL_BLOCKING_FLAGS(peds, 0)
+					PED.SET_PED_CAN_RAGDOLL(peds, true)
+					PED.SET_PED_CONFIG_FLAG(peds, 318, true)
+					--PED.SET_PED_CAN_RAGDOLL_FROM_PLAYER_IMPACT(peds, true)
+					PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+					--PED.SET_PED_COMBAT_ATTRIBUTES(peds, 5, true)
+					--PED.SET_PED_COMBAT_ATTRIBUTES(peds, 46, true)
 				end
 			end
 		end
 	end
+end)
+
+menu.toggle_loop(MiscMenu, "Desconceal All Ents", {}, "", function(toggle)
+	for index, peds in pairs(entities.get_all_peds_as_handles()) do
+		if not PED.IS_PED_A_PLAYER(peds) then
+			if peds ~= PLAYER.PLAYER_PED_ID() then
+				if not PED.IS_PED_A_PLAYER(peds) then
+					if RequestControlOfEntity(peds) then
+						NETWORK.NETWORK_CONCEAL_ENTITY(peds, false)
+						NETWORK.NETWORK_SET_ENTITY_ONLY_EXISTS_FOR_PARTICIPANTS(peds, false)
+					end
+				end
+			end
+		end
+	end
+	for index, vehs in pairs(entities.get_all_vehicles_as_handles()) do
+		--if RequestControlOfEntity(peds) then
+			NETWORK.NETWORK_CONCEAL_ENTITY(vehs, false)
+			NETWORK.NETWORK_SET_ENTITY_ONLY_EXISTS_FOR_PARTICIPANTS(vehs, false)
+		--end
+	end
+	for index, objs in pairs(entities.get_all_objects_as_handles()) do
+		--if RequestControlOfEntity(peds) then
+			NETWORK.NETWORK_CONCEAL_ENTITY(objs, false)
+			NETWORK.NETWORK_SET_ENTITY_ONLY_EXISTS_FOR_PARTICIPANTS(objs, false)
+		--end
+	end
+	for index, pickups in pairs(entities.get_all_pickups_as_handles()) do
+		--if RequestControlOfEntity(peds) then
+			NETWORK.NETWORK_CONCEAL_ENTITY(pickups, false)
+			NETWORK.NETWORK_SET_ENTITY_ONLY_EXISTS_FOR_PARTICIPANTS(pickups, false)
+		--end
+	end
+	NETWORK.NETWORK_END_TUTORIAL_SESSION()
+end)
+
+menu.toggle_loop(MiscMenu, "Freedom", {}, "", function(toggle)
+	local PlayerPed = PLAYER.PLAYER_PED_ID()
+	local PlayerID = PLAYER.PLAYER_ID()
+	PED.SET_PED_CONFIG_FLAG(PlayerPed, 101, false)
+	PED.SET_PED_CONFIG_FLAG(PlayerPed, 122, false)
+	PLAYER.SET_DISABLE_AMBIENT_MELEE_MOVE(PlayerID, false)
 end)
 
 local AlertMode_Num = SplitGlobals("Local_21434")
@@ -6983,13 +7064,23 @@ menu.toggle(NewWeapons, "Pro Movements", {}, "", function(toggle)
 		}
 		while AK47 do
 			local PlayerPed = PLAYER.PLAYER_PED_ID()
+			local PlayerID = PLAYER.PLAYER_ID()
+			--CAM.DISABLE_ON_FOOT_FIRST_PERSON_VIEW_THIS_UPDATE()
 			--local CurWeap = memory.alloc(8)
 			local HasWeap = false --WEAPON.GET_CURRENT_PED_WEAPON(PlayerPed, CurWeap, false)
-			PED.SET_PED_RESET_FLAG(PlayerPed, 156, true)
+			PED.SET_PED_RESET_FLAG(PlayerPed, 71, true)
+			PED.SET_PED_RESET_FLAG(PlayerPed, 91, true)
+			if not PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, true) then
+				PED.SET_PED_RESET_FLAG(PlayerPed, 156, true)
+			end
 			PED.SET_PED_RESET_FLAG(PlayerPed, 401, true)
 			PED.SET_PED_RESET_FLAG(PlayerPed, 237, true)
+			--PED.SET_PED_RESET_FLAG(PlayerPed, 309, true)
+			PED.SET_PED_RESET_FLAG(PlayerPed, 442, true)
 			PED.SET_PED_CONFIG_FLAG(PlayerPed, 95, true)
 			PED.SET_PED_CONFIG_FLAG(PlayerPed, 427, true)
+			--PLAYER.SET_PLAYER_FORCE_SKIP_AIM_INTRO(PlayerID, true)
+			--PLAYER.SET_PLAYER_SIMULATE_AIMING(PlayerID, true)
 			if PED.GET_VEHICLE_PED_IS_TRYING_TO_ENTER(PlayerPed) ~= 0 or PAD.IS_CONTROL_PRESSED(1, 75) then
 				PED.FORCE_PED_AI_AND_ANIMATION_UPDATE(PlayerPed, false, false)
 			else
@@ -6997,7 +7088,7 @@ menu.toggle(NewWeapons, "Pro Movements", {}, "", function(toggle)
 			end
 			--PAD.ENABLE_ALL_CONTROL_ACTIONS(0)
 			--PAD.ENABLE_ALL_CONTROL_ACTIONS(1)
-			if not PLAYER.IS_PLAYER_FREE_AIMING(PLAYER.PLAYER_ID()) then
+			if not PLAYER.IS_PLAYER_FREE_AIMING(PlayerID) then
 				if not TASK.IS_PED_SPRINTING(PlayerPed) then
 		 	        if PAD.IS_CONTROL_JUST_PRESSED(0, 21) then
 						if not PED.IS_PED_SWIMMING(PlayerPed) and not PED.IS_PED_SWIMMING_UNDER_WATER(PlayerPed) then
@@ -7028,6 +7119,12 @@ menu.toggle(NewWeapons, "Pro Movements", {}, "", function(toggle)
 						end
 					end
 				end
+				--if PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false) then
+				--	if PAD.IS_CONTROL_PRESSED(0, 68) or PAD.IS_CONTROL_PRESSED(0, 69) then-- or PAD.IS_CONTROL_PRESSED(1, 257) then
+				--		local EndV = RaycastFromCamera(PlayerPed, 1000.0, -1)
+				--		PED.SET_PED_SHOOTS_AT_COORD(PlayerPed, EndV.x, EndV.y, EndV.z, false)
+				--	end
+				--end
 			end
 			if PED.IS_PED_SWITCHING_WEAPON(PlayerPed) then
 				if not PED.IS_PED_SWIMMING(PlayerPed) and not PED.IS_PED_SWIMMING_UNDER_WATER(PlayerPed) then
@@ -7080,6 +7177,8 @@ menu.toggle_loop(NewWeapons, "Car Speed Increased", {}, "", function(toggle)
 		VEHICLE.MODIFY_VEHICLE_TOP_SPEED(Veh, 1000.0)
 		VEHICLE.SET_VEHICLE_BRAKE(Veh, 1000.0)
 		VEHICLE.SET_VEHICLE_MOD_KIT(Veh, 0)
+		VEHICLE.SET_VEHICLE_ACT_AS_IF_HIGH_SPEED_FOR_FRAG_SMASHING(Veh, true)
+		--PHYSICS.SET_USE_KINEMATIC_PHYSICS(Veh, true)
 		--entities.set_upgrade_value(Veh, 0, entities.get_upgrade_max_value(Veh, 0), true)
 		entities.set_upgrade_value(Veh, 11, entities.get_upgrade_max_value(Veh, 11), true)
 		entities.set_upgrade_value(Veh, 12, entities.get_upgrade_max_value(Veh, 12), true)
@@ -7094,6 +7193,84 @@ menu.toggle_loop(NewWeapons, "Car Speed Increased", {}, "", function(toggle)
 		entities.set_upgrade_value(Veh, 24, entities.get_upgrade_max_value(Veh, 24), true)
 	end
 end)
+
+local PushVehs = false
+local ExtraRamPower = false
+menu.toggle(NewWeapons, "Vehicle Powerful Ram", {}, "", function(toggle)
+	ExtraRamPower = toggle
+	if ExtraRamPower then
+		local HasApplied = false
+		local LastVel = v3.new()
+		while ExtraRamPower do	
+			local Veh = PED.GET_VEHICLE_PED_IS_IN(PLAYER.PLAYER_PED_ID(), true)
+			if Veh ~= 0 then
+				local VehsTouchT = {}
+				local Vel = ENTITY.GET_ENTITY_VELOCITY(Veh)
+				local Bool = false--ENTITY.HAS_ENTITY_COLLIDED_WITH_ANYTHING(Veh)
+				--local Ent = ENTITY._GET_LAST_ENTITY_HIT_BY_ENTITY(Veh)
+				--if ENTITY.IS_ENTITY_A_VEHICLE(Ent) then
+				--	Bool = ENTITY.IS_ENTITY_TOUCHING_ENTITY(Ent, Veh)
+				--end
+				--local Min, Max = v3.new(), v3.new()
+				--local FVect, RVect, UpVect, Vect = v3.new(), v3.new(), v3.new(), v3.new()
+				--ENTITY.GET_ENTITY_MATRIX(Veh, FVect, RVect, UpVect, Vect)
+				--MISC.GET_MODEL_DIMENSIONS(ENTITY.GET_ENTITY_MODEL(Veh), Min, Max)
+				for index, vehs in pairs(entities.get_all_vehicles_as_handles()) do
+					if vehs ~= Veh then
+						if PushVehs then
+							local AdV = {
+								x = Vect.x + ((FVect.x * (Max.y)) + (UpVect.x * -Max.z)),
+								y = Vect.y + ((FVect.y * (Max.y)) + (UpVect.x * -Max.z)),
+								z = Vect.z + ((FVect.z * (Max.y)) + (UpVect.x * -Max.z))
+							}
+							local AdV2 = {
+								x = Vect.x + ((FVect.x * (Max.y * 3.5 + (ENTITY.GET_ENTITY_SPEED(Veh) * 0.3))) + (UpVect.x * Max.z)),
+								y = Vect.y + ((FVect.y * (Max.y * 3.5 + (ENTITY.GET_ENTITY_SPEED(Veh) * 0.3))) + (UpVect.y * Max.z)),
+								z = Vect.z + ((FVect.z * (Max.y * 3.5 + (ENTITY.GET_ENTITY_SPEED(Veh) * 0.3))) + (UpVect.z * Max.z))
+							}
+							--GRAPHICS.DRAW_LINE(AdV.x, AdV.y, AdV.z, AdV2.x, AdV2.y, AdV2.z, 255, 255, 255, 255)
+							if ENTITY.IS_ENTITY_IN_ANGLED_AREA(vehs, AdV.x, AdV.y, AdV.z, AdV2.x, AdV2.y, AdV2.z, Max.x * 10, false, true, 0) then
+								Bool = true
+								VehsTouchT[#VehsTouchT+1] = vehs
+								--Print("True")
+							end
+						end
+						if ENTITY.IS_ENTITY_TOUCHING_ENTITY(vehs, Veh) then
+							Bool = true
+							VehsTouchT[#VehsTouchT+1] = vehs
+						end 
+					end
+				end
+				if Bool and ENTITY.GET_ENTITY_SPEED(Veh) > 1.0 then
+					if not HasApplied then
+						LastVel = Vel
+						HasApplied = true
+						PHYSICS.SET_USE_KINEMATIC_PHYSICS(Veh, true)
+					end
+					ENTITY.SET_ENTITY_VELOCITY(Veh, LastVel.x, LastVel.y, LastVel.z)
+					PHYSICS.SET_USE_KINEMATIC_PHYSICS(Veh, true)
+					--ENTITY.SET_ENTITY_ANGULAR_VELOCITY(Veh, 0.0, 0.0, 0.0)
+					ENTITY.SET_ENTITY_VELOCITY(Veh, LastVel.x, LastVel.y, LastVel.z)
+					for i = 1, #VehsTouchT do
+						ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(VehsTouchT[i], 1, Vel.x, Vel.y, Vel.z, 0, false, true, true)
+					end
+				else
+					if HasApplied then
+						PHYSICS.SET_USE_KINEMATIC_PHYSICS(Veh, false)
+						ENTITY.SET_ENTITY_VELOCITY(Veh, LastVel.x, LastVel.y, LastVel.z)
+						--ENTITY.SET_ENTITY_ANGULAR_VELOCITY(Veh, 0.0, 0.0, 0.0)
+					end
+					HasApplied = false
+				end
+			end
+			Wait()
+		end
+	end
+end)
+
+--menu.toggle(NewWeapons, "Push Vehicles In Your Way", {}, "", function(toggle)
+--	PushVehs = toggle
+--end, PushVehs)
 
 local CutsceneMesser = false
 menu.toggle(NewWeapons, "Cutscene Messer", {}, "", function(toggle)
@@ -7114,6 +7291,7 @@ menu.toggle(NewWeapons, "Cutscene Messer", {}, "", function(toggle)
 			joaat("prop_table_01_chr_a"),
 			joaat("prop_table_03b_chr"),
 			joaat("prop_table_02_chr")
+			--joaat("prop_till_01")
 		}
 		local CreatePropsPressed = false
 		local PropsState = 0
@@ -7164,6 +7342,7 @@ menu.toggle(NewWeapons, "Cutscene Messer", {}, "", function(toggle)
 								(Pos.x - 3.0) + 2.0 * i, (Pos.y - 3.0) + 2.0 * k, Pos.z,
 								true, true, true)
 								PropsT[#PropsT+1] = Obj
+								ENTITY.SET_ENTITY_AS_MISSION_ENTITY(Obj, false, true)
 								ENTITY.FREEZE_ENTITY_POSITION(Obj, false)
 								set_entity_as_no_longer_needed(Obj)
 								PHYSICS.ACTIVATE_PHYSICS(Obj)
@@ -7226,39 +7405,146 @@ local FM_2020_SceneID = SplitGlobals("Local_28883.f_9")
 local FastGrab = false
 menu.toggle(NewWeapons, "Fast Synchronised Scene", {}, "", function(toggle)
 	FastGrab = toggle
-	--if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller_2020")) > 0 then
-	--	local AddrValue = memory.read_int(memory.script_local("fm_mission_controller_2020", FM_2020_SceneID))
-	--	if AddrValue ~= 0 then
-	--		local SceneID = NETWORK.NETWORK_GET_LOCAL_SCENE_FROM_NETWORK_ID(AddrValue)
-	--		Print(SceneID)
-	--		if SceneID ~= 0 then
-	--			if PED.GET_SYNCHRONIZED_SCENE_RATE(SceneID) ~= 0.0 then
-	--				PED.SET_SYNCHRONIZED_SCENE_RATE(SceneID, 5.0)
-	--			end
-	--		end
-	--	end
-	--end
 	if FastGrab then
 		local Tick = 0
 		local ScenesT = {}
+		local EstimatedValue = 0
+		local MinValueS = 1
+		local MaxValueS = 1000
+		local State = 0
+		local AnimsT = {
+			{"anim@heists@ornate_bank@grab_cash", "grab"},
+			{"anim@heists@ornate_bank@grab_cash_heels", "grab"}
+		}
 		while FastGrab do
-			if Tick <= 0 then
-				for i = 5000, 7000 do
-					if PED.IS_SYNCHRONIZED_SCENE_RUNNING(i) then
-						ScenesT[i] = i
+			local PlayerPed = PLAYER.PLAYER_PED_ID()
+			for i = 1, #AnimsT do
+				if ENTITY.IS_ENTITY_PLAYING_ANIM(PlayerPed, AnimsT[i][1], AnimsT[i][2], 3) then
+					ENTITY.SET_ENTITY_ANIM_SPEED(PlayerPed, AnimsT[i][1], AnimsT[i][2], 3.0)
+				end
+			end
+			--if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller_2020")) > 0 then
+			--	local AddrValue = memory.read_int(memory.script_local("fm_mission_controller_2020", FM_2020_SceneID))
+			--	if AddrValue ~= 0 then
+			--		local SceneID = NETWORK.NETWORK_GET_LOCAL_SCENE_FROM_NETWORK_ID(AddrValue)
+			--		if SceneID ~= 0 then
+			--			EstimatedValue = SceneID
+			--			if PED.GET_SYNCHRONIZED_SCENE_RATE(SceneID) ~= 0.0 then
+			--				PED.SET_SYNCHRONIZED_SCENE_RATE(SceneID, 5.0)
+			--			end
+			--		end
+			--	end
+			--end
+			if EstimatedValue == 0 then
+				if Tick <= 0 then
+					for i = MinValueS, MaxValueS do
+						if PED.IS_SYNCHRONIZED_SCENE_RUNNING(i) then
+							--ScenesT[i] = i
+							EstimatedValue = i
+						end
+					end
+					if State < 7 then
+						State = State + 1
+						MinValueS = MinValueS + 1000
+						MaxValueS = MaxValueS + 1000
+					else
+						State = 0
+						MinValueS = 1
+						MaxValueS = 1000
+					end
+					Tick = 0
+				else
+					Tick = Tick - 1
+				end
+			end
+			if EstimatedValue ~= 0 then
+				for i = EstimatedValue-1000, EstimatedValue+1000 do
+					if PED.IS_SYNCHRONIZED_SCENE_RUNNING(i) then-- or PAD.IS_CONTROL_PRESSED(0, 21) then
+						PED.SET_SYNCHRONIZED_SCENE_RATE(i, 3.0)
 					end
 				end
-				Tick = 100
-			else
-				Tick = Tick - 1
 			end
-			for index, scenes in pairs(ScenesT) do
-				if PED.GET_SYNCHRONIZED_SCENE_RATE(scenes) ~= 0.0 then
-					PED.SET_SYNCHRONIZED_SCENE_RATE(scenes, 3.0)
-				end
-			end
+			--for index, scenes in pairs(ScenesT) do
+			--	if PED.GET_SYNCHRONIZED_SCENE_RATE(scenes) ~= 0.0 then
+			--		PED.SET_SYNCHRONIZED_SCENE_RATE(scenes, 3.0)
+			--	end
+			--end
 			Wait()
 		end
+	end
+end)
+
+menu.toggle_loop(NewWeapons, "Set Control On", {}, "", function(toggle)
+	PAD.ENABLE_ALL_CONTROL_ACTIONS(0)
+	PAD.ENABLE_ALL_CONTROL_ACTIONS(1)
+	PLAYER.SET_PLAYER_CONTROL(PLAYER.PLAYER_ID(), true, -1)
+end)
+
+--menu.toggle_loop(NewWeapons, "Vehicle Speed Direction", {}, "", function(toggle)
+--	local Veh = PED.GET_VEHICLE_PED_IS_IN(PLAYER.PLAYER_PED_ID())
+--	if Veh ~= 0 then
+--		local CurSpeed = ENTITY.GET_ENTITY_SPEED(Veh)
+--		local VRot = ENTITY.GET_ENTITY_ROTATION(Veh, 2)
+--		local Cam = CAM.GET_GAMEPLAY_CAM_ROT(2)
+--		local X = PAD.GET_CONTROL_NORMAL(0, 30)
+--		local Y = -PAD.GET_CONTROL_NORMAL(0, 31)
+--		--VRot.z = VRot.z + 90.0
+--		--local NV3 = VRot:toDir()
+--		local V3 = v3.new(X, Y, 0.0)
+--		local V3_2 = v3.toRot(V3)
+--		local V3_3 = v3.new()
+--		if X ~= 0.0 or Y ~= 0.0 then
+--			local Vel = ENTITY.GET_ENTITY_VELOCITY(Veh)
+--			--ENTITY.SET_ENTITY_VELOCITY(Veh, X * CurSpeed, Y * CurSpeed, Vel.z)
+--			ENTITY.SET_ENTITY_VELOCITY(Veh, NV3.x * CurSpeed, NV3.y * CurSpeed, Vel.z)
+--			--directx.draw_text(0.7, 0.7, "X  "..X, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
+--			--directx.draw_text(0.7, 0.75, "Y  "..Y, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
+--		end
+--	end
+--end)
+
+menu.action(DevMenu, "Handling Addr", {}, "", function(toggle)
+	local Veh = PED.GET_VEHICLE_PED_IS_IN(PLAYER.PLAYER_PED_ID(), true)
+	if Veh ~= 0 then
+		local ToPTR = entities.handle_to_pointer(Veh)
+		local Addr = entities.vehicle_get_handling(ToPTR)
+		local FStr = string.format("%X", Addr)
+		Print(FStr)
+		util.copy_to_clipboard(FStr)
+	end
+end)
+
+local TeamGlobal = SplitGlobals("Global_1845263[bLocal_3225 /*877*/].f_96.f_28")
+local TeamLocal = SplitGlobals("Local_31603[bLocal_3229 /*292*/].f_1")
+menu.action(DevMenu, "Set Team 1", {}, "", function(toggle)
+	--memory.write_int(memory.script_global(TeamGlobal + 877 * PLAYER.PLAYER_ID()), 0)
+	local Address = memory.script_local("fm_mission_controller", TeamLocal + 292 * PLAYER.PLAYER_ID())
+	if Address ~= 0 then
+		memory.write_int(Address, 0)
+	end
+end)
+
+menu.action(DevMenu, "Set Team 2", {}, "", function(toggle)
+	--memory.write_int(memory.script_global(TeamGlobal + 877 * PLAYER.PLAYER_ID()), 1)
+	local Address = memory.script_local("fm_mission_controller", TeamLocal + 292 * PLAYER.PLAYER_ID())
+	if Address ~= 0 then
+		memory.write_int(Address, 1)
+	end
+end)
+
+menu.action(DevMenu, "Set Team 3", {}, "", function(toggle)
+	--memory.write_int(memory.script_global(TeamGlobal + 877 * PLAYER.PLAYER_ID()), 2)
+	local Address = memory.script_local("fm_mission_controller", TeamLocal + 292 * PLAYER.PLAYER_ID())
+	if Address ~= 0 then
+		memory.write_int(Address, 2)
+	end
+end)
+
+menu.action(DevMenu, "Set Team 4", {}, "", function(toggle)
+	--memory.write_int(memory.script_global(TeamGlobal + 877 * PLAYER.PLAYER_ID()), 3)
+	local Address = memory.script_local("fm_mission_controller", TeamLocal + 292 * PLAYER.PLAYER_ID())
+	if Address ~= 0 then
+		memory.write_int(Address, 3)
 	end
 end)
 
