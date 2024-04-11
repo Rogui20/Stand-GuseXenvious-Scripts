@@ -1215,17 +1215,19 @@ if NETWORK.GET_ONLINE_VERSION() == "1.68" then
 	for i = 0, 29 do
 		--RelAddrs[i+1] = memory.script_global(RelPlayersBitsAddr + 463 * i)
 	end
-	Addr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42 ?")
+	--Addr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42 ?")
+	Addr = memory.scan("")
+	Addr = Addr + 0x0257AA80
 	--Print(string.format("%X", Addr))
 	--util.copy_to_clipboard(string.format("%X", Addr))
 	if Addr ~= 0 then
-		Addr2 = memory.read_long(Addr+0x16)
+		Addr2 = memory.read_long(Addr)
 		Addr3 = memory.read_long(Addr2+0x8)
 		Addr4 = memory.read_long(Addr3+0xB0)
 		police3_FirstAddr = Addr4
-		local AddressToScan = police3_FirstAddr - 8 * 1000
+		local AddressToScan = police3_FirstAddr - 8 * 4000
 		local MaxFoundAddrs = 7
-		for i = 0, 2000 do
+		for i = 0, 4000 do
 			local Value = memory.read_int(AddressToScan + 8 * i)
 			if #police3_Addrs < MaxFoundAddrs then
 				if Value == joaat("police3") then
@@ -4712,6 +4714,7 @@ menu.toggle(MiscMenu, "Mission Finisher", {}, "", function(toggle)
 				util.spoof_script("fm_mission_controller", function()
 					if not NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
 						NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+						util.request_script_host("fm_mission_controller")
 					end
 					if NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
 						NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
@@ -4720,6 +4723,7 @@ menu.toggle(MiscMenu, "Mission Finisher", {}, "", function(toggle)
 				util.spoof_script("fm_mission_controller_2020", function()
 					if not NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
 						NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+						util.request_script_host("fm_mission_controller_2020")
 					end
 					if NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
 						NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
@@ -4799,6 +4803,7 @@ menu.toggle(MiscMenu, "Mission Finisher 2", {}, "", function(toggle)
 				util.spoof_script("fm_mission_controller", function()
 					if not NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
 						NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+						util.request_script_host("fm_mission_controller")
 					end
 					if NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
 						NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
@@ -4807,6 +4812,7 @@ menu.toggle(MiscMenu, "Mission Finisher 2", {}, "", function(toggle)
 				util.spoof_script("fm_mission_controller_2020", function()
 					if not NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
 						NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+						util.request_script_host("fm_mission_controller_2020")
 					end
 					if NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
 						NETWORK.NETWORK_PREVENT_SCRIPT_HOST_MIGRATION()
@@ -7478,6 +7484,65 @@ menu.toggle_loop(NewWeapons, "Set Control On", {}, "", function(toggle)
 	PAD.ENABLE_ALL_CONTROL_ACTIONS(0)
 	PAD.ENABLE_ALL_CONTROL_ACTIONS(1)
 	PLAYER.SET_PLAYER_CONTROL(PLAYER.PLAYER_ID(), true, -1)
+end)
+
+menu.toggle_loop(NewWeapons, "Door Control", {}, "", function(toggle)
+	local Veh = PED.GET_VEHICLE_PED_IS_IN(PLAYER.PLAYER_PED_ID())
+	if Veh ~= 0 then
+		VEHICLE.SET_DOOR_ALLOWED_TO_BE_BROKEN_OFF(Veh, 2, false)
+		VEHICLE.SET_VEHICLE_DOOR_CONTROL(Veh, 2, 360, 180.0)
+	end
+end)
+
+local Relationships = {
+	"CIVMALE",
+	"CIVFEMALE",
+	"COP",
+	"SECURITY_GUARD",
+	"PRIVATE_SECURITY",
+	"FIREMAN",
+	"GANG_1",
+	"GANG_2",
+	"GANG_9",
+	"GANG_10",
+	"AMBIENT_GANG_LOST",
+	"AMBIENT_GANG_MEXICAN",
+	"AMBIENT_GANG_FAMILY",
+	"AMBIENT_GANG_BALLAS",
+	"AMBIENT_GANG_MARABUNTE",
+	"AMBIENT_GANG_CULT",
+	"AMBIENT_GANG_SALVA",
+	"AMBIENT_GANG_WEICHENG",
+	"AMBIENT_GANG_HILLBILLY",
+	"DEALER",
+	"HATES_PLAYER",
+	"HEN",
+	"WILD_ANIMAL",
+	"SHARK",
+	"COUGAR",
+	"NO_RELATIONSHIP",
+	"SPECIAL",
+	"MISSION2",
+	"MISSION3",
+	"MISSION4",
+	"MISSION5",
+	"MISSION6",
+	"MISSION7",
+	"MISSION8",
+	"ARMY",
+	"GUARD_DOG",
+	"AGGRESSIVE_INVESTIGATE",
+	"MEDIC",
+	"CAT"
+}
+
+menu.action(MiscMenu, "Set All Relationships Hate", {}, "The ambient ones.", function(toggle)
+	for i = 1, #Relationships do
+		for k = 1, #Relationships do
+			PED.SET_RELATIONSHIP_BETWEEN_GROUPS(5, joaat(Relationships[i]), joaat(Relationships[k]))
+			PED.SET_RELATIONSHIP_BETWEEN_GROUPS(5, joaat(Relationships[k]), joaat(Relationships[i]))
+		end
+	end
 end)
 
 --menu.toggle_loop(NewWeapons, "Vehicle Speed Direction", {}, "", function(toggle)
