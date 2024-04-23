@@ -1232,7 +1232,7 @@ if NETWORK.GET_ONLINE_VERSION() == "1.68" then
 		police3_FirstAddr = Addr4
 		local AddressToScan = police3_FirstAddr - 8 * 4000
 		local MaxFoundAddrs = 7
-		for i = 0, 4000 do
+		for i = 0, 8000 do
 			local Value = memory.read_int(AddressToScan + 8 * i)
 			if #police3_Addrs < MaxFoundAddrs then
 				if Value == joaat("police3") then
@@ -6952,6 +6952,69 @@ function GetPedNearestTarget(Ped, IgnoreInVeh)
 	return ClosestPed
 end
 
+function GetAllPedNearestTarget(Ped, IgnoreInVeh, CheckIsInScreen, Relationships)
+	local PedPos = ENTITY.GET_ENTITY_COORDS(Ped)
+	local Dist = 1000.0
+	local PedRel = PED.GET_PED_RELATIONSHIP_GROUP_HASH(Ped)
+	local Peds = entities.get_all_peds_as_handles()
+	local ClosestPed = 0
+	local CheckInVeh = false
+	if IgnoreInVeh ~= nil then
+		CheckInVeh = IgnoreInVeh
+	end
+	for index, peds in pairs(Peds) do
+		if peds ~= Ped then
+			if not ENTITY.IS_ENTITY_DEAD(peds) then
+				if not PED.IS_PED_DEAD_OR_DYING(peds, true) then
+					if PED.IS_PED_A_PLAYER(peds) then
+						if not DECORATOR.DECOR_EXIST_ON(peds, "Casino_Game_Info_Decorator") then
+							local TargetRelHash = PED.GET_PED_RELATIONSHIP_GROUP_HASH(peds)
+							local RelType = PED.GET_RELATIONSHIP_BETWEEN_GROUPS(PedRel, TargetRelHash)
+							local CanPass = true
+							for i = 1, #Relationships do
+								if RelType == Relationships[i] then
+									CanPass = false
+									break
+								end
+							end
+							if CanPass then
+								local PedCoords = ENTITY.GET_ENTITY_COORDS(peds)
+								local Distance = DistanceBetween(PedPos.x, PedPos.y, PedPos.z, PedCoords.x, PedCoords.y, PedCoords.z)
+								if Distance < Dist then
+									if not CheckInVeh then
+										if CheckIsInScreen then
+											if ENTITY.IS_ENTITY_ON_SCREEN(peds) then
+												ClosestPed = peds
+												Dist = Distance
+											end
+										else
+											ClosestPed = peds
+											Dist = Distance
+										end
+									else
+										if not PED.IS_PED_IN_ANY_VEHICLE(peds, true) then
+											if CheckIsInScreen then
+												if ENTITY.IS_ENTITY_ON_SCREEN(peds) then
+													ClosestPed = peds
+													Dist = Distance
+												end
+											else
+												ClosestPed = peds
+												Dist = Distance
+											end
+										end
+									end
+								end
+							end
+						end
+					end
+				end
+			end
+		end
+	end
+	return ClosestPed
+end
+
 function DistanceBetween(x1, y1, z1, x2, y2, z2)
 	local dx = x1 - x2
 	local dy = y1 - y2
@@ -7948,6 +8011,119 @@ menu.toggle(MissionFinisherMenu, "Casino Finisher", {}, "", function(toggle)
 				end
 			else
 				HasSetValues = false
+			end
+			Wait()
+		end
+	end
+end)
+
+menu.toggle_loop(NewWeapons, "Car Rapid Fire", {}, "", function(toggle)
+	local Veh = PED.GET_VEHICLE_PED_IS_IN(PLAYER.PLAYER_PED_ID())
+	if Veh ~= 0 then
+		VEHICLE.SET_VEHICLE_FIXED(Veh)
+	end
+end)
+
+local ShootHomingAtomizer = false
+menu.toggle(NewWeapons, "Shoot Homing Atomizer", {}, "", function(toggle)
+	ShootHomingAtomizer = toggle
+	if ShootHomingAtomizer then
+		--local MemAddr = memory.alloc(8)
+		--WEAPON.GET_CURRENT_PED_VEHICLE_WEAPON(PLAYER.PLAYER_PED_ID(), MemAddr)
+		--util.copy_to_clipboard(memory.read_int(MemAddr))
+		local AtomHash = -441560099--joaat("VEHICLE_WEAPON_MONSTER3_GLKIN")
+		local ModelHash = joaat("w_ex_vehiclegrenade")
+		WEAPON.REQUEST_WEAPON_ASSET(AtomHash, 31, 0)
+		while not WEAPON.HAS_WEAPON_ASSET_LOADED(AtomHash) do
+			Wait()
+		end
+		local PropsHandlesT = {}
+		local PropsT = {}
+		while ShootHomingAtomizer do
+			local peds = PLAYER.PLAYER_PED_ID()
+			local PPos = ENTITY.GET_ENTITY_COORDS(peds)
+			if PED.IS_PED_SHOOTING(peds) then
+				local Weap = WEAPON.GET_CURRENT_PED_WEAPON_ENTITY_INDEX(peds, 0)
+				if Weap ~= 0 then
+					local BoneID = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(Weap, "gun_muzzle")
+					if BoneID ~= 0 then
+						local Pos = ENTITY.GET_WORLD_POSITION_OF_ENTITY_BONE(Weap, BoneID)
+						local HitV3 = RaycastFromCamera(peds, 1000.0, -1)
+						MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS(Pos.x, Pos.y, Pos.z, HitV3.x, HitV3.y, HitV3.z, 30, false, AtomHash, peds, true, true, -1.0)
+					end
+				end
+			end
+			local Obj = OBJECT.GET_CLOSEST_OBJECT_OF_TYPE(PPos.x, PPos.y, PPos.z, 10.0, ModelHash, false, false, false)
+			if PropsT[Obj] == nil then
+				PropsT[Obj] = 0
+				PropsHandlesT[#PropsHandlesT+1] = {Handle = Obj, Target = 0}
+			end
+			for i = 1, #PropsHandlesT do
+				if PropsHandlesT[i] ~= nil then
+					if ENTITY.DOES_ENTITY_EXIST(PropsHandlesT[i].Handle) then
+						ENTITY.SET_ENTITY_HAS_GRAVITY(PropsHandlesT[i].Handle, false)
+						if PropsHandlesT[i].Target == 0 then
+							PropsHandlesT[i].Target = GetAllPedNearestTarget(peds, false, true, {0})
+						end
+						if PropsHandlesT[i].Target ~= 0 then
+							if ENTITY.DOES_ENTITY_EXIST(PropsHandlesT[i].Target) and not ENTITY.IS_ENTITY_DEAD(PropsHandlesT[i].Target) then
+								if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(PropsHandlesT[i].Handle, PropsHandlesT[i].Target, 17) then
+									local TPos = ENTITY.GET_ENTITY_COORDS(PropsHandlesT[i].Target)
+									local OPos = ENTITY.GET_ENTITY_COORDS(PropsHandlesT[i].Handle)
+									local NewV3 = {
+										x = (TPos.x - OPos.x) * 1.0,
+										y = (TPos.y - OPos.y) * 1.0,
+										z = (TPos.z - OPos.z) * 1.0
+									}
+									local V3Ins = v3.new(NewV3.x, NewV3.y, NewV3.z)
+									local NewV3_2 = v3.normalise(V3Ins)
+									NewV3_2:mul(30.0 + ENTITY.GET_ENTITY_SPEED(PropsHandlesT[i].Target))
+									--ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(PropsHandlesT[i].Handle, 1, NewV3_2.x, NewV3_2.y, NewV3_2.z, 0, false, true, false)
+									ENTITY.SET_ENTITY_VELOCITY(PropsHandlesT[i].Handle, NewV3_2.x, NewV3_2.y, NewV3_2.z)
+								end
+							else
+								PropsHandlesT[i].Target = 0
+							end
+						end
+					else
+						PropsT[PropsHandlesT[i].Handle] = nil
+						PropsHandlesT[i] = nil
+					end
+				end
+			end
+			Wait()
+		end
+	end
+end)
+local YachtDefend = false
+menu.toggle(MissionMenu, "Yacht Defend", {}, "", function(toggle)
+	YachtDefend = toggle
+	if YachtDefend then
+		local YachtBlip = SplitGlobals("Local_227.f_13")
+		local StartArea = SplitGlobals("Local_227.f_19")
+		local EndArea = SplitGlobals("Local_227.f_22")
+		local AreaRadius = SplitGlobals("Local_227.f_25")
+		local PlayerPed = PLAYER.PLAYER_PED_ID()
+		local Pos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+		local StartPos = ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(PlayerPed, 0.0, 10.0, -5)
+		local EndPos = ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(PlayerPed, 0.0, -10.0, 5)
+		if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("gb_yacht_rob")) == 0 then
+			memory.write_int(memory.script_global(WhichMissionStartGlobal + 609 * PLAYER.PLAYER_ID()), -1)
+			Wait(1000)
+			memory.write_int(memory.script_global(WhichMissionStartGlobal + 609 * PLAYER.PLAYER_ID()), 152)
+		end
+		local HasSetCoords = false
+		while YachtDefend do
+			if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("gb_yacht_rob")) > 0 then
+				util.request_script_host("gb_yacht_rob")
+				if not HasSetCoords then
+					memory.write_vector3(memory.script_local("gb_yacht_rob", YachtBlip), Pos)
+					memory.write_vector3(memory.script_local("gb_yacht_rob", StartArea), StartPos)
+					memory.write_vector3(memory.script_local("gb_yacht_rob", EndArea), EndPos)
+					HasSetCoords = true
+				end
+			else
+				HasSetCoords = false
 			end
 			Wait()
 		end
