@@ -1212,6 +1212,8 @@ local predator_Addrs = {}
 local copped_Addrs = {}
 local sheriffped_Addrs = {}
 local swatped_Addrs = {}
+local mesa3_Addrs = {}
+local blackopsPed_Addrs = {}
 local CanSetModels = false
 --local RelPlayersBitsAddr = SplitGlobals("Global_2657704[PLAYER::PLAYER_ID() /*463*/].f_253")
 local RelAddrs = {}
@@ -1281,6 +1283,16 @@ if NETWORK.GET_ONLINE_VERSION() == "1.68" then
 				if Value == joaat("s_m_y_swat_01") then
 					swatped_Addrs[#swatped_Addrs+1] = AddressToScan + 8 * i
 					--Print("Found SWAT")
+				end
+			end
+			if #mesa3_Addrs < MaxFoundAddrs then
+				if Value == joaat("mesa3") then
+					mesa3_Addrs[#mesa3_Addrs+1] = AddressToScan + 8 * i
+				end
+			end
+			if #blackopsPed_Addrs < MaxFoundAddrs then
+				if Value == joaat("s_m_y_blackops_01") then
+					blackopsPed_Addrs[#blackopsPed_Addrs+1] = AddressToScan + 8 * i
 				end
 			end
 		end
@@ -1476,6 +1488,7 @@ local RandomModels = false
 local HasAppliedRandomModels = false
 local RandomModelsEverytime = false
 local CopyPlayerOutfitToCop = false
+local RandomMerryweather = false
 if CanSetModels then
 	CopModelSettings = menu.list(CopSettingsMenu, "Cop Model Settings", {}, "Change cop ped and vehicles models.")
 	menu.list_select(CopModelSettings, "Police Helicopter", {"polmavmodel"}, "", VehicleModels, 1, function(OnChange)
@@ -1588,6 +1601,22 @@ if CanSetModels then
 	menu.toggle(CopOutfitSettingsMenu, "Copy My Outfit To Cop", {}, "", function(toggle)
 		CopyPlayerOutfitToCop = toggle
 	end, CopyPlayerOutfitToCop)
+	local OtherDispatchesModelsMenu = menu.list(CopModelSettings, "Other Dispatches", {}, "")
+	local MerryweatherDispatchModelsMenu = menu.list(OtherDispatchesModelsMenu, "Merryweather", {}, "")
+	menu.list_select(MerryweatherDispatchModelsMenu, "Mesa3", {"mesa3model"}, "", VehicleModels, 1, function(OnChange)
+		for i = 1, #mesa3_Addrs do
+			memory.write_int(mesa3_Addrs[i], joaat(VehicleModels[OnChange]))
+		end
+	end)
+	menu.list_select(MerryweatherDispatchModelsMenu, "Blackops Ped", {"blackopspedmodel"}, "", PedModels, 1, function(OnChange)
+		for i = 1, #blackopsPed_Addrs do
+			memory.write_int(blackopsPed_Addrs[i], joaat(PedModels[OnChange]))
+		end
+		SelectedPedModels[14] = PedModels[OnChange]
+	end)
+	--menu.toggle(MerryweatherDispatchModelsMenu, "Random Army", {}, "Will randomize this dispatch models.", function(toggle)
+	--	RandomMerryweather = toggle
+	--end, RandomMerryweather)
 end
 local AllyCopSettingsMenu = menu.list(CopSettingsMenu, "Ally Cop Settings", {}, "Which settings apply to ally cops.")
 local HostileCopSettingsMenu = menu.list(CopSettingsMenu, "Hostile Cop Settings", {}, "Which settings apply to hostile cops.")
@@ -1792,6 +1821,7 @@ local SprintEverytime = false
 menu.toggle(CopAttributesSettingsMenu, "Sprint Everytime", {}, "", function(toggle)
 	SprintEverytime = toggle
 end, SprintEverytime)
+
 local MiscCopSettings = menu.list(CopSettingsMenu, "Misc Settings", {}, "")
 local RandomCopComponents = false
 menu.toggle(CopSettingsMenu, "Set Cops Random Components", {}, "Outfit.", function(toggle)
@@ -1986,6 +2016,10 @@ local CopsFollowLikeSnake = false
 menu.toggle(MiscCustomTasksMenu, "Cops Follow Like Snake", {}, "", function(toggle)
 	CopsFollowLikeSnake = toggle
 end, CopsFollowLikeSnake)
+local SetDefensiveSphereToPlayer = false
+menu.toggle(MiscCustomTasksMenu, "Set Defensive Sphere To Player", {}, "", function(toggle)
+	SetDefensiveSphereToPlayer = toggle
+end, SetDefensiveSphereToPlayer)
 --menu.list_select(AllyCopSettingsMenu, "Cop Relationship Type", {"allycoprelationship"}, "Set if cops will be able to attack players or only npcs.", table<int, table> options, 1, function on_change)
 
 local RenderCopCount = true
@@ -2005,6 +2039,55 @@ menu.toggle(ExperimentalFeaturesMenu, "Network Cops Blips", {}, "Not only you wi
 	TryNetworkCopsBlips = toggle
 end, TryNetworkCopsBlips)
 
+local OtherDispatchesMenu = menu.list(CopSettingsMenu, "Other Distpaches", {}, "")
+local MerryweatherDispatchMenu = menu.list(OtherDispatchesMenu, "Merryweather", {}, "")
+local EditMerryweather = false
+menu.toggle(MerryweatherDispatchMenu, "Edit Merryweather", {}, "", function(toggle)
+	EditMerryweather = toggle
+	if EditMerryweather then
+		SelectedPedModels[14] = "s_m_y_blackops_01"
+	else
+		SelectedPedModels[14] = nil
+	end
+end, EditMerryweather)
+local DispatchesEnum = {"Merryweather"}
+local DispatchesNum = {14}
+
+local SelectedDispatch = 14
+menu.list_select(OtherDispatchesMenu, "Call Which Dispatch", {"callwhichdispatch"}, "", DispatchesEnum, 1, function(on_change)
+	SelectedDispatch = DispatchesNum[on_change]
+end)
+local DispatchUnits = 40
+menu.slider(OtherDispatchesMenu, "Dispatch Units", {"dispatchunits"}, "How much units the dispatch will create.", 1, 80, DispatchUnits, 1, function(on_change)
+	DispatchUnits = on_change
+end)
+local IncidentIndex = 0
+local CallDispatch = false
+menu.toggle(OtherDispatchesMenu, "Call Dispatch", {}, "", function(toggle)
+	CallDispatch = toggle
+	if CallDispatch then
+		local IncidentAddr = memory.alloc(8)
+		local Entity = PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(PLAYER.PLAYER_ID())
+		local Pos = ENTITY.GET_ENTITY_COORDS(Entity)
+		local DispatchID = SelectedDispatch
+		local RelHash = 0 --joaat(AiLikeRel)
+		local Sucess = MISC.CREATE_INCIDENT_WITH_ENTITY(DispatchID, Entity, DispatchUnits, 0.0, IncidentAddr, RelHash, 1)
+		if Sucess then
+			local IncidentID = memory.read_int(IncidentAddr)
+			IncidentIndex = IncidentID
+			Print("Dispatch called sucess.")
+		else
+			Print("Failed calling dispatch.")
+		end
+	else
+		if IncidentIndex ~= 0 then
+			if MISC.IS_INCIDENT_VALID(IncidentIndex) then
+				MISC.DELETE_INCIDENT(IncidentIndex)
+			end
+			IncidentIndex = 0
+		end
+	end
+end, CallDispatch)
 local CopCustomRelMenu = menu.list(CopSettingsMenu, "Custom Relationship Settings", {}, "For DEVs.")
 
 local KnownCustomRelationships = {
@@ -2601,6 +2684,15 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 	local BlipColorToGive = 1
 	local EditedDamageEnts = {}
 	if ApplyCopSettings then
+		if RandomMerryweather then
+			if IncidentIndex ~= 0 then
+				--if MISC.IS_INCIDENT_VALID(IncidentIndex) then
+					--MISC.DELETE_INCIDENT(IncidentIndex)
+				--end
+				--IncidentIndex = 0
+			end
+		end
+		local LastCopsNum = 0
 		PlayerID = PLAYER.PLAYER_ID()
 		local RelHashBackup = memory.read_int(memory.script_global(RelHashBackupAddr))
 		local HasSetHate = false
@@ -3413,6 +3505,14 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 											if RequestControlOfEntity(peds) then
 												if SetCopsNotMigrateControl then
 													entities.set_can_migrate(peds, false)
+												end
+												if SetDefensiveSphereToPlayer then
+													if not PED.IS_PED_DEFENSIVE_AREA_ACTIVE(peds, false) then
+														local PlayerPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+														PED.SET_PED_SPHERE_DEFENSIVE_AREA(peds, PlayerPos.x, PlayerPos.y, PlayerPos.z, 7.0, false, false)
+														PED.SET_PED_CONFIG_FLAG(peds, 436, true)
+														PED.SET_PED_COMBAT_ATTRIBUTES(peds, 37, true)
+													end
 												end
 											end
 											local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
@@ -4401,7 +4501,7 @@ end
 
 function IsCopPedModel(Ped)
 	local PedModel = ENTITY.GET_ENTITY_MODEL(Ped)
-	for i = 1, #SelectedPedModels do
+	for i, value in pairs(SelectedPedModels) do
 		if SelectedPedModels[i] ~= nil then
 			if PedModel == joaat(SelectedPedModels[i]) then
 				return true
@@ -5295,6 +5395,17 @@ util.on_stop(function()
 		for i = 1, #swatped_Addrs do
 			memory.write_int(swatped_Addrs[i], joaat("s_m_y_swat_01"))
 		end
+		for i = 1, #mesa3_Addrs do
+			memory.write_int(mesa3_Addrs[i], joaat("mesa3"))
+		end
+		for i = 1, #blackopsPed_Addrs do
+			memory.write_int(blackopsPed_Addrs[i], joaat("s_m_y_blackops_01"))
+		end
+	end
+	if IncidentIndex ~= 0 then
+		if MISC.IS_INCIDENT_VALID(IncidentIndex) then
+			MISC.DELETE_INCIDENT(IncidentIndex)
+		end
 	end
 end)
 
@@ -5410,6 +5521,16 @@ function SetCopModels(Police3, Cop, FBI2, Polmav, SWAT, SheriffPed, Sheriff, She
 	SelectedPedModels[1] = RandomCopPed
 	SelectedPedModels[2] = RandomSheriffPed
 	SelectedPedModels[3] = RandomSWATPed
+end
+
+function SetMerryweatherModels(Mesa3, BlackopsPed)
+	for i = 1, #mesa3_Addrs do
+		memory.write_int(mesa3_Addrs[i], joaat(Mesa3))
+	end
+	for i = 1, #blackopsPed_Addrs do
+		memory.write_int(blackopsPed_Addrs[i], joaat(BlackopsPed))
+	end
+	SelectedPedModels[14] = BlackopsPed
 end
 
 function SetPedRandomOutfit(Ped)
@@ -7667,6 +7788,32 @@ menu.action(DevMenu, "Set Team 4", {}, "", function(toggle)
 	local Address = memory.script_local("fm_mission_controller", TeamLocal + 292 * PLAYER.PLAYER_ID())
 	if Address ~= 0 then
 		memory.write_int(Address, 3)
+	end
+end)
+
+menu.action(DevMenu, "Create Incident", {}, "", function(toggle)
+	local IncidentAddr = memory.alloc(8)
+	local Entity = PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(PLAYER.PLAYER_ID())
+	local Pos = ENTITY.GET_ENTITY_COORDS(Entity)
+	local DispatchID = 14
+	local RelHash = joaat(AiLikeRel)
+	--local Sucess = MISC.CREATE_INCIDENT(DispatchID, Pos.x, Pos.y, Pos.z, 4, 0.0, IncidentAddr, 0, 0)
+	local Sucess = MISC.CREATE_INCIDENT_WITH_ENTITY(DispatchID, Entity, 40, 0.0, IncidentAddr, RelHash, 1)
+	if Sucess then
+		local IncidentID = memory.read_int(IncidentAddr)
+		Print("Incident ID ".. IncidentID)
+		--MISC.SET_IDEAL_SPAWN_DISTANCE_FOR_INCIDENT(IncidentID, 10.0)
+	else
+		Print(Sucess)
+	end
+end)
+
+menu.action(DevMenu, "Delete Incident", {}, "", function(toggle)
+	for i = 1, 20000 do
+		if MISC.IS_INCIDENT_VALID(i) then
+			MISC.DELETE_INCIDENT(i)
+			--Print("Deleted ".. i)
+		end
 	end
 end)
 
