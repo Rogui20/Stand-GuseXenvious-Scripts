@@ -2045,7 +2045,9 @@ local EditMerryweather = false
 menu.toggle(MerryweatherDispatchMenu, "Edit Merryweather", {}, "", function(toggle)
 	EditMerryweather = toggle
 	if EditMerryweather then
-		SelectedPedModels[14] = "s_m_y_blackops_01"
+		if SelectedPedModels[14] == nil then
+			SelectedPedModels[14] = "s_m_y_blackops_01"
+		end
 	else
 		SelectedPedModels[14] = nil
 	end
@@ -2088,6 +2090,13 @@ menu.toggle(OtherDispatchesMenu, "Call Dispatch", {}, "", function(toggle)
 		end
 	end
 end, CallDispatch)
+local AutomaticCallDispatch = false
+menu.toggle(OtherDispatchesMenu, "Auto Call Dispatch", {}, "Will call dispatch until reach the amount of cops set.", function(toggle)
+	AutomaticCallDispatch = toggle
+	if SelectedPedModels[14] == nil then
+		SelectedPedModels[14] = "s_m_y_blackops_01"
+	end
+end)
 local CopCustomRelMenu = menu.list(CopSettingsMenu, "Custom Relationship Settings", {}, "For DEVs.")
 
 local KnownCustomRelationships = {
@@ -2683,16 +2692,10 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 	local DeadPeds = {}
 	local BlipColorToGive = 1
 	local EditedDamageEnts = {}
+	local EditedDamageEntsHandles = {}
 	if ApplyCopSettings then
-		if RandomMerryweather then
-			if IncidentIndex ~= 0 then
-				--if MISC.IS_INCIDENT_VALID(IncidentIndex) then
-					--MISC.DELETE_INCIDENT(IncidentIndex)
-				--end
-				--IncidentIndex = 0
-			end
-		end
-		local LastCopsNum = 0
+		local CallDispatchDelay = 0
+		local HasDeletedDispatch = false
 		PlayerID = PLAYER.PLAYER_ID()
 		local RelHashBackup = memory.read_int(memory.script_global(RelHashBackupAddr))
 		local HasSetHate = false
@@ -3080,33 +3083,55 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			else
 				HasSetCanTakeDamage = false
 			end
+			if AutomaticCallDispatch then
+				if MissionCopCount < MaxCopsToEdit then
+					HasDeletedDispatch = false
+					if IncidentIndex == 0 then
+						if CallDispatchDelay <= 0 then
+							CallDispatchDelay = 100
+							CallDispatchFunc()
+						else
+							CallDispatchDelay = CallDispatchDelay - 1
+						end
+					end
+				else
+					if not HasDeletedDispatch then
+						HasDeletedDispatch = true
+						DeleteDispatchFunc()
+						CallDispatchDelay = 0
+					end
+				end
+			end
 			for index, peds in pairs(PedsT) do
 				if peds ~= PlayerPed then
 					if IteratedPedsT[peds] == nil then
 						if ENTITY.DOES_ENTITY_EXIST(peds) then
-							if EditedDamageEnts[peds] ~= nil then
-								if ENTITY.IS_ENTITY_DEAD(peds) or PED.IS_PED_A_PLAYER(peds) or PED.IS_PED_DEAD_OR_DYING(peds) then
-									EditedDamageEnts[peds] = nil
-								end
-							end
+							--if EditedDamageEnts[peds] ~= nil then
+							--	if ENTITY.IS_ENTITY_DEAD(peds) or PED.IS_PED_A_PLAYER(peds) or PED.IS_PED_DEAD_OR_DYING(peds) then
+							--		EditedDamageEnts[peds] = nil
+							--	end
+							--end
 							if not PED.IS_PED_A_PLAYER(peds) then
-								local EntScript = ENTITY.GET_ENTITY_SCRIPT(peds, 0)
-								if EntScript == "GB_HEADHUNTER" or EntScript == "GB_BIKER_RESCUE_CONTACT" or "FM_Mission_Controller"
-								or "FM_Mission_Controller_2020" then
-									if EditedDamageEnts[peds] == nil then
-										if RequestControlOfEntity(peds) then
-											ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(peds, false)
-											local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
-											if Veh ~= 0 then
-												ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(Veh, false)
-												ENTITY.SET_ENTITY_CAN_ONLY_BE_DAMAGED_BY_SCRIPT_PARTICIPANTS(Veh, false)
+								if not ENTITY.IS_ENTITY_DEAD(peds) then
+									local EntScript = ENTITY.GET_ENTITY_SCRIPT(peds, 0)
+									if EntScript == "GB_HEADHUNTER" or EntScript == "GB_BIKER_RESCUE_CONTACT" or "FM_Mission_Controller"
+									or "FM_Mission_Controller_2020" then
+										if EditedDamageEnts[peds] == nil then
+											if RequestControlOfEntity(peds) then
+												ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(peds, false)
+												local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+												if Veh ~= 0 then
+													ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(Veh, false)
+													ENTITY.SET_ENTITY_CAN_ONLY_BE_DAMAGED_BY_SCRIPT_PARTICIPANTS(Veh, false)
+												end
+												if RelHashBackup ~= 0 then
+													ENTITY.SET_ENTITY_CAN_BE_DAMAGED_BY_RELATIONSHIP_GROUP(peds, true, RelHashBackup)
+												end
+												ENTITY.SET_ENTITY_CAN_BE_DAMAGED_BY_RELATIONSHIP_GROUP(peds, true, SelectedTeam)
+												ENTITY.SET_ENTITY_CAN_ONLY_BE_DAMAGED_BY_SCRIPT_PARTICIPANTS(peds, false)
+												EditedDamageEnts[peds] = peds
+												EditedDamageEntsHandles[#EditedDamageEntsHandles+1] = peds
 											end
-											if RelHashBackup ~= 0 then
-												ENTITY.SET_ENTITY_CAN_BE_DAMAGED_BY_RELATIONSHIP_GROUP(peds, true, RelHashBackup)
-											end
-											ENTITY.SET_ENTITY_CAN_BE_DAMAGED_BY_RELATIONSHIP_GROUP(peds, true, SelectedTeam)
-											ENTITY.SET_ENTITY_CAN_ONLY_BE_DAMAGED_BY_SCRIPT_PARTICIPANTS(peds, false)
-											EditedDamageEnts[peds] = peds
 										end
 									end
 								end
@@ -4277,6 +4302,29 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					else
 						table.remove(ZombiesT, i)
 						break
+					end
+				end
+			end
+			for i = 1, #EditedDamageEntsHandles do
+				if EditedDamageEntsHandles[i] ~= nil then
+					if ENTITY.DOES_ENTITY_EXIST(EditedDamageEntsHandles[i]) and not ENTITY.IS_ENTITY_DEAD(EditedDamageEntsHandles[i]) then
+						local peds = EditedDamageEntsHandles[i]
+						if RequestControlOfEntity(peds) then
+							ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(peds, false)
+							local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+							if Veh ~= 0 then
+								ENTITY.SET_ENTITY_ONLY_DAMAGED_BY_PLAYER(Veh, false)
+								ENTITY.SET_ENTITY_CAN_ONLY_BE_DAMAGED_BY_SCRIPT_PARTICIPANTS(Veh, false)
+							end
+							if RelHashBackup ~= 0 then
+								ENTITY.SET_ENTITY_CAN_BE_DAMAGED_BY_RELATIONSHIP_GROUP(peds, true, RelHashBackup)
+							end
+							ENTITY.SET_ENTITY_CAN_BE_DAMAGED_BY_RELATIONSHIP_GROUP(peds, true, SelectedTeam)
+							ENTITY.SET_ENTITY_CAN_ONLY_BE_DAMAGED_BY_SCRIPT_PARTICIPANTS(peds, false)
+						end
+					else
+						EditedDamageEnts[EditedDamageEntsHandles[i]] = nil
+						EditedDamageEntsHandles[i] = nil
 					end
 				end
 			end
@@ -5653,6 +5701,52 @@ function RaycastFromCamera(PlayerPed, Distance, Flags)
 	return HitCoords, memory.read_byte(DidHit) ~= 0, memory.read_int(HitEntity)
 end
 
+function RaycastFromCameraAdjustedRot(PlayerPed, Distance, Flags, CamRot)
+	local FlagBits = -1
+	if Flags ~= nil then
+		FlagBits = Flags
+	end
+	local RotNewV3 = v3.new(CamRot.x, CamRot.y, CamRot.z)
+	local HitCoords = v3.new()
+	local FVect = RotNewV3:toDir()
+	local PPos = CAM.GET_GAMEPLAY_CAM_COORD()
+	local AdjustedX = PPos.x + FVect.x * Distance
+	local AdjustedY = PPos.y + FVect.y * Distance
+	local AdjustedZ = PPos.z + FVect.z * Distance
+	local DidHit = memory.alloc(1)
+	local EndCoords = v3.new()
+	local Normal = v3.new()
+	local HitEntity = memory.alloc_int()
+	
+	local Handle = SHAPETEST.START_EXPENSIVE_SYNCHRONOUS_SHAPE_TEST_LOS_PROBE(
+		PPos.x, PPos.y, PPos.z,
+		AdjustedX, AdjustedY, AdjustedZ,
+		FlagBits,
+		PlayerPed, 7
+	)
+	SHAPETEST.GET_SHAPE_TEST_RESULT(Handle, DidHit, EndCoords, Normal, HitEntity)
+	if memory.read_byte(DidHit) ~= 0 then
+		HitCoords.x = EndCoords.x
+		HitCoords.y = EndCoords.y
+		HitCoords.z = EndCoords.z
+	else
+		HitCoords.x = AdjustedX
+		HitCoords.y = AdjustedY
+		HitCoords.z = AdjustedZ
+	end
+	return HitCoords, memory.read_byte(DidHit) ~= 0, memory.read_int(HitEntity)
+end
+
+function GetCamForwardCoords(Distance, CamRot)
+	local HitCoords = v3.new()
+	local FVect = CamRot:toDir()
+	local PPos = CAM.GET_GAMEPLAY_CAM_COORD()
+	local AdjustedX = PPos.x + FVect.x * Distance
+	local AdjustedY = PPos.y + FVect.y * Distance
+	local AdjustedZ = PPos.z + FVect.z * Distance
+	return {x = AdjustedX, y = AdjustedY, z = AdjustedZ}
+end
+
 function ShapeTestNav(Entity, PPos, AdjustedVect, Flags)
 	local FlagBits = -1
 	if Flags ~= nil then
@@ -6167,58 +6261,6 @@ menu.toggle(MissionMenu, "LifeInvader B Battle", {}, "Inside LifeInvader busines
 	end
 end)
 
-local VehGuns = false
-menu.toggle(MiscMenu, "Vehicle Guns", {}, "", function(toggle)
-	VehGuns = toggle
-	if VehGuns then
-		local PTFXAsset = "weap_ch_vehicle_weapons"
-		local PTFXName = "bullet_tracer_ch_tank_laser"
-		--WEAPON.REQUEST_WEAPON_ASSET(WEAPON_TYPE weaponType, INT iWeaponResourceFlags = WRF_REQUEST_ALL_ANIMS, EXTRA_WEAPON_COMPONENT_RESOURCE_FLAGS ExtraWeaponComponentFlags = WEAPON_COMPONENT_NONE)
-		while VehGuns do
-			if not STREAMING.HAS_NAMED_PTFX_ASSET_LOADED(PTFXAsset) then
-				STREAMING.REQUEST_NAMED_PTFX_ASSET(PTFXAsset)
-				while not STREAMING.HAS_NAMED_PTFX_ASSET_LOADED(PTFXAsset) do
-					Wait()
-				end
-			end
-			if PAD.IS_CONTROL_PRESSED(0, 69) then
-				local PlayerPed = PLAYER.PLAYER_PED_ID()
-				local Veh = PED.GET_VEHICLE_PED_IS_IN(PlayerPed, false)
-				local CamRot = CAM.GET_GAMEPLAY_CAM_ROT(0)
-				if Veh ~= 0 then
-					if PED.IS_PED_IN_VEHICLE(PlayerPed, Veh, false) then
-						local EndCoords, DidHit = RaycastFromCamera(Veh, 1000.0)
-						local BoneIndex = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(Veh, "headlight_l")
-						local BoneIndex2 = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(Veh, "headlight_r")
-						if BoneIndex ~= 0 then
-							local Pos = ENTITY.GET_ENTITY_BONE_POSTION(Veh, BoneIndex)
-							local NewPos = v3.new(EndCoords)
-							local Sub = v3.sub(NewPos, Pos)
-							local Rot = v3.toRot(Sub)
-							MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS_IGNORE_ENTITY(Pos.x, Pos.y, Pos.z, EndCoords.x, EndCoords.y, EndCoords.z, 30, false, joaat("weapon_raycarbine"), PlayerPed, false--[[VFX]], true, -1.0, Veh, 0)
-							GRAPHICS.USE_PARTICLE_FX_ASSET(PTFXAsset)
-							--GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD("bullet_tracer_xs_sr", Pos.x, Pos.y, Pos.z, CamRot.y, -CamRot.x + 90.0, CamRot.z + 90.0, 1.0, false, false, false, true)
-							GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD(PTFXName, Pos.x, Pos.y, Pos.z, Rot.x - 90.0, Rot.y, Rot.z, 1.0, false, false, false, true)
-						end
-						if BoneIndex2 ~= 0 then
-							local Pos = ENTITY.GET_ENTITY_BONE_POSTION(Veh, BoneIndex2)
-							local NewPos = v3.new(EndCoords)
-							local Sub = v3.sub(NewPos, Pos)
-							local Rot = v3.toRot(Sub)
-							MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS_IGNORE_ENTITY(Pos.x, Pos.y, Pos.z, EndCoords.x, EndCoords.y, EndCoords.z, 30, false, joaat("weapon_raycarbine"), PlayerPed, false--[[VFX]], true, -1.0, Veh, 0)
-							GRAPHICS.USE_PARTICLE_FX_ASSET(PTFXAsset)
-							--GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD("bullet_tracer_xs_sr", Pos.x, Pos.y, Pos.z, CamRot.y, -CamRot.x + 90.0, CamRot.z + 90.0, 1.0, false, false, false, true)
-							GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD(PTFXName, Pos.x, Pos.y, Pos.z, Rot.x - 90.0, Rot.y, Rot.z, 1.0, false, false, false, true)
-						end
-						Wait(49)
-					end
-				end
-			end
-			Wait()
-		end
-	end
-end)
-
 local WeaponizedVehiclesMenu = menu.list(menu.my_root(), "Weaponized Vehicles", {}, "")
 
 local HomingShootsAtPlayers = true
@@ -6327,7 +6369,7 @@ menu.toggle(WeaponizedVehiclesMenu, "Weaponize Vehicle", {}, "With a turret prop
 														local CanInsert = true
 														if AvoidFocusingFriends then
 															local Player = NETWORK.NETWORK_GET_PLAYER_INDEX_FROM_PED(peds)
-															local Handle = memory.alloc(13)
+															local Handle = memory.alloc(13*8)
 															NETWORK.NETWORK_HANDLE_FROM_PLAYER(Player, Handle, 13)
 															CanInsert = not NETWORK.NETWORK_IS_FRIEND(Handle)
 														end
@@ -7073,7 +7115,7 @@ function GetPedNearestTarget(Ped, IgnoreInVeh)
 	return ClosestPed
 end
 
-function GetAllPedNearestTarget(Ped, IgnoreInVeh, CheckIsInScreen, Relationships)
+function GetAllPedNearestTarget(Ped, IgnoreInVeh, IncludePlayers, PlayersOnly, IncludeFriends, Relationships)
 	local PedPos = ENTITY.GET_ENTITY_COORDS(Ped)
 	local Dist = 1000.0
 	local PedRel = PED.GET_PED_RELATIONSHIP_GROUP_HASH(Ped)
@@ -7083,11 +7125,17 @@ function GetAllPedNearestTarget(Ped, IgnoreInVeh, CheckIsInScreen, Relationships
 	if IgnoreInVeh ~= nil then
 		CheckInVeh = IgnoreInVeh
 	end
+	local CheckIsInScreen = true
 	for index, peds in pairs(Peds) do
 		if peds ~= Ped then
 			if not ENTITY.IS_ENTITY_DEAD(peds) then
 				if not PED.IS_PED_DEAD_OR_DYING(peds, true) then
-					if PED.IS_PED_A_PLAYER(peds) then
+					local CanPass2 = true
+					local IsAPlayer = PED.IS_PED_A_PLAYER(peds)
+					if PlayersOnly then
+						CanPass2 = IsAPlayer
+					end
+					if CanPass2 then
 						if not DECORATOR.DECOR_EXIST_ON(peds, "Casino_Game_Info_Decorator") then
 							local TargetRelHash = PED.GET_PED_RELATIONSHIP_GROUP_HASH(peds)
 							local RelType = PED.GET_RELATIONSHIP_BETWEEN_GROUPS(PedRel, TargetRelHash)
@@ -7101,27 +7149,92 @@ function GetAllPedNearestTarget(Ped, IgnoreInVeh, CheckIsInScreen, Relationships
 							if CanPass then
 								local PedCoords = ENTITY.GET_ENTITY_COORDS(peds)
 								local Distance = DistanceBetween(PedPos.x, PedPos.y, PedPos.z, PedCoords.x, PedCoords.y, PedCoords.z)
+								local CanInsert = true
 								if Distance < Dist then
 									if not CheckInVeh then
 										if CheckIsInScreen then
 											if ENTITY.IS_ENTITY_ON_SCREEN(peds) then
+												if not IncludePlayers then
+													if IsAPlayer then
+														CanInsert = false
+													end
+												else
+													if IsAPlayer then
+														if not IncludeFriends then
+															local Player = NETWORK.NETWORK_GET_PLAYER_INDEX_FROM_PED(peds)
+															local Handle = memory.alloc(13*8)
+															NETWORK.NETWORK_HANDLE_FROM_PLAYER(Player, Handle, 13)
+															CanInsert = not NETWORK.NETWORK_IS_FRIEND(Handle)
+														end
+													end
+												end
+												if CanInsert then
+													ClosestPed = peds
+													Dist = Distance
+												end
+											end
+										else
+											if not IncludePlayers then
+												if IsAPlayer then
+													CanInsert = false
+												end
+											else
+												if IsAPlayer then
+													if not IncludeFriends then
+														local Player = NETWORK.NETWORK_GET_PLAYER_INDEX_FROM_PED(peds)
+														local Handle = memory.alloc(13*8)
+														NETWORK.NETWORK_HANDLE_FROM_PLAYER(Player, Handle, 13)
+														CanInsert = not NETWORK.NETWORK_IS_FRIEND(Handle)
+													end
+												end
+											end
+											if CanInsert then
 												ClosestPed = peds
 												Dist = Distance
 											end
-										else
-											ClosestPed = peds
-											Dist = Distance
 										end
 									else
 										if not PED.IS_PED_IN_ANY_VEHICLE(peds, true) then
 											if CheckIsInScreen then
 												if ENTITY.IS_ENTITY_ON_SCREEN(peds) then
+													if not IncludePlayers then
+														if IsAPlayer then
+															CanInsert = false
+														end
+													else
+														if IsAPlayer then
+															if not IncludeFriends then
+																local Player = NETWORK.NETWORK_GET_PLAYER_INDEX_FROM_PED(peds)
+																local Handle = memory.alloc(13*8)
+																NETWORK.NETWORK_HANDLE_FROM_PLAYER(Player, Handle, 13)
+																CanInsert = not NETWORK.NETWORK_IS_FRIEND(Handle)
+															end
+														end
+													end
+													if CanInsert then
+														ClosestPed = peds
+														Dist = Distance
+													end
+												end
+											else
+												if not IncludePlayers then
+													if IsAPlayer then
+														CanInsert = false
+													end
+												else
+													if IsAPlayer then
+														if not IncludeFriends then
+															local Player = NETWORK.NETWORK_GET_PLAYER_INDEX_FROM_PED(peds)
+															local Handle = memory.alloc(13*8)
+															NETWORK.NETWORK_HANDLE_FROM_PLAYER(Player, Handle, 13)
+															CanInsert = not NETWORK.NETWORK_IS_FRIEND(Handle)
+														end
+													end
+												end
+												if CanInsert then
 													ClosestPed = peds
 													Dist = Distance
 												end
-											else
-												ClosestPed = peds
-												Dist = Distance
 											end
 										end
 									end
@@ -7791,21 +7904,12 @@ menu.action(DevMenu, "Set Team 4", {}, "", function(toggle)
 	end
 end)
 
-menu.action(DevMenu, "Create Incident", {}, "", function(toggle)
-	local IncidentAddr = memory.alloc(8)
-	local Entity = PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(PLAYER.PLAYER_ID())
-	local Pos = ENTITY.GET_ENTITY_COORDS(Entity)
-	local DispatchID = 14
-	local RelHash = joaat(AiLikeRel)
-	--local Sucess = MISC.CREATE_INCIDENT(DispatchID, Pos.x, Pos.y, Pos.z, 4, 0.0, IncidentAddr, 0, 0)
-	local Sucess = MISC.CREATE_INCIDENT_WITH_ENTITY(DispatchID, Entity, 40, 0.0, IncidentAddr, RelHash, 1)
-	if Sucess then
-		local IncidentID = memory.read_int(IncidentAddr)
-		Print("Incident ID ".. IncidentID)
-		--MISC.SET_IDEAL_SPAWN_DISTANCE_FOR_INCIDENT(IncidentID, 10.0)
-	else
-		Print(Sucess)
-	end
+menu.action(DevMenu, "Is Host of BBattle 2", {}, "", function(toggle)
+	util.spoof_script("fm_content_business_battles", function()
+		Print("1 "..NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT())
+		util.request_script_host("fm_content_business_battles")
+		Print("2 "..NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT())
+	end)
 end)
 
 menu.action(DevMenu, "Delete Incident", {}, "", function(toggle)
@@ -7815,6 +7919,14 @@ menu.action(DevMenu, "Delete Incident", {}, "", function(toggle)
 			--Print("Deleted ".. i)
 		end
 	end
+end)
+
+menu.action(DevMenu, "Unstuck Vehicle", {}, "", function(toggle)
+	local Veh = PED.GET_VEHICLE_PED_IS_IN(PLAYER.PLAYER_PED_ID(), false)
+	local NetID = NETWORK.NETWORK_GET_NETWORK_ID_FROM_ENTITY(Veh)
+	NETWORK.NETWORK_REQUEST_CONTROL_OF_NETWORK_ID(NetID)
+	NETWORK.SET_NETWORK_ID_CAN_MIGRATE(NetID, true)
+	NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Veh)
 end)
 
 local PatchStromberg = false
@@ -8184,6 +8296,7 @@ menu.toggle(NewWeapons, "Shoot Homing Atomizer", {}, "", function(toggle)
 		while not WEAPON.HAS_WEAPON_ASSET_LOADED(AtomHash) do
 			Wait()
 		end
+		WEAPON.GIVE_WEAPON_TO_PED(PLAYER.PLAYER_PED_ID(), AtomHash, 120, false, false)
 		local PropsHandlesT = {}
 		local PropsT = {}
 		while ShootHomingAtomizer do
@@ -8210,7 +8323,7 @@ menu.toggle(NewWeapons, "Shoot Homing Atomizer", {}, "", function(toggle)
 					if ENTITY.DOES_ENTITY_EXIST(PropsHandlesT[i].Handle) then
 						ENTITY.SET_ENTITY_HAS_GRAVITY(PropsHandlesT[i].Handle, false)
 						if PropsHandlesT[i].Target == 0 then
-							PropsHandlesT[i].Target = GetAllPedNearestTarget(peds, false, true, {0})
+							PropsHandlesT[i].Target = GetAllPedNearestTarget(peds, false, true, false, false, {0})
 						end
 						if PropsHandlesT[i].Target ~= 0 then
 							if ENTITY.DOES_ENTITY_EXIST(PropsHandlesT[i].Target) and not ENTITY.IS_ENTITY_DEAD(PropsHandlesT[i].Target) then
@@ -8242,6 +8355,7 @@ menu.toggle(NewWeapons, "Shoot Homing Atomizer", {}, "", function(toggle)
 		end
 	end
 end)
+
 local YachtDefend = false
 menu.toggle(MissionMenu, "Yacht Defend", {}, "", function(toggle)
 	YachtDefend = toggle
@@ -8261,18 +8375,352 @@ menu.toggle(MissionMenu, "Yacht Defend", {}, "", function(toggle)
 		end
 		local HasSetCoords = false
 		while YachtDefend do
+			local Delay = 0
 			if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("gb_yacht_rob")) > 0 then
-				util.request_script_host("gb_yacht_rob")
-				if not HasSetCoords then
-					memory.write_vector3(memory.script_local("gb_yacht_rob", YachtBlip), Pos)
-					memory.write_vector3(memory.script_local("gb_yacht_rob", StartArea), StartPos)
-					memory.write_vector3(memory.script_local("gb_yacht_rob", EndArea), EndPos)
-					HasSetCoords = true
+				local IsHost = false
+				util.spoof_script("gb_yacht_rob", function()
+					IsHost = NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT()
+				end)
+				if IsHost then
+					if not HasSetCoords then
+						memory.write_vector3(memory.script_local("gb_yacht_rob", YachtBlip), Pos)
+						memory.write_vector3(memory.script_local("gb_yacht_rob", StartArea), StartPos)
+						memory.write_vector3(memory.script_local("gb_yacht_rob", EndArea), EndPos)
+						HasSetCoords = true
+					end
+				else
+					util.request_script_host("gb_yacht_rob")
+					Delay = 1
 				end
 			else
 				HasSetCoords = false
+			end
+			Wait(Delay)
+		end
+	end
+end)
+
+menu.action(MissionFinisherMenu, "Set 9999 Lives", {}, "", function(toggle)
+	if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller")) > 0 then
+		local LivesLocalAddr = SplitGlobals("Local_19728.f_1730[bVar0]")
+		for i = 1, 100 do
+			local IsHost = false
+			util.spoof_script("fm_mission_controller", function()
+				IsHost = NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT()
+				--NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+			end)
+			if IsHost then
+				for k = 0, 3 do
+					memory.write_int(memory.script_local("fm_mission_controller", LivesLocalAddr + k), -9999)
+				end
+				break
+			else
+				util.request_script_host("fm_mission_controller")
+			end
+			Wait(1000)
+		end
+	end
+end)
+
+function CallDispatchFunc()
+	local IncidentAddr = memory.alloc(8)
+	local Entity = PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(PLAYER.PLAYER_ID())
+	local Pos = ENTITY.GET_ENTITY_COORDS(Entity)
+	local DispatchID = SelectedDispatch
+	local RelHash = 0 --joaat(AiLikeRel)
+	local Sucess = MISC.CREATE_INCIDENT_WITH_ENTITY(DispatchID, Entity, DispatchUnits, 0.0, IncidentAddr, RelHash, 1)
+	if Sucess then
+		local IncidentID = memory.read_int(IncidentAddr)
+		IncidentIndex = IncidentID
+	end
+	return Sucess
+end
+
+function DeleteDispatchFunc()
+	if IncidentIndex ~= 0 then
+		if MISC.IS_INCIDENT_VALID(IncidentIndex) then
+			MISC.DELETE_INCIDENT(IncidentIndex)
+		end
+		IncidentIndex = 0
+	end
+end
+
+local VehGuns = false
+menu.toggle(WeaponizedVehiclesMenu, "Vehicle Guns", {}, "", function(toggle)
+	VehGuns = toggle
+	if VehGuns then
+		local PTFXAsset = "weap_ch_vehicle_weapons"
+		local PTFXName = "bullet_tracer_ch_tank_laser"
+		--WEAPON.REQUEST_WEAPON_ASSET(WEAPON_TYPE weaponType, INT iWeaponResourceFlags = WRF_REQUEST_ALL_ANIMS, EXTRA_WEAPON_COMPONENT_RESOURCE_FLAGS ExtraWeaponComponentFlags = WEAPON_COMPONENT_NONE)
+		while VehGuns do
+			if not STREAMING.HAS_NAMED_PTFX_ASSET_LOADED(PTFXAsset) then
+				STREAMING.REQUEST_NAMED_PTFX_ASSET(PTFXAsset)
+				while not STREAMING.HAS_NAMED_PTFX_ASSET_LOADED(PTFXAsset) do
+					Wait()
+				end
+			end
+			if PAD.IS_CONTROL_PRESSED(0, 69) then
+				local PlayerPed = PLAYER.PLAYER_PED_ID()
+				local Veh = PED.GET_VEHICLE_PED_IS_IN(PlayerPed, false)
+				local CamRot = CAM.GET_GAMEPLAY_CAM_ROT(0)
+				if Veh ~= 0 then
+					if PED.IS_PED_IN_VEHICLE(PlayerPed, Veh, false) then
+						local EndCoords, DidHit = RaycastFromCamera(Veh, 1000.0)
+						local BoneIndex = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(Veh, "headlight_l")
+						local BoneIndex2 = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(Veh, "headlight_r")
+						if BoneIndex ~= 0 then
+							local Pos = ENTITY.GET_ENTITY_BONE_POSTION(Veh, BoneIndex)
+							local NewPos = v3.new(EndCoords)
+							local Sub = v3.sub(NewPos, Pos)
+							local Rot = v3.toRot(Sub)
+							MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS_IGNORE_ENTITY(Pos.x, Pos.y, Pos.z, EndCoords.x, EndCoords.y, EndCoords.z, 30, false, joaat("weapon_raycarbine"), PlayerPed, false--[[VFX]], true, -1.0, Veh, 0)
+							GRAPHICS.USE_PARTICLE_FX_ASSET(PTFXAsset)
+							--GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD("bullet_tracer_xs_sr", Pos.x, Pos.y, Pos.z, CamRot.y, -CamRot.x + 90.0, CamRot.z + 90.0, 1.0, false, false, false, true)
+							GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD(PTFXName, Pos.x, Pos.y, Pos.z, Rot.x - 90.0, Rot.y, Rot.z, 1.0, false, false, false, true)
+						end
+						if BoneIndex2 ~= 0 then
+							local Pos = ENTITY.GET_ENTITY_BONE_POSTION(Veh, BoneIndex2)
+							local NewPos = v3.new(EndCoords)
+							local Sub = v3.sub(NewPos, Pos)
+							local Rot = v3.toRot(Sub)
+							MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS_IGNORE_ENTITY(Pos.x, Pos.y, Pos.z, EndCoords.x, EndCoords.y, EndCoords.z, 30, false, joaat("weapon_raycarbine"), PlayerPed, false--[[VFX]], true, -1.0, Veh, 0)
+							GRAPHICS.USE_PARTICLE_FX_ASSET(PTFXAsset)
+							--GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD("bullet_tracer_xs_sr", Pos.x, Pos.y, Pos.z, CamRot.y, -CamRot.x + 90.0, CamRot.z + 90.0, 1.0, false, false, false, true)
+							GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD(PTFXName, Pos.x, Pos.y, Pos.z, Rot.x - 90.0, Rot.y, Rot.z, 1.0, false, false, false, true)
+						end
+						Wait(49)
+					end
+				end
 			end
 			Wait()
 		end
 	end
 end)
+
+local VehHomingKinect = false
+menu.toggle(WeaponizedVehiclesMenu, "Vehicle Homing Kinect", {}, "", function(toggle)
+	VehHomingKinect = toggle
+	if VehHomingKinect then
+		local AtomHash = -441560099--joaat("VEHICLE_WEAPON_MONSTER3_GLKIN")
+		local ModelHash = joaat("w_ex_vehiclegrenade")
+		WEAPON.REQUEST_WEAPON_ASSET(AtomHash, 31, 0)
+		while not WEAPON.HAS_WEAPON_ASSET_LOADED(AtomHash) do
+			Wait()
+		end
+		WEAPON.GIVE_WEAPON_TO_PED(PLAYER.PLAYER_PED_ID(), AtomHash, 120, false, false)
+		local PropsHandlesT = {}
+		local PropsT = {}
+		local WhichSideShoot = 0
+		local TimerT = {
+			Timer = util.current_time_millis(),
+			TimerCount = 1,
+			HasReseted = false
+		}
+		local Spd = 0.01
+		while VehHomingKinect do
+			local peds = PLAYER.PLAYER_PED_ID()
+			local PPos = ENTITY.GET_ENTITY_COORDS(peds)
+			local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+			local CamRot = CAM.GET_GAMEPLAY_CAM_ROT(0)
+			if Veh ~= 0 then
+				if TimerT.TimerCount >= 1 then
+					TimerT.HasReseted = false
+					if PED.IS_PED_IN_VEHICLE(peds, Veh, false) then
+						if PED.IS_PED_SHOOTING(peds) or PAD.IS_CONTROL_PRESSED(0, 70) then
+							local Shooted = false
+							local BoneIndex = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(Veh, "headlight_l")
+							local BoneIndex2 = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(Veh, "headlight_r")
+							if WhichSideShoot == 0 then
+								if BoneIndex ~= 0 then
+									local Pos = ENTITY.GET_WORLD_POSITION_OF_ENTITY_BONE(Veh, BoneIndex)
+									if not IsZeroVector(Pos) then
+										local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(Veh)
+										local FPos = {x = Pos.x + FVect.x * 10.0, y = Pos.y + FVect.y * 10.0, z = Pos.z + FVect.z * 10.0}
+										MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS(Pos.x, Pos.y, Pos.z, FPos.x, FPos.y, FPos.z, 30, false, AtomHash, peds, true, true, -1.0)
+										Shooted = true
+										TimerT.TimerCount = 0
+										WhichSideShoot = 1
+									end
+								end
+							end
+							if not Shooted then
+								if WhichSideShoot == 1 then
+									if BoneIndex2 ~= 0 then
+										local Pos = ENTITY.GET_WORLD_POSITION_OF_ENTITY_BONE(Veh, BoneIndex2)
+										if not IsZeroVector(Pos) then
+											local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(Veh)
+											local FPos = {x = Pos.x + FVect.x * 10.0, y = Pos.y + FVect.y * 10.0, z = Pos.z + FVect.z * 10.0}
+											MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS(Pos.x, Pos.y, Pos.z, FPos.x, FPos.y, FPos.z, 30, false, AtomHash, peds, true, true, -1.0)
+											Shooted = true
+											TimerT.TimerCount = 0
+											WhichSideShoot = 0
+										end
+									end
+								end
+							end
+							if not Shooted then
+								local Pos = ENTITY.GET_ENTITY_COORDS(Veh)
+								local FVect = ENTITY.GET_ENTITY_FORWARD_VECTOR(Veh)
+								local Min, Max = v3.new(), v3.new()
+								MISC.GET_MODEL_DIMENSIONS(ENTITY.GET_ENTITY_MODEL(Veh), Min, Max)
+								local FPos = {
+									x = Pos.x + Max.y * FVect.x,
+									y = Pos.y + Max.y * FVect.y,
+									z = Pos.z + Max.y * FVect.z
+								}
+								MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS(Pos.x, Pos.y, Pos.z, FPos.x, FPos.y, FPos.z, 30, false, AtomHash, peds, true, true, -1.0)
+								Shooted = true
+								TimerT.TimerCount = 0
+								WhichSideShoot = 0
+							end
+						end
+					end
+				else
+					if not TimerT.HasReseted then
+						TimerT.Timer = util.current_time_millis()
+						TimerT.HasReseted = true
+					end
+					TimerCount(TimerT)
+				end
+			end
+			local Obj = OBJECT.GET_CLOSEST_OBJECT_OF_TYPE(PPos.x, PPos.y, PPos.z, 10.0, ModelHash, false, false, false)
+			if PropsT[Obj] == nil then
+				PropsT[Obj] = 0
+				PropsHandlesT[#PropsHandlesT+1] = {Handle = Obj, Target = 0}
+			end
+			for i = 1, #PropsHandlesT do
+				if PropsHandlesT[i] ~= nil then
+					if ENTITY.DOES_ENTITY_EXIST(PropsHandlesT[i].Handle) then
+						ENTITY.SET_ENTITY_HAS_GRAVITY(PropsHandlesT[i].Handle, false)
+						if PropsHandlesT[i].Target == 0 then
+							PropsHandlesT[i].Target = GetAllPedNearestTarget(peds, false, HomingShootsAtPlayers, not HomingShootsAtPeds, not AvoidFocusingFriends, {0})
+						end
+						if PropsHandlesT[i].Target ~= 0 then
+							if ENTITY.DOES_ENTITY_EXIST(PropsHandlesT[i].Target) and not ENTITY.IS_ENTITY_DEAD(PropsHandlesT[i].Target) then
+								if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(PropsHandlesT[i].Handle, PropsHandlesT[i].Target, 17) then
+									local TPos = ENTITY.GET_ENTITY_COORDS(PropsHandlesT[i].Target)
+									local OPos = ENTITY.GET_ENTITY_COORDS(PropsHandlesT[i].Handle)
+									local Rot = v3.lookAt(OPos, TPos)
+									local Dir = v3.toDir(Rot)
+									local Vel = ENTITY.GET_ENTITY_VELOCITY(PropsHandlesT[i].Handle)
+									ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(PropsHandlesT[i].Handle, 1, Dir.x - (Vel.x * Spd), Dir.y - (Vel.y * Spd), Dir.z - (Vel.z * Spd), 0, false, true, false)
+								end
+							else
+								PropsHandlesT[i].Target = 0
+							end
+						end
+					else
+						PropsT[PropsHandlesT[i].Handle] = nil
+						PropsHandlesT[i] = nil
+					end
+				end
+			end
+			Wait()
+		end
+	end
+end)
+
+
+menu.toggle_loop(DevMenu, "Matrix Test", {}, "", function(toggle)
+	local PlayerPed = PLAYER.PLAYER_PED_ID()
+	local Vel = ENTITY.GET_ENTITY_VELOCITY(PlayerPed)
+	local EntRot = ENTITY.GET_ENTITY_ROTATION(PlayerPed, 2)
+	local FVect, RVect, UpVect, Vect = v3.new(), v3.new(), v3.new(), v3.new()
+	ENTITY.GET_ENTITY_MATRIX(PlayerPed, FVect, RVect, UpVect, Vect)
+	local Matrix = GetEntityMatrix(EntRot)
+	local x, y, z = RotateVector(1.0, 1.0, 0.0, 0.0, EntRot.x, EntRot.y, EntRot.z)
+	--local x, y, z = RotateVector(1.0, 1.0, 0.0, 0.0, Vel.x, Vel.y, Vel.z)
+	local VelDir = Vel.x * RVect.x + Vel.y * RVect.y + Vel.z * RVect.z
+	local VelDirRot = z
+	--local VelDir = Vel.x * Matrix[2][1]
+	local SpdDir = ENTITY.GET_ENTITY_SPEED_VECTOR(PlayerPed, true)
+	local Txt1 = string.format("%.3f", Vel.x)
+	local Txt2 = string.format("%.3f", VelDir)
+	local Txt3 = string.format("%.3f", SpdDir.x)
+	--local Txt4 = string.format("%.3f", Matrix[2][1])
+	local Txt4 = string.format("%.3f", RVect.x)
+	directx.draw_text(0.7, 0.7, "Vel.x: "..Txt1.." VelDir.x: "..Txt2.." SpdDir.x: "..Txt3.." Matrix.x: "..Txt4, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
+	local Txt5 = string.format("%.3f", EntRot.z)
+	local Txt6 = string.format("%.3f", VelDirRot)
+	directx.draw_text(0.7, 0.75, "EntRot.x: "..Txt5.." VelDir.x: "..Txt6, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
+end)
+
+
+function TimerCount(TimerT)
+	local TimeMillis = util.current_time_millis()
+	if TimeMillis > TimerT.Timer+1000 then
+		TimerT.TimerCount = TimerT.TimerCount + 1
+		TimerT.Timer = TimeMillis
+	end
+end
+
+function IsZeroVector(Pos)
+	return Pos.x ~= 0 and Pos.y ~= 0 and Pos.z ~= 0
+end
+
+function GetEntityMatrix(rot)
+    --local rot = GetEntityRotation(element) -- ZXY
+    local rx, ry, rz = rot.x, rot.y, rot.z
+    rx, ry, rz = math.rad(rx), math.rad(ry), math.rad(rz)
+    local matrix = {}
+    matrix[1] = {}
+    matrix[1][1] = math.cos(rz)*math.cos(ry) - math.sin(rz)*math.sin(rx)*math.sin(ry)
+    matrix[1][2] = math.cos(ry)*math.sin(rz) + math.cos(rz)*math.sin(rx)*math.sin(ry)
+    matrix[1][3] = -math.cos(rx)*math.sin(ry)
+    matrix[1][4] = 1
+    
+    matrix[2] = {}
+    matrix[2][1] = -math.cos(rx)*math.sin(rz)
+    matrix[2][2] = math.cos(rz)*math.cos(rx)
+    matrix[2][3] = math.sin(rx)
+    matrix[2][4] = 1
+	
+    matrix[3] = {}
+    matrix[3][1] = math.cos(rz)*math.sin(ry) + math.cos(ry)*math.sin(rz)*math.sin(rx)
+    matrix[3][2] = math.sin(rz)*math.sin(ry) - math.cos(rz)*math.cos(ry)*math.sin(rx)
+    matrix[3][3] = math.cos(rx)*math.cos(ry)
+    matrix[3][4] = 1
+	
+    --matrix[4] = {}
+    --local Pos = GetEntityCoords(element)
+    --matrix[4][1], matrix[4][2], matrix[4][3] = pos.x, pos.y, pos.z - 1.0
+    --matrix[4][4] = 1
+	
+    return matrix
+end
+
+function GetOffsetFromEntityInWorldCoords(entity, offX, offY, offZ)
+    local m = getEntityMatrix(entity)
+    local x = offX * m[1][1] + offY * m[2][1] + offZ * m[3][1] + m[4][1]
+    local y = offX * m[1][2] + offY * m[2][2] + offZ * m[3][2] + m[4][2]
+    local z = offX * m[1][3] + offY * m[2][3] + offZ * m[3][3] + m[4][3]
+    return vector3(x, y, z)
+end
+
+function RotateVector(angle, x, y, z, vx, vy, vz)
+	c = math.cos(angle)
+
+	s = math.sin(angle)
+
+	length = math.sqrt(x*x + y*y + z*z)
+
+	x /= length
+
+	y /= length
+
+	z /= length
+
+	rotationMatrix = {
+
+	{ c + x*x*(1-c), x*y*(1-c) - z*s, x*z*(1-c) + y*s },
+
+	{ y*x*(1-c) + z*s, c + y*y*(1-c), y*z*(1-c) - x*s },
+
+	{ z*x*(1-c) - y*s, z*y*(1-c) + x*s, c + z*z*(1-c) } }
+	newVx = rotationMatrix[1][1]*vx + rotationMatrix[1][2]*vy + rotationMatrix[1][3]*vz
+
+	newVy = rotationMatrix[2][1]*vx + rotationMatrix[2][2]*vy + rotationMatrix[2][3]*vz
+
+	newVz = rotationMatrix[3][1]*vx + rotationMatrix[3][2]*vy + rotationMatrix[3][3]*vz
+	return newVx, newVy, newVz
+end
