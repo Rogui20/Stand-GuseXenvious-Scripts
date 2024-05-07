@@ -32,6 +32,7 @@ local Polys1 = {}
 
 local Contents = LoadJSONFile(filesystem.scripts_dir().."\\navs\\LastNav.json")
 if Contents ~= nil then
+	--local ContentsIT = 0
 	for k = 1, #Contents do
 		Polys1[#Polys1+1] = {
 			{x = Contents[k].Poly1.x, y = Contents[k].Poly1.y, z = Contents[k].Poly1.z},
@@ -45,6 +46,11 @@ if Contents ~= nil then
 			JumpTo = Contents[k].JumpTo or nil,
 			JumpedFrom = Contents[k].JumpedFrom or nil
 		}
+		--ContentsIT = ContentsIT + 1
+		--if ContentsIT > 10 then
+		--	ContentsIT = 0
+		--	Wait()
+		--end
 	end
 end
 
@@ -257,15 +263,15 @@ function SetAllPolysNeighboors()
 				Sub3.x == Sub3_1.x and Sub3.y == Sub3_1.y and Sub3.z == Sub3_1.z or
 				Sub3.x == Sub2_1.x and Sub3.y == Sub2_1.y and Sub3.z == Sub2_1.z or
 				Sub3.x == Sub_1.x and Sub3.y == Sub_1.y and Sub3.z == Sub_1.z
-				--Polys1[i][1].x == Polys1[k][1].x and Polys1[i][1].y == Polys1[k][1].y and Polys1[i][1].z == Polys1[k][1].z or
-				--Polys1[i][1].x == Polys1[k][2].x and Polys1[i][1].y == Polys1[k][2].y and Polys1[i][1].z == Polys1[k][2].z or
-				--Polys1[i][1].x == Polys1[k][3].x and Polys1[i][1].y == Polys1[k][3].y and Polys1[i][1].z == Polys1[k][3].z or
-				--Polys1[i][2].x == Polys1[k][1].x and Polys1[i][2].y == Polys1[k][1].y and Polys1[i][2].z == Polys1[k][1].z or
-				--Polys1[i][2].x == Polys1[k][2].x and Polys1[i][2].y == Polys1[k][2].y and Polys1[i][2].z == Polys1[k][2].z or
-				--Polys1[i][2].x == Polys1[k][3].x and Polys1[i][2].y == Polys1[k][3].y and Polys1[i][2].z == Polys1[k][3].z or
-				--Polys1[i][3].x == Polys1[k][1].x and Polys1[i][3].y == Polys1[k][1].y and Polys1[i][3].z == Polys1[k][1].z or
-				--Polys1[i][3].x == Polys1[k][2].x and Polys1[i][3].y == Polys1[k][2].y and Polys1[i][3].z == Polys1[k][2].z or
-				--Polys1[i][3].x == Polys1[k][3].x and Polys1[i][3].y == Polys1[k][3].y and Polys1[i][3].z == Polys1[k][3].z
+				or Polys1[i][1].x == Polys1[k][1].x and Polys1[i][1].y == Polys1[k][1].y and Polys1[i][1].z == Polys1[k][1].z or
+				Polys1[i][1].x == Polys1[k][2].x and Polys1[i][1].y == Polys1[k][2].y and Polys1[i][1].z == Polys1[k][2].z or
+				Polys1[i][1].x == Polys1[k][3].x and Polys1[i][1].y == Polys1[k][3].y and Polys1[i][1].z == Polys1[k][3].z or
+				Polys1[i][2].x == Polys1[k][1].x and Polys1[i][2].y == Polys1[k][1].y and Polys1[i][2].z == Polys1[k][1].z or
+				Polys1[i][2].x == Polys1[k][2].x and Polys1[i][2].y == Polys1[k][2].y and Polys1[i][2].z == Polys1[k][2].z or
+				Polys1[i][2].x == Polys1[k][3].x and Polys1[i][2].y == Polys1[k][3].y and Polys1[i][2].z == Polys1[k][3].z or
+				Polys1[i][3].x == Polys1[k][1].x and Polys1[i][3].y == Polys1[k][1].y and Polys1[i][3].z == Polys1[k][1].z or
+				Polys1[i][3].x == Polys1[k][2].x and Polys1[i][3].y == Polys1[k][2].y and Polys1[i][3].z == Polys1[k][2].z or
+				Polys1[i][3].x == Polys1[k][3].x and Polys1[i][3].y == Polys1[k][3].y and Polys1[i][3].z == Polys1[k][3].z
 				then
 					Polys1[i].Neighboors[#Polys1[i].Neighboors+1] = k
 				end
@@ -334,8 +340,11 @@ menu.toggle(DrawFunctionsMenu, "Draw Polys", {}, "", function(Toggle)
 			local Pos = ENTITY.GET_ENTITY_COORDS(PLAYER.PLAYER_PED_ID())
 			for i = 1, #Polys1 do
 				local R, G, B = 255, 255, 255
+				--if InsidePolygon2(Polys1[i], Pos, "z", "x") and InsidePolygon2(Polys1[i], Pos, "y", "z") then
+				--if InsidePolygon(Polys1[i], Pos) then
 				--if Inside3DPolygon(Polys1[i], Pos) then
-				if GetPolygonDirectIndex(Pos) == i then
+				--if GetPolygonDirectIndex(Pos) == i then
+				if Inside3DPolygon2(Polys1[i], Pos) then
 					R = 0
 					G = 0
 					Print("Index is "..i)
@@ -347,6 +356,12 @@ menu.toggle(DrawFunctionsMenu, "Draw Polys", {}, "", function(Toggle)
 							GRAPHICS.DRAW_LINE(Polys1[i].Center.x, Polys1[i].Center.y, Polys1[i].Center.z,
 							Polys1[Polys1[i].LinkedIDs[k]].Center.x, Polys1[Polys1[i].LinkedIDs[k]].Center.y, Polys1[Polys1[i].LinkedIDs[k]].Center.z, 255, 255, 255, 150)
 						end
+					end
+				end
+				if Polys1[i].JumpTo ~= nil then
+					for k = 1, #Polys1[i].JumpTo do
+						GRAPHICS.DRAW_LINE(Polys1[i].Center.x, Polys1[i].Center.y, Polys1[i].Center.z + 1.0,
+						Polys1[Polys1[i].JumpTo[k]].Center.x, Polys1[Polys1[i].JumpTo[k]].Center.y, Polys1[Polys1[i].JumpTo[k]].Center.z + 1.0, 255, 0, 0, 150)
 					end
 				end
 				if Polys1[i].Flags ~= nil then
@@ -1547,6 +1562,12 @@ menu.action(AddPolysMenu, "Delete Selected Poly Point", {}, "", function(Toggle)
 	end
 end)
 
+menu.action(AddPolysMenu, "Delete All Poly Points", {}, "", function(Toggle)
+	for k = 1, #Polys1 do
+		Polys1[k].Point = nil
+	end
+end)
+
 menu.action(AddPolysMenu, "Calculate All Polygon Neighbors", {}, "", function(Toggle)
 	SetAllPolysNeighboors()
 end)
@@ -1585,7 +1606,7 @@ menu.action(PolygonLoadOrSaveMenu, "Load Polys", {}, "", function(Toggle)
 end)
 
 local TestMenu = menu.list(NavmeshingMenu, "Test Navigation", {}, "")
-local StartPath = {x = 113.82311248779, y = -697.71612548828, z = 342.03619384766}
+local StartPath = {x = 96.527038574219, y = -667.39831542969, z = 342.03634643555}
 
 local NavNetID = 0
 local NavHandle = 0
@@ -1631,7 +1652,7 @@ menu.toggle(TestMenu, "Create Ped For Nav", {}, "", function(Toggle)
 			--PED.SET_PED_MIN_MOVE_BLEND_RATIO(NavHandle, 3.0)
 			--PED.SET_PED_MAX_MOVE_BLEND_RATIO(NavHandle, 3.0)
 			if FoundIndex == 0 then
-				FoundPaths, InPolyIndex, TargetPolyIndex, InsideStartPolygon, TargetInsideTargetPolygon = AStarPathFind(Pos, PlayerPos, 3, nil, nil, nil, nil, nil, nil, false)
+				FoundPaths, InPolyIndex, TargetPolyIndex, InsideStartPolygon, TargetInsideTargetPolygon = AStarPathFind(Pos, PlayerPos, 3, nil, nil, nil, nil, nil, nil, true)
 				if FoundPaths ~= nil then
 					FoundIndex = 1
 					LastTargetPos = PlayerPos
@@ -1670,7 +1691,9 @@ menu.toggle(TestMenu, "Create Ped For Nav", {}, "", function(Toggle)
 						end
 						if ENTITY.IS_ENTITY_AT_COORD(NavHandle, TaskCoords.x, TaskCoords.y, TaskCoords.z, 0.5, 0.5, 1.0, false, false, 0) then
 							if FoundPaths[PathIndex].Action ~= nil then
-								--Print("Action isn't nil")
+								Print("Action isn't nil")
+								TASK.TASK_ACHIEVE_HEADING(NavHandle, FoundPaths[PathIndex].Heading, 2000)
+								Wait(2000)
 								--if is_bit_set(FoundPaths[PathIndex].Action, FlagBitNames.Jump) then
 									TASK.TASK_CLIMB(NavHandle, false)
 									--Print("Climb")
@@ -1685,8 +1708,16 @@ menu.toggle(TestMenu, "Create Ped For Nav", {}, "", function(Toggle)
 							end
 						end
 					end
+					--GRAPHICS.DRAW_LINE(Pos.x, Pos.y, Pos.z,
+					--TaskCoords.x, TaskCoords.y, TaskCoords.z, 255, 255, 255, 255)
 					GRAPHICS.DRAW_LINE(Pos.x, Pos.y, Pos.z,
 					TaskCoords.x, TaskCoords.y, TaskCoords.z, 255, 255, 255, 255)
+					if FoundPaths ~= nil then
+						for i = PathIndex, #FoundPaths-1 do
+							GRAPHICS.DRAW_LINE(FoundPaths[i].x, FoundPaths[i].y, FoundPaths[i].z,
+							FoundPaths[i+1].x, FoundPaths[i+1].y, FoundPaths[i+1].z, 255, 255, 255, 255)
+						end
+					end
 					--if not InsidePolygon(Polys1[InPolyIndex], Pos) then
 						if TargetInsideTargetPolygon or DistanceBetween(PlayerPos.x, PlayerPos.y, PlayerPos.z, LastTargetPos.x, LastTargetPos.y ,LastTargetPos.z) > 2.0 then
 							if not InsidePolygon(Polys1[TargetPolyIndex], PlayerPos) then
@@ -1717,7 +1748,7 @@ menu.toggle(TestMenu, "Get Path To Poly", {}, "", function(Toggle)
 		local Pos = ENTITY.GET_ENTITY_COORDS(PLAYER.PLAYER_PED_ID())
 		--local GoToCoords = {x = -955.48394775391, y = 166.00401306152, z = 373.17413330078}
 		
-		local FinalPaths = AStarPathFind(StartPath, Pos, 0, true, nil, nil, true, false, true)
+		local FinalPaths = AStarPathFind(StartPath, Pos, 0, 1, nil, nil, false, false, false, true)
 		if FinalPaths ~= nil then
 			Print(#FinalPaths)
 			while GetPathToPoly2 do
@@ -2111,7 +2142,7 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 									Peds[#Peds].TargetInsideTargetPolygon = false
 									Peds[#Peds].HasSetRel = false
 									Peds[#Peds].TimeOut = 0
-									Peds[#Peds].SearchLowLevel = 1
+									Peds[#Peds].SearchLowLevel = 3+16
 									Peds[#Peds].IsInVeh = false
 									Peds[#Peds].VehHandle = 0
 									Peds[#Peds].LastDistance = 0.0
@@ -2162,8 +2193,8 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 							--PED.SET_PED_MOVE_RATE_OVERRIDE(Peds[k].Handle, 1.5)
 							PED.SET_AI_MELEE_WEAPON_DAMAGE_MODIFIER(100.0)
 							PED.SET_PED_USING_ACTION_MODE(Peds[k].Handle, false, -1, 0)
-							PED.SET_PED_MIN_MOVE_BLEND_RATIO(Peds[k].Handle, 3.0)
-							PED.SET_PED_MAX_MOVE_BLEND_RATIO(Peds[k].Handle, 3.0)
+							--PED.SET_PED_MIN_MOVE_BLEND_RATIO(Peds[k].Handle, 3.0)
+							--PED.SET_PED_MAX_MOVE_BLEND_RATIO(Peds[k].Handle, 3.0)
 						end
 						local LastEnt = ENTITY._GET_LAST_ENTITY_HIT_BY_ENTITY(Peds[k].Handle)
 						if LastEnt ~= 0 then
@@ -2206,7 +2237,7 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 								Peds[k].SearchState = 1
 								util.create_thread(function()
 									local NewPaths = nil
-									NewPaths, Peds[k].Start, Peds[k].TargetPoly, Peds[k].InsideStartPolygon, Peds[k].TargetInsideTargetPolygon = AStarPathFind(Pos, TargetPos, Peds[k].SearchLowLevel, false, Peds[k].StartIndexArg, Peds[k].TargetIndexArg, true, false, nil, true)
+									NewPaths, Peds[k].Start, Peds[k].TargetPoly, Peds[k].InsideStartPolygon, Peds[k].TargetInsideTargetPolygon = AStarPathFind(Pos, TargetPos, Peds[k].SearchLowLevel, false, Peds[k].StartIndexArg, Peds[k].TargetIndexArg, false, false, nil, true, false)
 									if NewPaths ~= nil then
 										if Peds[k] ~= nil then
 											if not Peds[k].AddMode then
@@ -2227,7 +2258,7 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 										--PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(Peds[k].Handle, true)
 									end
 									
-									Wait(1000)
+									Wait(1)
 									if Peds[k] ~= nil then
 										Peds[k].SearchState = 2
 										--Print("Reset")
@@ -2242,7 +2273,7 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 								if DistanceFinal > 30.0 then
 									if Peds[k].SearchState == 2 then
 										Peds[k].SearchState = 0
-										Peds[k].SearchLowLevel = 4
+										Peds[k].SearchLowLevel = 4+16
 									end
 								end
 								--if not Peds[k].HasChecked then
@@ -2273,17 +2304,26 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 											Peds[k].ActualPath = 1
 											if Peds[k].SearchState == 2 then
 												Peds[k].SearchState = 0
-												Peds[k].SearchLowLevel = 1
+												Peds[k].SearchLowLevel = 3+16
 											end
 										end
 										if Peds[k].Paths[Peds[k].ActualPath] ~= nil then
 											Peds[k].TaskCoords.x = Peds[k].Paths[Peds[k].ActualPath].x
 											Peds[k].TaskCoords.y = Peds[k].Paths[Peds[k].ActualPath].y
 											Peds[k].TaskCoords.z = Peds[k].Paths[Peds[k].ActualPath].z
-											TASK.TASK_GO_TO_COORD_WHILE_AIMING_AT_ENTITY(Peds[k].Handle, Peds[k].TaskCoords.x, Peds[k].TaskCoords.y, Peds[k].TaskCoords.z, Peds[k].Target, 2.0, true, 0.1, 0.1, false, 0, true, joaat("FIRING_PATTERN_FULL_AUTO"), -1)
-											PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(Peds[k].Handle, true)
-											if TASK.GET_SCRIPT_TASK_STATUS(Peds[k].Handle, joaat("SCRIPT_TASK_GO_TO_COORD_WHILE_AIMING_AT_ENTITY")) ~= 7 then
-												Peds[k].TaskState = 2
+											if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(Peds[k].Handle, Peds[k].Target, 17) then
+												TASK.TASK_GO_TO_COORD_WHILE_AIMING_AT_ENTITY(Peds[k].Handle, Peds[k].TaskCoords.x, Peds[k].TaskCoords.y, Peds[k].TaskCoords.z, Peds[k].Target, 2.0, true, 0.1, 0.1, false, 0, true, joaat("FIRING_PATTERN_FULL_AUTO"), -1)
+												PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(Peds[k].Handle, true)
+												if TASK.GET_SCRIPT_TASK_STATUS(Peds[k].Handle, joaat("SCRIPT_TASK_GO_TO_COORD_WHILE_AIMING_AT_ENTITY")) ~= 7 then
+													Peds[k].TaskState = 2
+												end
+											else
+												TASK.TASK_GO_STRAIGHT_TO_COORD(Peds[k].Handle, Peds[k].TaskCoords.x, Peds[k].TaskCoords.y, Peds[k].TaskCoords.z, 3.0, -1, 40000.0, 0.1)
+												PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(Peds[k].Handle, true)
+												if TASK.GET_SCRIPT_TASK_STATUS(Peds[k].Handle, joaat("SCRIPT_TASK_GO_STRAIGHT_TO_COORD")) ~= 7 then
+													Peds[k].TaskState = 7
+													--Print("Straight")
+												end
 											end
 										end
 									end
@@ -2297,7 +2337,7 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 												Peds[k].ActualPath = 1
 												if Peds[k].SearchState == 2 then
 													Peds[k].SearchState = 0
-													Peds[k].SearchLowLevel = 1
+													Peds[k].SearchLowLevel = 3+16
 												end
 											end
 											if Peds[k].Paths[Peds[k].ActualPath] ~= nil then
@@ -2366,7 +2406,7 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 															Peds[k].ActualPath = 1
 															if Peds[k].SearchState == 2 then
 																Peds[k].SearchState = 0
-																Peds[k].SearchLowLevel = 1
+																Peds[k].SearchLowLevel = 3+16
 															end
 														end
 														if Peds[k].Paths[Peds[k].ActualPath] ~= nil then
@@ -2410,7 +2450,7 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 							else
 								if Peds[k].SearchState == 2 then
 									Peds[k].SearchState = 0
-									Peds[k].SearchLowLevel = 1
+									Peds[k].SearchLowLevel = 3+16
 								end
 							end
 						end
@@ -2439,11 +2479,11 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 											Peds[k].SearchState = 0
 										end
 									end
-									if ENTITY.IS_ENTITY_AT_COORD(Peds[k].Handle, Peds[k].TaskCoords.x, Peds[k].TaskCoords.y, Peds[k].TaskCoords.z, 0.15, 0.15, 100.0, false, false, 0) then
-										if Peds[k].SearchState == 2 then
-											Peds[k].SearchState = 0
-										end
-									end
+									--if ENTITY.IS_ENTITY_AT_COORD(Peds[k].Handle, Peds[k].TaskCoords.x, Peds[k].TaskCoords.y, Peds[k].TaskCoords.z, 0.15, 0.15, 100.0, false, false, 0) then
+									--	if Peds[k].SearchState == 2 then
+									--		Peds[k].SearchState = 0
+									--	end
+									--end
 									if ENTITY.IS_ENTITY_AT_COORD(Peds[k].Handle, Peds[k].TaskCoords.x, Peds[k].TaskCoords.y, Peds[k].TaskCoords.z, 0.5, 0.5, 1.0, false, false, 0) then
 										if RequestControlOfEntity(Peds[k].Handle) then
 											PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(Peds[k].Handle, false)
@@ -2451,14 +2491,16 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 											Peds[k].ActualPath = Peds[k].ActualPath + 1
 											if Peds[k].ActualPath > #Peds[k].Paths then
 												Peds[k].ActualPath = 1
-												Peds[k].SearchState = 0
-												Peds[k].SearchLowLevel = 1
+												if Peds[k].SearchState == 2 then
+													Peds[k].SearchState = 0
+													Peds[k].SearchLowLevel = 3+16
+												end
 											end
 											Peds[k].TaskState = 1
 										end
 									else
 										Peds[k].TimeOut = Peds[k].TimeOut + 1
-										if Peds[k].TimeOut > 1000 then
+										if Peds[k].TimeOut > 10000 then
 											if Peds[k].SearchState == 2 then
 												if RequestControlOfEntity(Peds[k].Handle) then
 													PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(Peds[k].Handle, false)
@@ -2476,7 +2518,7 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 								else
 									if Peds[k].SearchState == 2 then
 										Peds[k].SearchState = 0
-										Peds[k].SearchLowLevel = 1
+										Peds[k].SearchLowLevel = 3+16
 									end
 								end
 							else
@@ -2486,18 +2528,18 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 									Peds[k].TaskState = 0
 									Peds[k].Target = 0
 									Peds[k].ActualPath = 1
-									Peds[k].SearchLowLevel = 1
+									Peds[k].SearchLowLevel = 3+16
 								end
 							end
 						end
-						GRAPHICS.DRAW_LINE(Pos.x, Pos.y, Pos.z,
-						Peds[k].TaskCoords.x, Peds[k].TaskCoords.y, Peds[k].TaskCoords.z, 255, 255, 255, 255)
-						if Peds[k].Paths ~= nil then
-							for i = Peds[k].ActualPath, #Peds[k].Paths-1 do
-								GRAPHICS.DRAW_LINE(Peds[k].Paths[i].x, Peds[k].Paths[i].y, Peds[k].Paths[i].z,
-								Peds[k].Paths[i+1].x, Peds[k].Paths[i+1].y, Peds[k].Paths[i+1].z, 255, 255, 255, 255)
-							end
-						end
+						--GRAPHICS.DRAW_LINE(Pos.x, Pos.y, Pos.z,
+						--Peds[k].TaskCoords.x, Peds[k].TaskCoords.y, Peds[k].TaskCoords.z, 255, 255, 255, 255)
+						--if Peds[k].Paths ~= nil then
+						--	for i = Peds[k].ActualPath, #Peds[k].Paths-1 do
+						--		GRAPHICS.DRAW_LINE(Peds[k].Paths[i].x, Peds[k].Paths[i].y, Peds[k].Paths[i].z,
+						--		Peds[k].Paths[i+1].x, Peds[k].Paths[i+1].y, Peds[k].Paths[i+1].z, 255, 255, 255, 255)
+						--	end
+						--end
 						if Peds[k].TaskState == 3 then
 							if Peds[k].Paths[Peds[k].ActualPath].Action ~= nil then
 								if InsidePolygon(Polys1[Peds[k].Paths[Peds[k].ActualPath].PolyID], Pos) then
@@ -2509,10 +2551,10 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 								local Distance2 = DistanceBetween(Pos.x, Pos.y, Pos.z, Peds[k].TaskCoords.x, Peds[k].TaskCoords.y, Peds[k].TaskCoords.z)
 								Peds[k].SameDistanceTick = Peds[k].SameDistanceTick + 1
 								local HasSet = false
-								if Distance2 < Peds[k].LastDistance then
-									Peds[k].LastDistance = Distance2
-									Peds[k].SameDistanceTick = 0
-								end
+								--if Distance2 < Peds[k].LastDistance then
+								--	Peds[k].LastDistance = Distance2
+								--	Peds[k].SameDistanceTick = 0
+								--end
 								--Distance2 > Peds[k].LastDistance then
 								if Peds[k].SameDistanceTick > 50 or math.floor(Distance2) > math.floor(Peds[k].LastDistance) then
 									--Peds[k].TaskState = 1
@@ -2525,7 +2567,7 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 									--end
 									if Peds[k].SearchState == 2 then
 										Peds[k].SearchState = 0
-										Peds[k].SearchLowLevel = 1
+										Peds[k].SearchLowLevel = 3+16
 									end
 								end
 								if TASK.GET_SCRIPT_TASK_STATUS(Peds[k].Handle, joaat("SCRIPT_TASK_GO_STRAIGHT_TO_COORD")) == 7 then
@@ -2555,7 +2597,7 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 									if ENTITY.IS_ENTITY_AT_COORD(Peds[k].Handle, Peds[k].TaskCoords.x, Peds[k].TaskCoords.y, Peds[k].TaskCoords.z, R, R, 1.0, false, false, 0) or
 									ENTITY.IS_ENTITY_AT_COORD(Peds[k].Handle, Peds[k].TaskCoords2.x, Peds[k].TaskCoords2.y, Peds[k].TaskCoords2.z, 0.5, 0.5, 1.0, false, false, 0) then
 										if Peds[k].Paths[Peds[k].ActualPath].Action ~= nil then
-											if is_bit_set(Peds[k].Paths[Peds[k].ActualPath].Action, FlagBitNames.Jump) then
+											--if is_bit_set(Peds[k].Paths[Peds[k].ActualPath].Action, FlagBitNames.Jump) then
 												--TASK.CLEAR_PED_TASKS(Peds[k].Handle)
 												--TASK.CLEAR_PED_TASKS_IMMEDIATELY(Peds[k].Handle)
 												ENTITY.SET_ENTITY_HEADING(Peds[k].Handle, Peds[k].Paths[Peds[k].ActualPath].Heading)
@@ -2567,14 +2609,14 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 													Peds[k].TaskState = 5
 												--end
 												
-											end
+											--end
 										else
 											Peds[k].ActualPath = Peds[k].ActualPath + 1
 											if Peds[k].ActualPath > #Peds[k].Paths then
 												Peds[k].ActualPath = 1
 												if Peds[k].SearchState == 2 then
 													Peds[k].SearchState = 0
-													Peds[k].SearchLowLevel = 1
+													Peds[k].SearchLowLevel = 3+16
 												end
 											end
 											Peds[k].TaskState = 1
@@ -2597,7 +2639,7 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 										Peds[k].TaskState = 1
 										if Peds[k].SearchState == 2 then
 											Peds[k].SearchState = 0
-											Peds[k].SearchLowLevel = 1
+											Peds[k].SearchLowLevel = 3+16
 										end
 									end
 								end
@@ -2620,7 +2662,7 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 										Peds[k].ActualPath = 1
 										if Peds[k].SearchState == 2 then
 											Peds[k].SearchState = 0
-											Peds[k].SearchLowLevel = 1
+											Peds[k].SearchLowLevel = 3+16
 										end
 									end
 									Peds[k].TaskState = 1
@@ -2637,7 +2679,7 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 										Peds[k].TaskState = 1
 										if Peds[k].SearchState == 2 then
 											Peds[k].SearchState = 0
-											Peds[k].SearchLowLevel = 1
+											Peds[k].SearchLowLevel = 3+16
 										end
 									end
 								end
@@ -2647,6 +2689,85 @@ menu.toggle(GameModesMenu, "Deathmatch", {}, "", function(Toggle)
 									TASK.CLEAR_PED_TASKS(Peds[k].Handle)
 									Peds[k].TaskState = 0
 									Peds[k].Target = 0
+								end
+							end
+						end
+						if Peds[k].TaskState == 7 then
+							if not ENTITY.IS_ENTITY_DEAD(Peds[k].Target) and ENTITY.DOES_ENTITY_EXIST(Peds[k].Target) then
+								if Peds[k].Paths ~= nil then
+									if Peds[k].SearchState == 2 then
+										if Peds[k].TargetPoly ~= nil then
+											local TargetPos = ENTITY.GET_ENTITY_COORDS(Peds[k].Target)
+											if Peds[k].TargetInsideTargetPolygon then
+												if not InsidePolygon(Polys1[Peds[k].TargetPoly], TargetPos) then
+													--Peds[k].TaskState = 1
+													if Peds[k].SearchState == 2 then
+														Peds[k].SearchState = 0
+													end
+												end
+											else
+												if InsidePolygon(Polys1[Peds[k].TargetPoly], TargetPos) then
+													--Peds[k].TaskState = 1
+													if Peds[k].SearchState == 2 then
+														Peds[k].SearchState = 0
+													end
+												end
+											end
+										else
+											Peds[k].SearchState = 0
+										end
+									end
+									--if ENTITY.IS_ENTITY_AT_COORD(Peds[k].Handle, Peds[k].TaskCoords.x, Peds[k].TaskCoords.y, Peds[k].TaskCoords.z, 0.15, 0.15, 100.0, false, false, 0) then
+									--	if Peds[k].SearchState == 2 then
+									--		Peds[k].SearchState = 0
+									--	end
+									--end
+									if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(Peds[k].Handle, Peds[k].Target, 17) then
+										Peds[k].TaskState = 1
+									end
+									if ENTITY.IS_ENTITY_AT_COORD(Peds[k].Handle, Peds[k].TaskCoords.x, Peds[k].TaskCoords.y, Peds[k].TaskCoords.z, 0.5, 0.5, 1.0, false, false, 0) then
+										if RequestControlOfEntity(Peds[k].Handle) then
+											PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(Peds[k].Handle, false)
+											--TASK.CLEAR_PED_TASKS(Peds[k].Handle)
+											Peds[k].ActualPath = Peds[k].ActualPath + 1
+											if Peds[k].ActualPath > #Peds[k].Paths then
+												Peds[k].ActualPath = 1
+												Peds[k].SearchState = 0
+												Peds[k].SearchLowLevel = 3+16
+											end
+											Peds[k].TaskState = 1
+										end
+									else
+										Peds[k].TimeOut = Peds[k].TimeOut + 1
+										if Peds[k].TimeOut > 10000 then
+											if Peds[k].SearchState == 2 then
+												if RequestControlOfEntity(Peds[k].Handle) then
+													PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(Peds[k].Handle, false)
+													TASK.CLEAR_PED_TASKS(Peds[k].Handle)
+													Peds[k].SearchState = 0
+													Peds[k].TaskState = 1
+												end
+											end
+										end
+									end
+									if TASK.GET_SCRIPT_TASK_STATUS(Peds[k].Handle, joaat("SCRIPT_TASK_GO_STRAIGHT_TO_COORD")) == 7 then
+										Peds[k].TaskState = 1
+										--Print("No action")
+									end
+								else
+									if Peds[k].SearchState == 2 then
+										Peds[k].SearchState = 0
+										Peds[k].SearchLowLevel = 3+16
+									end
+								end
+							else
+								if RequestControlOfEntity(Peds[k].Handle) then
+									PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(Peds[k].Handle, false)
+									TASK.CLEAR_PED_TASKS(Peds[k].Handle)
+									Peds[k].TaskState = 0
+									Peds[k].Target = 0
+									Peds[k].ActualPath = 1
+									Peds[k].SearchLowLevel = 3+16
 								end
 							end
 						end
@@ -2734,6 +2855,7 @@ menu.toggle(GameModesMenu, "RPG VS Insurgents", {}, "", function(Toggle)
 										Peds[#Peds].IsInVeh = false
 										Peds[#Peds].VehHandle = 0
 										Peds[#Peds].LastDistance = 0.0
+										Peds[#Peds].LastDistance2 = 0
 										Peds[#Peds].SameDistanceTick = 0
 										Peds[#Peds].StartPolysT = {}
 										Peds[#Peds].TargetPolysT = {}
@@ -3026,7 +3148,7 @@ menu.toggle(GameModesMenu, "RPG VS Insurgents", {}, "", function(Toggle)
 										Peds[k].SearchState = 1
 										util.create_thread(function()
 											local NewPaths = nil
-											NewPaths, Peds[k].Start, Peds[k].TargetPoly, Peds[k].InsideStartPolygon, Peds[k].TargetInsideTargetPolygon = AStarPathFind(Pos, TargetPos, Peds[k].SearchLowLevel, false, nil, nil, false, nil, false, true, true)
+											NewPaths, Peds[k].Start, Peds[k].TargetPoly, Peds[k].InsideStartPolygon, Peds[k].TargetInsideTargetPolygon = AStarPathFind(Pos, TargetPos, Peds[k].SearchLowLevel, false, nil, nil, false, nil, false, true, true, 1)
 											if NewPaths ~= nil then
 												if Peds[k] ~= nil then
 													Peds[k].Paths = NewPaths
@@ -3087,7 +3209,7 @@ menu.toggle(GameModesMenu, "RPG VS Insurgents", {}, "", function(Toggle)
 												PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(Peds[k].Handle, true)
 												if TASK.GET_SCRIPT_TASK_STATUS(Peds[k].Handle, joaat("SCRIPT_TASK_VEHICLE_DRIVE_TO_COORD")) ~= 7 then
 													Peds[k].TaskState = 2
-													Peds[k].LastDistance = DistanceBetween(Pos.x, Pos.y, Pos.z, Peds[k].TaskCoords.x, Peds[k].TaskCoords.y, Peds[k].TaskCoords.z)
+													Peds[k].LastDistance2 = math.floor(DistanceBetween(Pos.x, Pos.y, Pos.z, Peds[k].TaskCoords.x, Peds[k].TaskCoords.y, Peds[k].TaskCoords.z))
 												end
 											end
 										else
@@ -3100,8 +3222,8 @@ menu.toggle(GameModesMenu, "RPG VS Insurgents", {}, "", function(Toggle)
 										Peds[k].SearchLowLevel = 1
 									end
 								end
-								--GRAPHICS.DRAW_LINE(Pos.x, Pos.y, Pos.z,
-								--Peds[k].TaskCoords.x, Peds[k].TaskCoords.y, Peds[k].TaskCoords.z, 255, 255, 255, 255)
+								GRAPHICS.DRAW_LINE(Pos.x, Pos.y, Pos.z,
+								Peds[k].TaskCoords.x, Peds[k].TaskCoords.y, Peds[k].TaskCoords.z, 255, 255, 255, 255)
 								if Peds[k].TaskState == 2 then
 									local Distance2 = DistanceBetween(Pos.x, Pos.y, Pos.z, Peds[k].TaskCoords.x, Peds[k].TaskCoords.y, Peds[k].TaskCoords.z)
 									if TASK.GET_SCRIPT_TASK_STATUS(Peds[k].Handle, joaat("SCRIPT_TASK_VEHICLE_DRIVE_TO_COORD")) == 7 then
@@ -3123,8 +3245,8 @@ menu.toggle(GameModesMenu, "RPG VS Insurgents", {}, "", function(Toggle)
 									--Print(Peds[k].LastDistance)
 									Peds[k].SameDistanceTick = Peds[k].SameDistanceTick + 1
 									--if Distance2 < Peds[k].LastDistance then
-									if math.floor(Distance2) < math.floor(Peds[k].LastDistance) then
-										Peds[k].LastDistance = Distance2
+									if math.floor(Distance2) < Peds[k].LastDistance2 then
+										Peds[k].LastDistance2 = math.floor(Distance2)
 										Peds[k].SameDistanceTick = 0
 									end
 									if Peds[k].LastOffsetDelay == nil then
@@ -3171,9 +3293,10 @@ menu.toggle(GameModesMenu, "RPG VS Insurgents", {}, "", function(Toggle)
 											Peds[k].SearchState = 0
 										end
 										Peds[k].SearchLowLevel = 1
-										Peds[k].SameDistanceTick = 0
+										--Peds[k].SameDistanceTick = 0
 									end
 									if Peds[k].SameDistanceTick > 200 then
+										Print("Called")
 										--local Vel = ENTITY.GET_ENTITY_VELOCITY(Peds[k].VehHandle)
 										--ENTITY.SET_ENTITY_VELOCITY(Peds[k].VehHandle, Vel.x - FVect.x * 35.0, Vel.y - FVect.y * 35.0, Vel.z)
 										Peds[k].SameDistanceTick = 0
@@ -3471,6 +3594,9 @@ function CopyPolygonsData(PolygonsT)
 		NewData[k].Parent = PolygonsT[k].Parent
 		NewData[k].Closed = false
 		NewData[k].Center = PolygonsT[k].Center
+		NewData[k].Vertex1 = PolygonsT[k][1]
+		NewData[k].Vertex2 = PolygonsT[k][2]
+		NewData[k].Vertex3 = PolygonsT[k][3]
 		NewData[k].Neighboors = {}
 		for i = 1, #PolygonsT[k].Neighboors do
 			NewData[k].Neighboors[#NewData[k].Neighboors+1] = PolygonsT[k].Neighboors[i]
@@ -3479,7 +3605,7 @@ function CopyPolygonsData(PolygonsT)
 	return NewData
 end
 
-function AStarPathFind(Start, Target, LowPriorityLevel, PolygonsOnly, CachedStartIndex, CachedTargetIndex, IncludePoints, IncludeStartNode, IncludePoints2, Funnel, PreferCenter)
+function AStarPathFind(Start, Target, LowPriorityLevel, PolygonsOnly, CachedStartIndex, CachedTargetIndex, IncludePoints, IncludeStartNode, IncludePoints2, Funnel, PreferCenter, Flags)
 	local StartIndex = 0
 	local TargetIndex = 0
 	local FinalNode = false
@@ -3487,6 +3613,7 @@ function AStarPathFind(Start, Target, LowPriorityLevel, PolygonsOnly, CachedStar
 	local StartNode = true
 	local IncludePointsNodes = false
 	local CenterOnly = false
+	local Bits = 0
 	if PreferCenter ~= nil then
 		CenterOnly = PreferCenter
 	end
@@ -3502,12 +3629,15 @@ function AStarPathFind(Start, Target, LowPriorityLevel, PolygonsOnly, CachedStar
 	if IncludePoints2 ~= nil then
 		IncludePointsNodes = IncludePoints2
 	end
+	if Flags ~= nil then
+		Bits = Flags
+	end
 	if CachedStartIndex ~= nil then
 		StartIndex = CachedStartIndex
 	else
 		StartIndex = GetPolygonDirectIndex(Start)
 		if StartIndex == 0 then
-			StartIndex = GetClosestPolygon(Polys1, Start, Include)
+			StartIndex = GetClosestPolygon(Polys1, Start, Include, LowPriorityLevel, Bits)
 		end
 	end
 	if CachedTargetIndex ~= nil then
@@ -3515,7 +3645,7 @@ function AStarPathFind(Start, Target, LowPriorityLevel, PolygonsOnly, CachedStar
 	else
 		TargetIndex = GetPolygonDirectIndex(Target)
 		if TargetIndex == 0 then
-			TargetIndex = GetClosestPolygon(Polys1, Target, Include)
+			TargetIndex = GetClosestPolygon(Polys1, Target, Include, LowPriorityLevel, Bits)
 		end
 	end
 	if StartIndex == 0 or TargetIndex == 0 then
@@ -3561,58 +3691,196 @@ function AStarPathFind(Start, Target, LowPriorityLevel, PolygonsOnly, CachedStar
 	OpenList[#OpenList+1] = PolysCopy[StartIndex]
 	PolysCopy[StartIndex].Closed = true
 	local Debug = false
+	local WaitTime = 500
 	if Debug then
 		util.create_thread(function()
-			while not HasReachedTargetIndex do
-				for i = 1, #OpenList-1 do
-					GRAPHICS.DRAW_LINE(OpenList[i].Center.x, OpenList[i].Center.y, OpenList[i].Center.z,
-					OpenList[i+1].Center.x, OpenList[i+1].Center.y, OpenList[i+1].Center.z, 255, 255, 255, 255)
+			local TimeOut = false
+			util.create_thread(function()
+				Wait(20000)
+			end)
+			while not HasReachedTargetIndex and not TimeOut do
+				--for i = 1, #OpenList-1 do
+				--	GRAPHICS.DRAW_LINE(OpenList[i].Center.x, OpenList[i].Center.y, OpenList[i].Center.z,
+				--	OpenList[i+1].Center.x, OpenList[i+1].Center.y, OpenList[i+1].Center.z, 255, 255, 255, 255)
+				--end
+				for i = 1, #PolysCopy do
+					GRAPHICS.DRAW_POLY(PolysCopy[i].Vertex1.x, PolysCopy[i].Vertex1.y, PolysCopy[i].Vertex1.z,
+					PolysCopy[i].Vertex2.x, PolysCopy[i].Vertex2.y, PolysCopy[i].Vertex2.z,
+					PolysCopy[i].Vertex3.x, PolysCopy[i].Vertex3.y, PolysCopy[i].Vertex3.z,
+					0, 255, 0, 100)
+					GRAPHICS.DRAW_LINE(PolysCopy[i].Vertex1.x, PolysCopy[i].Vertex1.y, PolysCopy[i].Vertex1.z,
+					PolysCopy[i].Vertex2.x, PolysCopy[i].Vertex2.y, PolysCopy[i].Vertex2.z, 255, 255, 255, 255)
+					GRAPHICS.DRAW_LINE(PolysCopy[i].Vertex2.x, PolysCopy[i].Vertex2.y, PolysCopy[i].Vertex2.z,
+					PolysCopy[i].Vertex3.x, PolysCopy[i].Vertex3.y, PolysCopy[i].Vertex3.z, 255, 255, 255, 255)
+					GRAPHICS.DRAW_LINE(PolysCopy[i].Vertex3.x, PolysCopy[i].Vertex3.y, PolysCopy[i].Vertex3.z,
+					PolysCopy[i].Vertex1.x, PolysCopy[i].Vertex1.y, PolysCopy[i].Vertex1.z, 255, 255, 255, 255)
+
+					GRAPHICS.DRAW_LINE(PolysCopy[i].Center.x, PolysCopy[i].Center.y, PolysCopy[i].Center.z,
+					Polys1[PolysCopy[i].Parent].Center.x, Polys1[PolysCopy[i].Parent].Center.y, Polys1[PolysCopy[i].Parent].Center.z, 255, 0, 0, 255)
 				end
 				Wait()
 			end
 		end)
 	end
+	if Funnel then
+		local FoundPolys = {}
+		local FoundIDs = {}
+		local CurrentPos = {x = Start.x, y = Start.y, z = Start.z}
+		local TargetPos = {x = Target.x, y = Target.y, z = Target.z}
+		local HasReachedTargetIndex = false
+		FoundIDs[StartIndex] = 0
+		FoundPolys[#FoundPolys+1] = Polys1[StartIndex]
+		for i = 1, #Polys1 do
+			if not HasReachedTargetIndex then
+				for k = 1, #FoundPolys do
+					for j = 1, #Polys1[FoundPolys[k].ID].Neighboors do
+						if FoundIDs[Polys1[FoundPolys[k].ID].Neighboors[j]] == nil then
+							FoundIDs[Polys1[FoundPolys[k].ID].Neighboors[j]] = 0
+							FoundPolys[#FoundPolys+1] = Polys1[Polys1[FoundPolys[k].ID].Neighboors[j]]
+							if Polys1[FoundPolys[k].ID].Neighboors[j] == TargetIndex then
+								HasReachedTargetIndex = true
+								for a = 1, #Polys1[TargetIndex].Neighboors do
+									FoundPolys[#FoundPolys+1] = Polys1[Polys1[TargetIndex].Neighboors[a]]
+								end
+								break
+							end
+						end
+					end
+					if HasReachedTargetIndex then
+						break
+					end
+				end
+			else
+				break
+			end
+		end
+		local CanStraight = true
+		for i = 1, 10000 do
+			--GRAPHICS.DRAW_MARKER(28, CurrentPos.x,
+			--CurrentPos.y, CurrentPos.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 150, 0, 0, 100, 0, false, 2, false, 0, 0, false)
+			local Count = 0
+			if CanStraight then
+				local NewV3 = v3.new(TargetPos.x - CurrentPos.x, TargetPos.y - CurrentPos.y, TargetPos.z - CurrentPos.z)
+				local Norm = NewV3:normalise()
+				CurrentPos.x = CurrentPos.x + (Norm.x * 0.7)
+				CurrentPos.y = CurrentPos.y + (Norm.y * 0.7)
+				CurrentPos.z = CurrentPos.z + (Norm.z * 0.7)
+				for k = 1, #FoundPolys do
+					if Inside3DPolygon2(FoundPolys[k], CurrentPos) then
+						Count = Count + 1
+					end
+				end
+				if Count == 0 then
+					CanStraight = false
+					break
+				end
+				if DistanceBetween(CurrentPos.x, CurrentPos.y, CurrentPos.z, TargetPos.x, TargetPos.y, TargetPos.z) < 1.0 then
+					break
+				end
+			end
+		end
+		if CanStraight then
+			return {{x = Target.x, y = Target.y, z = Target.z, NodeFlags = 0, PolyID = TargetIndex}}, StartIndex, TargetIndex, InsideStartPolygon, TargetInsideTargetPolygon
+		end
+	end
+	local Fail = false
+	local Count = 0
 	for j = 1, #Polys1 do
+		local Count2 = 0
 		if not HasReachedTargetIndex then
 			for i = 1, #OpenList do
 				local ClosestIndex = 0
 				local Dist2 = 10000.0
-				for k = 1, #OpenList[i].Neighboors do
-					if PolysCopy[OpenList[i].Neighboors[k]] ~= nil then
-						if not PolysCopy[OpenList[i].Neighboors[k]].Closed then
-							local NIndex = OpenList[i].Neighboors[k]
-							local HavesInTable = false
-							for r = 1, #OpenList do
-								if NIndex == OpenList[r].ID then
-									HavesInTable = true
-									break
-								end
-							end
-							if not HavesInTable then
-								local CoordsT2 = {}
-								CoordsT2[#CoordsT2+1] = Polys1[NIndex][1]
-								CoordsT2[#CoordsT2+1] = Polys1[NIndex][2]
-								CoordsT2[#CoordsT2+1] = Polys1[NIndex][3]
-								CoordsT2[#CoordsT2+1] = Polys1[NIndex].Center
-								CoordsT2[#CoordsT2+1] = Polys1[NIndex].Edge
-								CoordsT2[#CoordsT2+1] = Polys1[NIndex].Edge2
-								CoordsT2[#CoordsT2+1] = Polys1[NIndex].Edge3
-								if IncludePointsNodes then
-									for j = 1, #Polys1[NIndex].LocalPoints do
-										CoordsT2[#CoordsT2+1] = Polys1[NIndex].LocalPoints[j]
+				if Fail then
+					for k = 1, #OpenList[i].Neighboors do
+						if PolysCopy[OpenList[i].Neighboors[k]] ~= nil then
+							if not PolysCopy[OpenList[i].Neighboors[k]].Closed then
+								PolysCopy[OpenList[i].Neighboors[k]].Closed = true
+								local NIndex = OpenList[i].Neighboors[k]
+								local HavesInTable = false
+								for r = 1, #OpenList do
+									if NIndex == OpenList[r].ID then
+										HavesInTable = true
+										break
 									end
 								end
-								for a = 1, #CoordsT2 do
-									local Distance = DistanceBetween(CoordsT2[a].x, CoordsT2[a].y, CoordsT2[a].z, Target.x, Target.y, Target.z)
-									if Distance < Dist2 then
-										Dist2 = Distance
-										ClosestIndex = Polys1[NIndex].ID
+								if not HavesInTable then
+									OpenList[#OpenList+1] = PolysCopy[OpenList[i].Neighboors[k]]
+									PolysCopy[OpenList[i].Neighboors[k]].Parent = OpenList[i].ID
+									if OpenList[i].Neighboors[k] == TargetIndex then
+										HasReachedTargetIndex = true
+										break
+									end
+								end
+							end
+						end
+						if is_bit_set(LowPriorityLevel, 3) then
+							Bit3It = Bit3It + 1
+							if Bit3It >= 100 then
+								Bit3It = 0
+								Wait()
+							end
+						end
+					end
+				else
+					for k = 1, #OpenList[i].Neighboors do
+						if PolysCopy[OpenList[i].Neighboors[k]] ~= nil then
+							if not PolysCopy[OpenList[i].Neighboors[k]].Closed then
+								PolysCopy[OpenList[i].Neighboors[k]].Closed = true
+								Count2 = Count2 + 1
+								local NIndex = OpenList[i].Neighboors[k]
+								local HavesInTable = false
+								for r = 1, #OpenList do
+									if NIndex == OpenList[r].ID then
+										HavesInTable = true
+										break
+									end
+								end
+								if not HavesInTable then
+									local CoordsT2 = {}
+									CoordsT2[#CoordsT2+1] = Polys1[NIndex][1]
+									CoordsT2[#CoordsT2+1] = Polys1[NIndex][2]
+									CoordsT2[#CoordsT2+1] = Polys1[NIndex][3]
+									CoordsT2[#CoordsT2+1] = Polys1[NIndex].Center
+									CoordsT2[#CoordsT2+1] = Polys1[NIndex].Edge
+									CoordsT2[#CoordsT2+1] = Polys1[NIndex].Edge2
+									CoordsT2[#CoordsT2+1] = Polys1[NIndex].Edge3
+									if IncludePointsNodes then
+										for j = 1, #Polys1[NIndex].LocalPoints do
+											CoordsT2[#CoordsT2+1] = Polys1[NIndex].LocalPoints[j]
+										end
+									end
+									for a = 1, #CoordsT2 do
+										local Distance = DistanceBetween(CoordsT2[a].x, CoordsT2[a].y, CoordsT2[a].z, Target.x, Target.y, Target.z)
+										if Distance < Dist2 then
+											Dist2 = Distance
+											ClosestIndex = Polys1[NIndex].ID
+										end
 									end
 								end
 							end
 						end
 					end
+					if Count2 == 0 then
+						Count = Count + 1
+					else
+						Count = 0
+					end
+					if Count > 30 then
+						Fail = true
+						for k = 1, #PolysCopy do
+							if k ~= StartIndex then
+								PolysCopy[k].Closed = false
+							end
+						end
+						for r = 1, #OpenList do
+							table.remove(OpenList, #OpenList)
+						end
+						OpenList[#OpenList+1] = PolysCopy[StartIndex]
+						break
+					end
 				end
+				
 				if ClosestIndex ~= 0 then
 					local HavesInTable = false
 					--for r = 1, #OpenList do
@@ -3649,7 +3917,7 @@ function AStarPathFind(Start, Target, LowPriorityLevel, PolygonsOnly, CachedStar
 				end
 			end
 			if Debug then
-				Wait(1000)
+				Wait(WaitTime)
 			end
 		else
 			break
@@ -3756,7 +4024,7 @@ function AStarPathFind(Start, Target, LowPriorityLevel, PolygonsOnly, CachedStar
 			
 			if is_bit_set(Polys1[LastParent].Flags, FlagBitNames.UsePoint) then
 				if Polys1[Polys1[LastParent].JumpedFrom[1]].ID == PolysCopy[LastParent].Parent then
-					local BaseIndex = Polys1[LastParent].JumpTo[1]
+					--local BaseIndex = Polys1[LastParent].JumpTo[1]
 					local AcessIndex = Polys1[LastParent].JumpedFrom[1]
 					if Polys1[AcessIndex].Point ~= nil then
 						NewNodesT[#NewNodesT+1] = {
@@ -3767,7 +4035,7 @@ function AStarPathFind(Start, Target, LowPriorityLevel, PolygonsOnly, CachedStar
 							ID = PolysCopy[AcessIndex].ID,
 							Parent = PolysCopy[AcessIndex].Parent,
 							NodeFlags = Polys1[AcessIndex].Flags,
-							Action = Polys1[BaseIndex].Flags,
+							Action = Polys1[AcessIndex].Flags,
 							PolyID = Polys1[AcessIndex].ID
 						}
 					end
@@ -3829,7 +4097,7 @@ function AStarPathFind(Start, Target, LowPriorityLevel, PolygonsOnly, CachedStar
 					break
 				end
 			--end
-			if LowPriorityLevel >= 3 then
+			if is_bit_set(LowPriorityLevel, 4) then
 				Wait()
 			end
 		end
@@ -3850,51 +4118,122 @@ function AStarPathFind(Start, Target, LowPriorityLevel, PolygonsOnly, CachedStar
 		Reverse = Reverse - 1
 	end
 	if Funnel then
-		local Start = {x = NewPaths[1].x, y = NewPaths[1].y, z = NewPaths[1].z}
-		local End = {x = NewPaths[#NewPaths].x, y = NewPaths[#NewPaths].y, z = NewPaths[#NewPaths].z}
+		local AdjustedPaths = {}
+		local FoundPolys = {}
+		local PolyIDs = {}
+		local PointPos = {x = NewPaths[1].x, y = NewPaths[1].y, z = NewPaths[1].z}
 		local Current = 1
-		local Finished = false
-		for i = 1, 100 do
-			if not Finished then
-				for k = Current, #NewPaths do
-					local Intersect1 = math.findIntersect(Polys1[NewPaths[k].PolyID][1].x, Polys1[NewPaths[k].PolyID][1].y, Polys1[NewPaths[k].PolyID][2].x, Polys1[NewPaths[k].PolyID][2].y, Start.x, Start.y, End.x, End.y, true, true)
-					local Intersect2 = math.findIntersect(Polys1[NewPaths[k].PolyID][2].x, Polys1[NewPaths[k].PolyID][2].y, Polys1[NewPaths[k].PolyID][3].x, Polys1[NewPaths[k].PolyID][3].y, Start.x, Start.y, End.x, End.y, true, true)
-					local Intersect3 = math.findIntersect(Polys1[NewPaths[k].PolyID][1].x, Polys1[NewPaths[k].PolyID][1].y, Polys1[NewPaths[k].PolyID][3].x, Polys1[NewPaths[k].PolyID][3].y, Start.x, Start.y, End.x, End.y, true, true)
-					local Intersect = Intersect1 or Intersect2 or Intersect3
-					if not Intersect then
-						Current = k
-						Start = {x = NewPaths[Current].x, y = NewPaths[Current].y, z = NewPaths[Current].z}
-					else
-						if k >= #NewPaths then
-							local Amount = #NewPaths - (Current)
-							for j = 1, Amount do
-								if not is_bit_set(NewPaths[#NewPaths].NodeFlags, FlagBitNames.UsePoint) then
-									table.remove(NewPaths, #NewPaths)
-								end
-							end
-							NewPaths[#NewPaths+1] = {
-								x = End.x,
-								y = End.y,
-								z = End.z,
-								Heading = 0.0,
-								ID = PolysCopy[TargetIndex].ID,
-								Parent = PolysCopy[TargetIndex].Parent,
-								NodeFlags = Polys1[TargetIndex].Flags,
-								PolyID = Polys1[TargetIndex].ID
-							}
-							Finished = true
-							break
+		local CurrentEnd = 2
+		local Iterated = false
+		local StepSize = 1
+		local TargetPos = {x = NewPaths[CurrentEnd].x, y = NewPaths[CurrentEnd].y, z = NewPaths[CurrentEnd].z}
+		local Failed = false
+		local ReachedCount = 0
+		for i = 1, 1000 do
+			if not Iterated then
+				for k = 1, #NewPaths do
+					for j = 1, #Polys1[NewPaths[k].ID].Neighboors do
+						local ID = Polys1[NewPaths[k].ID].Neighboors[j]
+						if PolyIDs[ID] == nil then
+							PolyIDs[ID] = 0
+							FoundPolys[#FoundPolys+1] = Polys1[ID]
 						end
 					end
-					--Wait()
+					--local ID = Polys1[NewPaths[k].ID].ID
+					--PolyIDs[ID] = 0
+					--FoundPolys[#FoundPolys+1] = Polys1[ID]
 				end
-				if Current >= #NewPaths then
-					Finished = true
+				Iterated = true
+			end
+			if Current < #NewPaths then
+				for j = 1, 10000 do
+					local Count = 0
+					local NewV3 = v3.new(TargetPos.x - PointPos.x, TargetPos.y - PointPos.y, TargetPos.z - PointPos.z)
+					local Norm = NewV3:normalise()
+					PointPos.x = PointPos.x + (Norm.x * 0.7)
+					PointPos.y = PointPos.y + (Norm.y * 0.7)
+					PointPos.z = PointPos.z + (Norm.z * 0.7)
+					for a = 1, #FoundPolys do
+						if Inside3DPolygon2(FoundPolys[a], PointPos) then
+							Count = Count + 1
+							Failed = false
+						end
+					end
+					--GRAPHICS.DRAW_MARKER(28, PointPos.x,
+					--PointPos.y, PointPos.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 150, 0, 0, 100, 0, false, 2, false, 0, 0, false)
+					--Wait()
+					if Count == 0 then
+						--AdjustedPaths[#AdjustedPaths+1] = {
+						--	x = PointPos.x,
+						--	y = PointPos.y,
+						--	z = PointPos.z,
+						--	Heading = 0.0,
+						--	ID = 0,
+						--	Parent = 0,
+						--	NodeFlags = 0,
+						--	PolyID = 0
+						--}
+						--Count2 = 0
+						--PointPos = {x = NewPaths[Current].x, y = NewPaths[Current].y, z = NewPaths[Current].z}
+						Failed = true
+						Current = Current + StepSize
+						CurrentEnd = CurrentEnd + StepSize
+						if Current > #NewPaths then
+							Current = #NewPaths
+						end
+						if CurrentEnd > #NewPaths then
+							CurrentEnd = #NewPaths
+						end
+						Current = #NewPaths
+						CurrentEnd = #NewPaths
+						--PointPos = {x = NewPaths[Current].x, y = NewPaths[Current].y, z = NewPaths[Current].z}
+						TargetPos = {x = NewPaths[CurrentEnd].x, y = NewPaths[CurrentEnd].y, z = NewPaths[CurrentEnd].z}
+						break
+					end
+					if DistanceBetween(PointPos.x, PointPos.y, PointPos.z, TargetPos.x, TargetPos.y, TargetPos.z) < 1.0 then
+						Current = Current + StepSize
+						CurrentEnd = CurrentEnd + StepSize
+						if Current > #NewPaths then
+							Current = #NewPaths
+						end
+						if CurrentEnd > #NewPaths then
+							CurrentEnd = #NewPaths
+						end
+						ReachedCount = ReachedCount + 1
+						TargetPos = {x = NewPaths[CurrentEnd].x, y = NewPaths[CurrentEnd].y, z = NewPaths[CurrentEnd].z}
+						break
+					end
+				end
+				if ReachedCount > 2 then
+					AdjustedPaths[#AdjustedPaths+1] = {
+						x = PointPos.x,
+						y = PointPos.y,
+						z = PointPos.z,
+						Heading = 0.0,
+						ID = 0,
+						Parent = 0,
+						NodeFlags = 0,
+						PolyID = 0
+					}
+					ReachedCount = 0
+					--Print("Added")
 				end
 			else
-				break
+				if not Failed then
+				--if #AdjustedPaths > 0 then
+					AdjustedPaths[#AdjustedPaths+1] = {
+						x = NewPaths[#NewPaths].x,
+						y = NewPaths[#NewPaths].y,
+						z = NewPaths[#NewPaths].z,
+						Heading = 0.0,
+						ID = 0,
+						Parent = 0,
+						NodeFlags = 0,
+						PolyID = 0
+					}
+					return AdjustedPaths, StartIndex, TargetIndex, InsideStartPolygon, TargetInsideTargetPolygon
+				end
 			end
-			--Wait()
 		end
 	end
 	return NewPaths, StartIndex, TargetIndex, InsideStartPolygon, TargetInsideTargetPolygon
@@ -3920,12 +4259,13 @@ function InsidePolygon2(polygon, point, X, Y)
     local oddNodes = false
     local j = #polygon
     for i = 1, #polygon do
-		Print(polygon[i][X] + ( point[Y] - polygon[i][Y] ) / (polygon[j][Y] - polygon[i][Y]) * (polygon[j][X] - polygon[i][X]))
+		--Print(polygon[i][X] + ( point[Y] - polygon[i][Y] ) / (polygon[j][Y] - polygon[i][Y]) * (polygon[j][X] - polygon[i][X]))
+		--Print(polygon[i][X] + ( polygon[i][Y] - point[Y] ) / (polygon[j][Y] - polygon[i][Y]) * (polygon[j][X] - polygon[i][X]))
+		--Print(polygon[j][X] - polygon[i][X])
         if (polygon[i][Y] < point[Y] and polygon[j][Y] >= point[Y] or polygon[j][Y] < point[Y] and polygon[i][Y] >= point[Y]) then
             if (polygon[i][X] + ( point[Y] - polygon[i][Y] ) / (polygon[j][Y] - polygon[i][Y]) * (polygon[j][X] - polygon[i][X]) < point[X]) then
                 --if (polygon[i].z < point.z+1.0 and polygon[j].z >= point.z-1.0 and polygon[j].z < point.z+1.0 and polygon[i].z >= point.z-1.0) then
                     oddNodes = not oddNodes;
-					Print(oddNodes)
                	--end
             end
         end
@@ -3976,14 +4316,31 @@ function Inside3DPolygon(polygon, point)
 	return oddNodes and Bool3
 end
 
-function GetClosestPolygon(PolygonsT, Point, IncludePoints)
+function Inside3DPolygon2(polygon, point)
+	local Inside = false
+	local Bool = InsidePolygon(polygon, point)
+	if Bool then
+		local Min = math.min(polygon[1].z, polygon[2].z, polygon[3].z)
+		local Max = math.max(polygon[1].z, polygon[2].z, polygon[3].z)
+		if point.z > Min-1.0 and point.z < Max+1.0 then
+			Inside = true
+		end
+	end
+	return Inside
+end
+
+function GetClosestPolygon(PolygonsT, Point, IncludePoints, LowPriorityLevel, Flags)
 	local Dist = 10000.0
 	local Index = 0
 	local Include = false
 	if IncludePoints ~= nil then
 		Include = IncludePoints
 	end
-
+	local Bits = 0
+	if Flags ~= nil then
+		Bits = Flags
+	end
+	local ItDelay = 0
 	for k = 1, #PolygonsT do
 		local CoordsT = {}
 		CoordsT[#CoordsT+1] = {PolygonsT[k][1], PolygonsT[k].ID}
@@ -3999,10 +4356,27 @@ function GetClosestPolygon(PolygonsT, Point, IncludePoints)
 			end
 		end
 		for i = 1, #CoordsT do
-			local Distance = DistanceBetween(Point.x, Point.y, Point.z, CoordsT[i][1].x, CoordsT[i][1].y, CoordsT[i][1].z)
-			if Distance < Dist then
-				Dist = Distance
-				Index = CoordsT[i][2]
+			local CanPass = true
+			if is_bit_set(Bits, 1) then
+				if Point.z > CoordsT[i][1].z-10.0 and Point.z < CoordsT[i][1].z+10.0 then
+
+				else
+					CanPass = false
+				end
+			end
+			if CanPass then
+				local Distance = DistanceBetween(Point.x, Point.y, Point.z, CoordsT[i][1].x, CoordsT[i][1].y, CoordsT[i][1].z)
+				if Distance < Dist then
+					Dist = Distance
+					Index = CoordsT[i][2]
+				end
+			end
+		end
+		if is_bit_set(LowPriorityLevel, 5) then
+			ItDelay = ItDelay + 1
+			if ItDelay > 1000 then
+				Wait()
+				ItDelay = 0
 			end
 		end
 	end
@@ -4432,6 +4806,85 @@ menu.action(TestMenu, "Get Poly Index", {}, "", function(Toggle)
 		directx.draw_text(0.7, 0.7, "x: "..XID.." y: "..YID.." z: "..ZID , ALIGN_CENTRE, 1.0, {r = 1.0, g = 1.0 , b = 1.0, a = 1.0}, false)
 		directx.draw_text(0.7, 0.75, "x: "..XID2.." y: "..YID2.." z: "..ZID2 , ALIGN_CENTRE, 1.0, {r = 1.0, g = 1.0 , b = 1.0, a = 1.0}, false)
 		Wait()
+	end
+end)
+
+menu.action(TestMenu, "Straight Line Test", {}, "", function(Toggle)
+	local PlayerPed = PLAYER.PLAYER_PED_ID()
+	local Pos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+	local FoundPolys = {}
+	local FoundIDs = {}
+	local StartPoly = GetClosestPolygon(Polys1, Pos, false, 0)
+	local TargetPoly = GetClosestPolygon(Polys1, StartPath, false, 0)
+	local CurrentPos = {x = Polys1[StartPoly].Center.x, y = Polys1[StartPoly].Center.y, z = Polys1[StartPoly].Center.z}
+	local TargetPos = {x = Polys1[TargetPoly].Center.x, y = Polys1[TargetPoly].Center.y, z = Polys1[TargetPoly].Center.z}
+	local HasReachedTargetIndex = false
+	FoundIDs[StartPoly] = 0
+	FoundPolys[#FoundPolys+1] = Polys1[StartPoly]
+	for i = 1, 100 do
+		if not HasReachedTargetIndex then
+			for k = 1, #FoundPolys do
+				for j = 1, #Polys1[FoundPolys[k].ID].Neighboors do
+					if FoundIDs[Polys1[FoundPolys[k].ID].Neighboors[j]] == nil then
+						FoundIDs[Polys1[FoundPolys[k].ID].Neighboors[j]] = 0
+						FoundPolys[#FoundPolys+1] = Polys1[Polys1[FoundPolys[k].ID].Neighboors[j]]
+						if Polys1[FoundPolys[k].ID].Neighboors[j] == TargetPoly then
+							HasReachedTargetIndex = true
+						end
+					end
+				end
+			end
+		else
+			break
+		end
+	end
+	local CanStraight = true
+	for i = 1, 1000 do
+		GRAPHICS.DRAW_MARKER(28, CurrentPos.x,
+		CurrentPos.y, CurrentPos.z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 150, 0, 0, 100, 0, false, 2, false, 0, 0, false)
+		local Count = 0
+		if CanStraight then
+			local NewV3 = v3.new(TargetPos.x - CurrentPos.x, TargetPos.y - CurrentPos.y, TargetPos.z - CurrentPos.z)
+			local Norm = NewV3:normalise()
+			CurrentPos.x = CurrentPos.x + (Norm.x * 0.1)
+			CurrentPos.y = CurrentPos.y + (Norm.y * 0.1)
+			CurrentPos.z = CurrentPos.z + (Norm.z * 0.1)
+			for k = 1, #FoundPolys do
+				if Inside3DPolygon2(FoundPolys[k], CurrentPos) then
+					Count = Count + 1
+				end
+			end
+			if Count == 0 then
+				CanStraight = false
+			end
+		end
+		Print(CanStraight)
+		Wait()
+	end
+end)
+
+menu.toggle_loop(TestMenu, "Poly Test", {}, "", function(Toggle)
+	local point = ENTITY.GET_ENTITY_COORDS(PLAYER.PLAYER_PED_ID())
+	--local PolyID = GetClosestPolygon(Polys1, Pos, false, 0)
+	--for i = 1, 1000 do
+	--	Print(InsidePolygon2(Polys1[PolyID], Pos, "z", "x"))
+	--	Print(InsidePolygon2(Polys1[PolyID], Pos, "y", "z"))
+	--	Pos.z = Pos.z - 0.01
+	--	Wait()
+	--end
+	local polygon = {
+		{x = Polys1[1][1].x, y = Polys1[1][1].y, z = Polys1[1][1].z + 41.0},
+		{x = Polys1[1][2].x, y = Polys1[1][2].y, z = Polys1[1][2].z + 22.0},
+		{x = Polys1[1][3].x, y = Polys1[1][3].y, z = Polys1[1][3].z + 33.0}
+	}
+	local j = #polygon
+	for i = 1, #polygon do
+		local Value = polygon[i].x + ( point.y - polygon[i].y ) / (polygon[j].y - polygon[i].y) * (polygon[j].x - polygon[i].x)
+		local Value2 = polygon[i].z + ( point.x - polygon[i].x ) / (polygon[j].x - polygon[i].x) * (polygon[j].z - polygon[i].z)
+		j = i
+		Print("Value "..Value.." Value2 "..Value2)
+		GRAPHICS.DRAW_MARKER(28, Value,
+		Value2, polygon[i].z, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 150, 0, 0, 100, 0, false, 2, false, 0, 0, false)
 	end
 end)
 
@@ -5093,4 +5546,56 @@ function RaycastFromCamera(PlayerPed, Distance, Flags)
 		HitCoords.z = AdjustedZ
 	end
 	return HitCoords, memory.read_byte(DidHit) ~= 0, memory.read_int(HitEntity)
+end
+
+function InitClosestPolygonsTable(ArgsT)
+	ArgsT.CurrentTableIndex = 1
+	ArgsT.PolygonsT = {}
+	ArgsT.PolygonIDs = {}
+	ArgsT.PolygonsT2 = {}
+	ArgsT.Pos = {x = 0.0, y = 0.0, z = 0.0}
+	ArgsT.CurrentPolysIndex = 1
+end
+
+function GetClosestPolygons(ArgsT, Amount, MinDistance)
+	local Pos = ArgsT.Pos
+	for i = 1, 30 do
+		if ArgsT.CurrentTableIndex <= #ArgsT.PolygonsT2 then
+			local ID = ArgsT.CurrentTableIndex
+			local Removed = false
+			if DistanceBetween(Pos.x, Pos.y, Pos.z, ArgsT.PolygonsT2[ID].Pos.x, ArgsT.PolygonsT2[ID].Pos.y, ArgsT.PolygonsT2[ID].Pos.z) > MinDistance then
+				ArgsT.PolygonIDs[ArgsT.PolygonsT2[ID].ID] = nil
+				table.remove(ArgsT.PolygonsT, ID)
+				table.remove(ArgsT.PolygonsT2, ID)
+				ArgsT.CurrentTableIndex = ArgsT.CurrentTableIndex - 1
+				if ArgsT.CurrentTableIndex < 1 then
+					ArgsT.CurrentTableIndex = 1
+				end
+				Removed = true
+			end
+			if not Removed then
+				ArgsT.CurrentTableIndex = ArgsT.CurrentTableIndex + 1
+			end
+		else
+			ArgsT.CurrentTableIndex = 1
+		end
+	end
+	for i = 1, 100 do
+		if #ArgsT.PolygonsT < Amount then
+			if ArgsT.CurrentPolysIndex <= #Polys1 then
+				local ID = ArgsT.CurrentPolysIndex
+				if DistanceBetween(Pos.x, Pos.y, Pos.z, Polys1[ID].Center.x, Polys1[ID].Center.y, Polys1[ID].Center.z) <= MinDistance then
+					if ArgsT.PolygonIDs[Polys1[ID].ID] == nil then
+						ArgsT.PolygonIDs[Polys1[ID].ID] = Polys1[ID].ID
+						ArgsT.PolygonsT[#ArgsT.PolygonsT+1] = Polys1[ID]
+						ArgsT.PolygonsT2[#ArgsT.PolygonsT2+1] = {Pos = {x = Polys1[ID].Center.x, y = Polys1[ID].Center.y, z = Polys1[ID].Center.z}, ID = Polys1[ID].ID}
+						
+					end
+				end
+				ArgsT.CurrentPolysIndex = ArgsT.CurrentPolysIndex + 1
+			else
+				ArgsT.CurrentPolysIndex = 1
+			end
+		end
+	end
 end
