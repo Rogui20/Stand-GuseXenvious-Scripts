@@ -1217,18 +1217,18 @@ local blackopsPed_Addrs = {}
 local CanSetModels = false
 --local RelPlayersBitsAddr = SplitGlobals("Global_2657704[PLAYER::PLAYER_ID() /*463*/].f_253")
 local RelAddrs = {}
-if NETWORK.GET_ONLINE_VERSION() == "1.68" then
+if NETWORK.GET_ONLINE_VERSION() == "1.69" then
 	--Addr = 0x7FF66E4E63F0
 	for i = 0, 29 do
 		--RelAddrs[i+1] = memory.script_global(RelPlayersBitsAddr + 463 * i)
 	end
-	--Addr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42 ?")
-	Addr = memory.scan("")
-	Addr = Addr + 0x257FBC0 --0x0257AA80
+	Addr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42 ?")
+	--Addr = memory.scan("GTA5")
+	--Addr = Addr + 0x257FBC0-0x142C --0x0257AA80
 	--Print(string.format("%X", Addr))
 	--util.copy_to_clipboard(string.format("%X", Addr))
 	if Addr ~= 0 then
-		Addr2 = memory.read_long(Addr)
+		Addr2 = memory.read_long(Addr+0x16)
 		Addr3 = memory.read_long(Addr2+0x8)
 		Addr4 = memory.read_long(Addr3+0xB0)
 		police3_FirstAddr = Addr4
@@ -1797,6 +1797,11 @@ menu.toggle(CopAttributesSettingsMenu, "Set Invincible Cops", {}, "", function(t
 	InvincibleCops = toggle
 end, InvincibleCops)
 
+local InvincibleCopVehicles = false
+menu.toggle(CopAttributesSettingsMenu, "Set Invincible Cop Vehicles", {}, "", function(toggle)
+	InvincibleCopVehicles = toggle
+end, InvincibleCopVehicles)
+
 local RushedCops = true
 menu.toggle(CopAttributesSettingsMenu, "Maintain Min Distance", {}, "To rush.", function(toggle)
 	RushedCops = toggle
@@ -2021,6 +2026,11 @@ menu.toggle(MiscCustomTasksMenu, "Set Defensive Sphere To Player", {}, "", funct
 	SetDefensiveSphereToPlayer = toggle
 end, SetDefensiveSphereToPlayer)
 --menu.list_select(AllyCopSettingsMenu, "Cop Relationship Type", {"allycoprelationship"}, "Set if cops will be able to attack players or only npcs.", table<int, table> options, 1, function on_change)
+
+local CopsForcedBeingNearSphere = false
+menu.toggle(AllyCopSettingsMenu, "Cops Forced Being Near Sphere", {}, "Cops will be bringed to near player with velocity.", function(toggle)
+	CopsForcedBeingNearSphere = toggle
+end, CopsForcedBeingNearSphere)
 
 local RenderCopCount = true
 menu.toggle(menu.my_root(), "Show Cop Count HUD", {}, "", function(toggle)
@@ -2603,6 +2613,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 	local FriendlyAll = -607974925
 	local ScanTick = 0
 	if not ApplyCopSettings then
+		DeleteDispatchFunc()
 		RelationshipChanged = true
 		STREAMING.REMOVE_ANIM_DICT("move_ped_crouched")
 		for index, peds in pairs(entities.get_all_peds_as_handles()) do
@@ -2752,11 +2763,23 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		local LastCopCount = 0
 		local ClearedWantedLevel = false
 		local HasSetCanTakeDamage = false
+		local PMin, PMax = v3.new(), v3.new()
+		local HasGotModelDimensions = false
 		while ApplyCopSettings do
 			local PlayerPed = PLAYER.PLAYER_PED_ID()
 			local IsInVeh = PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false)
 			TaskArgs.IsPlayerShooting = PED.IS_PED_SHOOTING(PlayerPed)
 			local PlayerVeh = PED.GET_VEHICLE_PED_IS_IN(PlayerPed, false)
+			if IsInVeh then
+				if PlayerVeh ~= 0 then
+					if not HasGotModelDimensions then
+						HasGotModelDimensions = true
+						MISC.GET_MODEL_DIMENSIONS(ENTITY.GET_ENTITY_MODEL(PlayerVeh), PMin, PMax)
+					end
+				end
+			else
+				HasGotModelDimensions = false
+			end
 			SelectedTask = SelectedTaskTXT[TaskNum].Task
 			if SetAllyPedHateToAiHate then
 				if not HasSetHate then
@@ -3328,6 +3351,9 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 														end
 														local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
 														if Veh ~= 0 then
+															if InvincibleCopVehicles then
+																ENTITY.SET_ENTITY_INVINCIBLE(Veh, true)
+															end
 															if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds then
 																--if IsArmoredVehModel(Veh) then
 																	--PED.SET_PED_COMBAT_ATTRIBUTES(peds, 52, true)
@@ -3527,6 +3553,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 									end
 									if CopsAreAllies then
 										if CanEditCop then
+											local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
 											if RequestControlOfEntity(peds) then
 												if SetCopsNotMigrateControl then
 													entities.set_can_migrate(peds, false)
@@ -3539,8 +3566,53 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 														PED.SET_PED_COMBAT_ATTRIBUTES(peds, 37, true)
 													end
 												end
+												if CopsForcedBeingNearSphere then
+													local IsInSphere = ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 30.0, 30.0, 30.0, false, true, false)
+													local Mul = 1.0
+													local MoreZ = 0.0
+													local PlayerPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+													if PED.IS_PED_IN_ANY_VEHICLE(peds, false) then
+														if Veh ~= 0 then
+															local VModel = ENTITY.GET_ENTITY_MODEL(Veh)
+															if not VEHICLE.IS_THIS_MODEL_A_PLANE(VModel) and not VEHICLE.IS_THIS_MODEL_A_HELI(VModel) then
+																ENTITY.SET_ENTITY_COLLISION(Veh, false, false)
+																local VehPos = ENTITY.GET_ENTITY_COORDS(Veh)
+																local HitPos, HitBool = ShapeTestNav(Veh, VehPos, {x = VehPos.x, y = VehPos.y, z = VehPos.z - 300.0}, -1)
+																if not HitBool then
+																	MoreZ = MoreZ + 5.0
+																end
+																local SubVar = v3.sub(PlayerPos, VehPos)
+																SubVar.z = SubVar.z + MoreZ
+																if not HitBool or not IsInSphere then
+																	ENTITY.SET_ENTITY_VELOCITY(Veh, SubVar.x * Mul, SubVar.y * Mul, SubVar.z * Mul)
+																	DECORATOR.DECOR_SET_INT(Veh, "hunt_score", 1)
+																	ENTITY.SET_ENTITY_ANGULAR_VELOCITY(Veh, 0.0, 0.0, 0.0)
+																else
+																	ENTITY.SET_ENTITY_COLLISION(Veh, true, true)
+																	if DECORATOR.DECOR_GET_INT(Veh, "hunt_score") == 1 then
+																		DECORATOR.DECOR_SET_INT(Veh, "hunt_score", 2)
+																		ENTITY.SET_ENTITY_VELOCITY(Veh, 0.0, 0.0, 0.0)
+																	end
+																end
+															end
+														end
+													else
+														ENTITY.SET_ENTITY_COLLISION(peds, false, false)
+														local PedPos = ENTITY.GET_ENTITY_COORDS(peds)
+														local HitPos, HitBool = ShapeTestNav(peds, {x = PedPos.x, y = PedPos.y, z = PedPos.z + 1.0}, {x = PedPos.x, y = PedPos.y, z = PedPos.z - 300.0}, -1)
+														if not HitBool then
+															MoreZ = MoreZ + 5.0
+														end
+														local SubVar = v3.sub(PlayerPos, PedPos)
+														SubVar.z = SubVar.z + MoreZ
+														if not HitBool or not IsInSphere then
+															ENTITY.SET_ENTITY_VELOCITY(peds, SubVar.x * Mul, SubVar.y * Mul, SubVar.z * Mul)
+														else
+															ENTITY.SET_ENTITY_COLLISION(peds, true, true)
+														end
+													end
+												end
 											end
-											local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
 											if OperationT[peds] == nil then
 												if not ENTITY.IS_ENTITY_DEAD(peds) then
 													if ArmoredVehicle then
@@ -4066,10 +4138,13 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			TaskArgs.OffsetsAttach = nil
 			TaskArgs.RotsAttach = nil
 			TaskArgs.OffsetBringedPeds = 0
+			local RotSpd = 8.0
+			local Normalise = false
+			local SpdMul = 10.0
 			if CopsFollowLikeSnake then
 				if ENTITY.GET_ENTITY_SPEED(PlayerPed) > 0.0 then
 					local PlayerPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-					local PlayerRot = ENTITY.GET_ENTITY_ROTATION(PlayerPed, 2)
+					local PlayerRot = ENTITY.GET_ENTITY_ROTATION(PlayerPed, 5)
 					if #StoredCoordsT < 5000 then
 						StoredCoordsT[#StoredCoordsT+1] = {Pos = PlayerPos, Rot = PlayerRot}
 					else
@@ -4082,21 +4157,16 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 				if CopVehsT[i] ~= nil then
 					if ENTITY.DOES_ENTITY_EXIST(CopVehsT[i].Handle) then
 						if CopsFollowLikeSnake then
-							if #StoredCoordsT > 200 then
-								local Index = (#StoredCoordsT - 50) - 50 * i
+							if #StoredCoordsT > 100 then
+								local Index = (#StoredCoordsT - 25) - 25 * i
 								if StoredCoordsT[Index] ~= nil then
 									if not ENTITY.IS_ENTITY_AT_COORD(CopVehsT[i].Handle, StoredCoordsT[Index].Pos.x, StoredCoordsT[Index].Pos.y, StoredCoordsT[Index].Pos.z, 20.0, 20.0, 20.0, false, true, 0) then
 										ENTITY.SET_ENTITY_COORDS(CopVehsT[i].Handle, StoredCoordsT[Index].Pos.x, StoredCoordsT[Index].Pos.y, StoredCoordsT[Index].Pos.z)
 									end
-									ENTITY.SET_ENTITY_ROTATION(CopVehsT[i].Handle, StoredCoordsT[Index].Rot.x, StoredCoordsT[Index].Rot.y, StoredCoordsT[Index].Rot.z, 2)
-									local VehPos = ENTITY.GET_ENTITY_COORDS(CopVehsT[i].Handle)
-									local AdjustedVect = {
-										x = (StoredCoordsT[Index].Pos.x - VehPos.x) * 20.0,
-										y = (StoredCoordsT[Index].Pos.y - VehPos.y) * 20.0,
-										z = (StoredCoordsT[Index].Pos.z - VehPos.z) * 20.0
-									}
-									--ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(CopVehsT[i].Handle, 1, AdjustedVect.x, AdjustedVect.y, AdjustedVect.z, 0, false, true, false)
-									ENTITY.SET_ENTITY_VELOCITY(CopVehsT[i].Handle, AdjustedVect.x, AdjustedVect.y, AdjustedVect.z)
+									if PlayerVeh ~= 0 then
+										SetEntitySpeedToCoord(CopVehsT[i].Handle, StoredCoordsT[Index].Pos, SpdMul, false, false, false, 0.0, 0.0, 0.0, false, false)
+										RotateEntityToTargetRotation(CopVehsT[i].Handle, StoredCoordsT[Index].Rot, RotSpd, Normalise)
+									end
 								end
 							end
 						end
@@ -4781,17 +4851,20 @@ end)
 local DevMenu = menu.list(menu.my_root(), "DEV Tools", {}, "")
 
 menu.action(DevMenu, "Bypass Law Vehicles", {}, "To spawn cops and SWATS inside different police vehicles", function(toggle)
-	local AddrDispatch = memory.scan("8b ? ? ? ? ? 41 8b f1 45 8a d0 c1 e8 1f 40 8a ea 41 84 c4 75")
-	if AddrDispatch ~= 0 then
-		local AddrTarget = AddrDispatch + 21
-		memory.write_byte(AddrTarget, 0xEB)
-	end
-	local AddrSWATDispatch = memory.scan("74 ? 3b 05 ? ? ? ? 74 ? 3b 05 ? ? ? ? 75 ? ? b0 01")
-	if AddrSWATDispatch ~= 0 then
-		local AddrTarget = AddrSWATDispatch + 16
-		memory.write_byte(AddrTarget, 0x90)
-		memory.write_byte(AddrTarget + 1, 0x90)
-	end
+	local AddrDispatch = memory.scan("8d ? 58 89 ? ? e8 ? ? ? ? 84 c0 0f 84")
+	--if AddrDispatch ~= 0 then
+	--	local AddrTarget = AddrDispatch + 21
+	--	memory.write_byte(AddrTarget, 0xEB)
+	--end
+	--local AddrSWATDispatch = memory.scan("74 ? 3b 05 ? ? ? ? 74 ? 3b 05 ? ? ? ? 75 ? ? b0 01")
+	--if AddrSWATDispatch ~= 0 then
+	--	local AddrTarget = AddrSWATDispatch + 16
+	--	memory.write_byte(AddrTarget, 0x90)
+	--	memory.write_byte(AddrTarget + 1, 0x90)
+	--end
+	--local NewAddr = memory.scan("C0 C0 00 00 0C C2 00 00 0C 42 00 00 F0 41 00 00 B4 41 00 00 0C 42 ?")
+	Print(string.format("%X", AddrDispatch))
+	util.copy_to_clipboard(string.format("%X", AddrDispatch))
 end)
 
 menu.action(DevMenu, "Component Variation", {}, "", function(toggle)
@@ -6999,9 +7072,9 @@ menu.toggle(MiscMenu, "Veh Blend", {}, "", function(toggle)
 end)
 
 function SetMissionEntitiesCanTakeDamage()
-	local PedsGlobal = SplitGlobals("Global_4980736.f_117913[bParam0 /*1162*/].f_549")
+	local PedsGlobal = SplitGlobals("Global_4980736.f_119419[bVar3 /*1180*/].f_555")
 	for i = 0, 79 do
-		local Address = memory.script_global(PedsGlobal + 1162 * i)
+		local Address = memory.script_global(PedsGlobal + 1180 * i)
 		memory.write_int(Address, clear_bit(memory.read_int(Address), 30))
 	end
 end
@@ -7785,6 +7858,10 @@ menu.toggle_loop(NewWeapons, "Door Control", {}, "", function(toggle)
 	end
 end)
 
+menu.toggle_loop(NewWeapons, "First Person Aim", {}, "", function(toggle)
+	WEAPON.SET_WEAPON_ANIMATION_OVERRIDE(PLAYER.PLAYER_PED_ID(), joaat("FirstPersonFranklinAiming"))
+end)
+
 local Relationships = {
 	"CIVMALE",
 	"CIVFEMALE",
@@ -7924,9 +8001,10 @@ end)
 menu.action(DevMenu, "Unstuck Vehicle", {}, "", function(toggle)
 	local Veh = PED.GET_VEHICLE_PED_IS_IN(PLAYER.PLAYER_PED_ID(), false)
 	local NetID = NETWORK.NETWORK_GET_NETWORK_ID_FROM_ENTITY(Veh)
-	NETWORK.NETWORK_REQUEST_CONTROL_OF_NETWORK_ID(NetID)
-	NETWORK.SET_NETWORK_ID_CAN_MIGRATE(NetID, true)
-	NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Veh)
+	if NETWORK.NETWORK_REQUEST_CONTROL_OF_NETWORK_ID(NetID) then
+		NETWORK.SET_NETWORK_ID_CAN_MIGRATE(NetID, true)
+		NETWORK.NETWORK_REQUEST_CONTROL_OF_ENTITY(Veh)
+	end
 end)
 
 local PatchStromberg = false
@@ -8386,11 +8464,11 @@ menu.toggle(MissionMenu, "Yacht Defend", {}, "", function(toggle)
 						memory.write_vector3(memory.script_local("gb_yacht_rob", YachtBlip), Pos)
 						memory.write_vector3(memory.script_local("gb_yacht_rob", StartArea), StartPos)
 						memory.write_vector3(memory.script_local("gb_yacht_rob", EndArea), EndPos)
-						HasSetCoords = true
+						--HasSetCoords = true
 					end
 				else
 					util.request_script_host("gb_yacht_rob")
-					Delay = 1
+					Delay = 5
 				end
 			else
 				HasSetCoords = false
@@ -8420,6 +8498,134 @@ menu.action(MissionFinisherMenu, "Set 9999 Lives", {}, "", function(toggle)
 			Wait(1000)
 		end
 	end
+end)
+
+menu.action(MissionFinisherMenu, "Set 0 Lives", {}, "", function(toggle)
+	if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller")) > 0 then
+		local LivesLocalAddr = SplitGlobals("Local_19728.f_1730[bVar0]")
+		for i = 1, 100 do
+			local IsHost = false
+			util.spoof_script("fm_mission_controller", function()
+				IsHost = NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT()
+				--NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+			end)
+			if IsHost then
+				for k = 0, 3 do
+					memory.write_int(memory.script_local("fm_mission_controller", LivesLocalAddr + k), 0)
+				end
+				break
+			else
+				util.request_script_host("fm_mission_controller")
+			end
+			Wait(1000)
+		end
+	end
+end)
+
+local RotateHost = false
+menu.toggle(MissionFinisherMenu, "Rotate Script Host", {}, "To fix infinite loading.", function(toggle)
+    RotateHost = toggle
+    if RotateHost then
+        local CurrentIndex = 1
+        local PlayersT = {}
+        local FoundPlayersT = {}
+        while RotateHost do
+            local Delay = 0
+            for i = 0, 29 do
+                if FoundPlayersT[i+1] == nil then
+                    if NETWORK.NETWORK_IS_PLAYER_CONNECTED(i) then
+                        FoundPlayersT[i+1] = i+1
+                        PlayersT[#PlayersT+1] = {ID = i, HasGaveScriptHost = false}
+                    end
+                end
+            end
+            if PlayersT[CurrentIndex] ~= nil then
+                if NETWORK.NETWORK_IS_PLAYER_CONNECTED(PlayersT[CurrentIndex].ID) then
+                    local IsHost = false
+                    util.spoof_script("fm_mission_controller", function()
+                        local HostID = NETWORK.NETWORK_GET_HOST_OF_THIS_SCRIPT()
+                        IsHost = HostID == PlayersT[CurrentIndex].ID
+                        Print(HostID)
+                    end)
+                    if not IsHost then
+                        util.request_script_host("fm_mission_controller")
+                        Wait(1000)
+                        util.give_script_host("fm_mission_controller", PlayersT[CurrentIndex].ID)
+                        Delay = 1000
+                    else
+                        Delay = 1000
+                        CurrentIndex = CurrentIndex + 1
+                    end
+                else
+                    FoundPlayersT[PlayersT[CurrentIndex].ID+1] = nil
+                    table.remove(PlayersT, CurrentIndex)
+                    --PlayersT[CurrentIndex] = nil
+                    CurrentIndex = CurrentIndex + 1
+                end
+            else
+                --table.remove(PlayersT, CurrentIndex)
+                --PlayersT[CurrentIndex] = nil
+                CurrentIndex = CurrentIndex + 1
+            end
+            if CurrentIndex > #PlayersT then
+                CurrentIndex = 1
+            end
+            Wait(Delay)
+        end
+    end
+end)
+
+local RotateHost2020 = false
+menu.toggle(MissionFinisherMenu, "Rotate Script Host 2020", {}, "To fix infinite loading.", function(toggle)
+    RotateHost2020 = toggle
+    if RotateHost2020 then
+        local CurrentIndex = 1
+        local PlayersT = {}
+        local FoundPlayersT = {}
+        while RotateHost2020 do
+            local Delay = 0
+            for i = 0, 29 do
+                if FoundPlayersT[i+1] == nil then
+                    if NETWORK.NETWORK_IS_PLAYER_CONNECTED(i) then
+                        FoundPlayersT[i+1] = i+1
+                        PlayersT[#PlayersT+1] = {ID = i, HasGaveScriptHost = false}
+                    end
+                end
+            end
+            if PlayersT[CurrentIndex] ~= nil then
+                if NETWORK.NETWORK_IS_PLAYER_CONNECTED(PlayersT[CurrentIndex].ID) then
+                    local IsHost = false
+                    util.spoof_script("fm_mission_controller_2020", function()
+                        local HostID = NETWORK.NETWORK_GET_HOST_OF_THIS_SCRIPT()
+                        IsHost = HostID == PlayersT[CurrentIndex].ID
+                        Print(HostID)
+                    end)
+                    if not IsHost then
+                        util.request_script_host("fm_mission_controller_2020")
+                        Wait(1000)
+                        util.give_script_host("fm_mission_controller_2020", PlayersT[CurrentIndex].ID)
+                        Delay = 1000
+                    else
+                        Delay = 1000
+                        CurrentIndex = CurrentIndex + 1
+                    end
+                else
+                    FoundPlayersT[PlayersT[CurrentIndex].ID+1] = nil
+                    table.remove(PlayersT, CurrentIndex)
+                    --PlayersT[CurrentIndex] = nil
+                    CurrentIndex = CurrentIndex + 1
+                end
+            else
+                --table.remove(PlayersT, CurrentIndex)
+                --PlayersT[CurrentIndex] = nil
+                CurrentIndex = CurrentIndex + 1
+            end
+            if CurrentIndex > #PlayersT then
+                CurrentIndex = 1
+            end
+            Wait(Delay)
+        end
+    end
 end)
 
 function CallDispatchFunc()
@@ -8497,6 +8703,11 @@ menu.toggle(WeaponizedVehiclesMenu, "Vehicle Guns", {}, "", function(toggle)
 	end
 end)
 
+local AvoidFriendlyPeds = false
+menu.toggle(WeaponizedVehiclesMenu, "Homing Shoot Avoid Friendly Peds", {}, "", function(toggle)
+	AvoidFriendlyPeds = toggle
+end, AvoidFriendlyPeds)
+
 local VehHomingKinect = false
 menu.toggle(WeaponizedVehiclesMenu, "Vehicle Homing Kinect", {}, "", function(toggle)
 	VehHomingKinect = toggle
@@ -8516,16 +8727,20 @@ menu.toggle(WeaponizedVehiclesMenu, "Vehicle Homing Kinect", {}, "", function(to
 			TimerCount = 1,
 			HasReseted = false
 		}
-		local Spd = 0.01
+		local Spd = 0.00
+		local ForbiddenRels = {0}
+		if AvoidFriendlyPeds then
+			ForbiddenRels[#ForbiddenRels+1] = 1
+		end
 		while VehHomingKinect do
 			local peds = PLAYER.PLAYER_PED_ID()
 			local PPos = ENTITY.GET_ENTITY_COORDS(peds)
-			local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
+			local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, true)
 			local CamRot = CAM.GET_GAMEPLAY_CAM_ROT(0)
 			if Veh ~= 0 then
 				if TimerT.TimerCount >= 1 then
 					TimerT.HasReseted = false
-					if PED.IS_PED_IN_VEHICLE(peds, Veh, false) then
+					if PED.IS_PED_IN_ANY_VEHICLE(peds, true) then
 						if PED.IS_PED_SHOOTING(peds) or PAD.IS_CONTROL_PRESSED(0, 70) then
 							local Shooted = false
 							local BoneIndex = ENTITY.GET_ENTITY_BONE_INDEX_BY_NAME(Veh, "headlight_l")
@@ -8593,18 +8808,18 @@ menu.toggle(WeaponizedVehiclesMenu, "Vehicle Homing Kinect", {}, "", function(to
 					if ENTITY.DOES_ENTITY_EXIST(PropsHandlesT[i].Handle) then
 						ENTITY.SET_ENTITY_HAS_GRAVITY(PropsHandlesT[i].Handle, false)
 						if PropsHandlesT[i].Target == 0 then
-							PropsHandlesT[i].Target = GetAllPedNearestTarget(peds, false, HomingShootsAtPlayers, not HomingShootsAtPeds, not AvoidFocusingFriends, {0})
+							PropsHandlesT[i].Target = GetAllPedNearestTarget(peds, false, HomingShootsAtPlayers, not HomingShootsAtPeds, not AvoidFocusingFriends, ForbiddenRels)
 						end
 						if PropsHandlesT[i].Target ~= 0 then
 							if ENTITY.DOES_ENTITY_EXIST(PropsHandlesT[i].Target) and not ENTITY.IS_ENTITY_DEAD(PropsHandlesT[i].Target) then
-								if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(PropsHandlesT[i].Handle, PropsHandlesT[i].Target, 17) then
+								--if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(PropsHandlesT[i].Handle, PropsHandlesT[i].Target, 17) then
 									local TPos = ENTITY.GET_ENTITY_COORDS(PropsHandlesT[i].Target)
 									local OPos = ENTITY.GET_ENTITY_COORDS(PropsHandlesT[i].Handle)
 									local Rot = v3.lookAt(OPos, TPos)
 									local Dir = v3.toDir(Rot)
 									local Vel = ENTITY.GET_ENTITY_VELOCITY(PropsHandlesT[i].Handle)
 									ENTITY.APPLY_FORCE_TO_ENTITY_CENTER_OF_MASS(PropsHandlesT[i].Handle, 1, Dir.x - (Vel.x * Spd), Dir.y - (Vel.y * Spd), Dir.z - (Vel.z * Spd), 0, false, true, false)
-								end
+								--end
 							else
 								PropsHandlesT[i].Target = 0
 							end
@@ -8625,30 +8840,38 @@ menu.toggle_loop(DevMenu, "Matrix Test", {}, "", function(toggle)
 	local PlayerPed = PLAYER.PLAYER_PED_ID()
 	local Vel = ENTITY.GET_ENTITY_VELOCITY(PlayerPed)
 	local EntRot = ENTITY.GET_ENTITY_ROTATION(PlayerPed, 2)
-	local FVect, RVect, UpVect, Vect = v3.new(), v3.new(), v3.new(), v3.new()
-	ENTITY.GET_ENTITY_MATRIX(PlayerPed, FVect, RVect, UpVect, Vect)
-	local Matrix = GetEntityMatrix(EntRot)
-	local x, y, z = RotateVector(1.0, 1.0, 0.0, 0.0, EntRot.x, EntRot.y, EntRot.z)
+	local Rot = {x = 0.0, y = 180.0, z = 0.0}
+	--local FVect, RVect, UpVect, Vect = v3.new(), v3.new(), v3.new(), v3.new()
+	--ENTITY.GET_ENTITY_MATRIX(PlayerPed, FVect, RVect, UpVect, Vect)
+	local AdjustedX = Rot.x - EntRot.x
+	AdjustedX = (AdjustedX + 180) % 360 - 180
+	local AdjustedY = Rot.y - EntRot.y
+	AdjustedY = (AdjustedY + 180) % 360 - 180
+	local AdjustedZ = Rot.z - EntRot.z
+	AdjustedZ = (AdjustedZ + 180) % 360 - 180
+	local NewV3_2 = v3.new(AdjustedX, AdjustedY, AdjustedZ)
+	local Dir = NewV3_2--:normalise()
+	--local Matrix = GetEntityMatrix(EntRot)
+	--local x, y, z = RotateVector(1.0, 1.0, 0.0, 0.0, EntRot.x, EntRot.y, EntRot.z)
 	--local x, y, z = RotateVector(1.0, 1.0, 0.0, 0.0, Vel.x, Vel.y, Vel.z)
-	local VelDir = Vel.x * RVect.x + Vel.y * RVect.y + Vel.z * RVect.z
-	local VelDirRot = z
+	--local VelDir = Vel.x * RVect.x + Vel.y * RVect.y + Vel.z * RVect.z
+	--local VelDirRot = z
 	--local VelDir = Vel.x * Matrix[2][1]
-	local SpdDir = ENTITY.GET_ENTITY_SPEED_VECTOR(PlayerPed, true)
-	local Txt1 = string.format("%.3f", Vel.x)
-	local Txt2 = string.format("%.3f", VelDir)
-	local Txt3 = string.format("%.3f", SpdDir.x)
-	--local Txt4 = string.format("%.3f", Matrix[2][1])
-	local Txt4 = string.format("%.3f", RVect.x)
-	directx.draw_text(0.7, 0.7, "Vel.x: "..Txt1.." VelDir.x: "..Txt2.." SpdDir.x: "..Txt3.." Matrix.x: "..Txt4, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
-	local Txt5 = string.format("%.3f", EntRot.z)
-	local Txt6 = string.format("%.3f", VelDirRot)
-	directx.draw_text(0.7, 0.75, "EntRot.x: "..Txt5.." VelDir.x: "..Txt6, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
+	--local SpdDir = ENTITY.GET_ENTITY_SPEED_VECTOR(PlayerPed, true)
+	local Txt1 = string.format("%.3f", Dir.x)
+	local Txt2 = string.format("%.3f", Dir.y)
+	local Txt3 = string.format("%.3f", Dir.z)
+	local Txt4 = string.format("%.3f", EntRot.x)
+	local Txt5 = string.format("%.3f", EntRot.y)
+	local Txt6 = string.format("%.3f", EntRot.z)
+	directx.draw_text(0.7, 0.7, "Dir.x: "..Txt1.." Dir.y "..Txt2.." Dir.z: "..Txt3, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
+	directx.draw_text(0.7, 0.75, "EntRot.x: "..Txt4.." EntRot.y "..Txt5.." EntRot.z: "..Txt6, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
 end)
 
 
 function TimerCount(TimerT)
 	local TimeMillis = util.current_time_millis()
-	if TimeMillis > TimerT.Timer+1000 then
+	if TimeMillis > TimerT.Timer+100 then
 		TimerT.TimerCount = TimerT.TimerCount + 1
 		TimerT.Timer = TimeMillis
 	end
@@ -8697,30 +8920,264 @@ function GetOffsetFromEntityInWorldCoords(entity, offX, offY, offZ)
     return vector3(x, y, z)
 end
 
-function RotateVector(angle, x, y, z, vx, vy, vz)
-	c = math.cos(angle)
+-- Função para converter ângulos de Euler para matriz de rotação (ordem XYZ)
+function EulerToRotationMatrix(pitch, yaw, roll)
+    local cx = math.cos(pitch)
+    local sx = math.sin(pitch)
+    local cy = math.cos(yaw)
+    local sy = math.sin(yaw)
+    local cz = math.cos(roll)
+    local sz = math.sin(roll)
 
-	s = math.sin(angle)
+    return {
+        {cy * cz, -cy * sz, sy},
+        {sx * sy * cz + cx * sz, -sx * sy * sz + cx * cz, -sx * cy},
+        {-cx * sy * cz + sx * sz, cx * sy * sz + sx * cz, cx * cy}
+    }
+end
 
-	length = math.sqrt(x*x + y*y + z*z)
+-- Função para multiplicar duas matrizes 3x3
+function MatrixMultiply(m1, m2)
+    local result = {}
+    for i = 1, 3 do
+        result[i] = {}
+        for j = 1, 3 do
+            result[i][j] = m1[i][1] * m2[1][j] + m1[i][2] * m2[2][j] + m1[i][3] * m2[3][j]
+        end
+    end
+    return result
+end
 
-	x /= length
+-- Função para calcular a matriz de rotação inversa
+function MatrixInverse(m)
+    local determinant = m[1][1] * (m[2][2] * m[3][3] - m[2][3] * m[3][2]) -
+                        m[1][2] * (m[2][1] * m[3][3] - m[2][3] * m[3][1]) +
+                        m[1][3] * (m[2][1] * m[3][2] - m[2][2] * m[3][1])
+    local invDet = 1 / determinant
 
-	y /= length
+    return {
+        {
+            invDet * (m[2][2] * m[3][3] - m[2][3] * m[3][2]),
+            invDet * (m[1][3] * m[3][2] - m[1][2] * m[3][3]),
+            invDet * (m[1][2] * m[2][3] - m[1][3] * m[2][2])
+        },
+        {
+            invDet * (m[2][3] * m[3][1] - m[2][1] * m[3][3]),
+            invDet * (m[1][1] * m[3][3] - m[1][3] * m[3][1]),
+            invDet * (m[1][3] * m[2][1] - m[1][1] * m[2][3])
+        },
+        {
+            invDet * (m[2][1] * m[3][2] - m[2][2] * m[3][1]),
+            invDet * (m[1][2] * m[3][1] - m[1][1] * m[3][2]),
+            invDet * (m[1][1] * m[2][2] - m[1][2] * m[2][1])
+        }
+    }
+end
 
-	z /= length
+-- Função para obter a matriz de rotação da entidade
+function GetEntityRotationMatrix(entity)
+    local rot = ENTITY.GET_ENTITY_ROTATION(entity, 5)
+    return EulerToRotationMatrix(math.rad(rot.x), math.rad(rot.y), math.rad(rot.z))
+end
 
-	rotationMatrix = {
+-- Função para converter uma matriz de rotação para quaternion
+function RotationMatrixToQuaternion(m)
+    local w = math.sqrt(1 + m[1][1] + m[2][2] + m[3][3]) / 2
+    local x = (m[3][2] - m[2][3]) / (4 * w)
+    local y = (m[1][3] - m[3][1]) / (4 * w)
+    local z = (m[2][1] - m[1][2]) / (4 * w)
+    return {w = w, x = x, y = y, z = z}
+end
 
-	{ c + x*x*(1-c), x*y*(1-c) - z*s, x*z*(1-c) + y*s },
+-- Função para calcular a velocidade angular a partir da diferença de quaternions
+function QuaternionToAngularVelocity(q)
+    local theta = 2 * math.acos(q.w)
+    local sinTheta = math.sqrt(1 - q.w * q.w)
+    if sinTheta < 0.001 then
+        return {x = q.x * theta, y = q.y * theta, z = q.z * theta}
+    else
+        return {x = q.x / sinTheta * theta, y = q.y / sinTheta * theta, z = q.z / sinTheta * theta}
+    end
+end
 
-	{ y*x*(1-c) + z*s, c + y*y*(1-c), y*z*(1-c) - x*s },
+-- Função principal para girar a entidade até a rotação desejada usando matrizes de rotação
+function RotateEntityToTargetRotation(entity, targetRotation, interpolationFactor, normalise)
+    interpolationFactor = interpolationFactor or 0.1 -- Fator de interpolação para suavizar a rotação
 
-	{ z*x*(1-c) - y*s, z*y*(1-c) + x*s, c + z*z*(1-c) } }
-	newVx = rotationMatrix[1][1]*vx + rotationMatrix[1][2]*vy + rotationMatrix[1][3]*vz
+    -- Obtenha a matriz de rotação atual da entidade
+    local currentRotationMatrix = GetEntityRotationMatrix(entity)
 
-	newVy = rotationMatrix[2][1]*vx + rotationMatrix[2][2]*vy + rotationMatrix[2][3]*vz
+    -- Calcule a matriz de rotação alvo a partir dos ângulos de Euler desejados
+    local targetRotationMatrix = EulerToRotationMatrix(math.rad(targetRotation.x), math.rad(targetRotation.y), math.rad(targetRotation.z))
 
-	newVz = rotationMatrix[3][1]*vx + rotationMatrix[3][2]*vy + rotationMatrix[3][3]*vz
-	return newVx, newVy, newVz
+    -- Calcule a matriz de rotação delta
+    local deltaRotationMatrix = MatrixMultiply(targetRotationMatrix, MatrixInverse(currentRotationMatrix))
+    -- Converta a matriz de rotação delta para quaternion
+    local deltaQuaternion = RotationMatrixToQuaternion(deltaRotationMatrix)
+
+    -- Converta a diferença de quaternion em velocidade angular
+    local angularVelocity = QuaternionToAngularVelocity(deltaQuaternion)
+
+    -- Interpole a velocidade angular para suavizar a rotação
+    angularVelocity.x = angularVelocity.x * interpolationFactor
+    angularVelocity.y = angularVelocity.y * interpolationFactor
+    angularVelocity.z = angularVelocity.z * interpolationFactor
+	
+	if normalise then
+		angularVelocity = v3.new(angularVelocity.x, angularVelocity.y, angularVelocity.z)
+		angularVelocity:normalise()
+		angularVelocity:mul(interpolationFactor)
+	end
+
+    -- Aplique a velocidade angular à entidade
+    ENTITY.SET_ENTITY_ANGULAR_VELOCITY(entity, angularVelocity.x, angularVelocity.y, angularVelocity.z)
+end
+
+-- Função para calcular a nova rotação X e Y baseada na rotação Z e inclinação desejada
+function calculateTiltRotationFromUserInput(rotX, rotY, rotZ, tiltDegrees)
+    -- Converter a rotação Z para radianos
+    local radZ = math.rad(rotZ)
+
+    -- Calcular a inclinação (tilt) desejada
+    local tiltX = tiltDegrees * math.cos(radZ)
+    local tiltY = tiltDegrees * math.sin(radZ)
+
+    -- Calcular a nova rotação X e Y
+    local newRotX = rotX + tiltX
+    local newRotY = rotY + tiltY
+
+    -- Retornar a nova rotação X, Y e Z
+    return {x = newRotX, y = newRotY, z = rotZ}
+end
+
+function angleDifference(target, current)
+    local diff = target - current
+    if diff > 180 then
+        diff = diff - 360
+    elseif diff < -180 then
+        diff = diff + 360
+    end
+    return diff
+end
+
+-- Função para converter graus para radianos
+local function deg2rad(deg)
+    return deg * math.pi / 180.0
+end
+
+-- Função para converter radianos para graus
+local function rad2deg(rad)
+    return rad * 180.0 / math.pi
+end
+
+-- Função para limitar o ângulo no intervalo de -180 a 180 graus
+local function wrap180(deg)
+    while deg <= -180.0 do deg = deg + 360.0 end
+    while deg > 180.0 do deg = deg - 360.0 end
+    return deg
+end
+
+-- Função para converter rotação XYZ para ZYX
+function convertRotationXYZtoZYX(rotX, rotY, rotZ)
+    -- Converter para radianos
+    local x = deg2rad(rotX)
+    local y = deg2rad(rotY)
+    local z = deg2rad(rotZ)
+
+    -- Matriz de rotação para XYZ
+    local cosX = math.cos(x)
+    local sinX = math.sin(x)
+    local cosY = math.cos(y)
+    local sinY = math.sin(y)
+    local cosZ = math.cos(z)
+    local sinZ = math.sin(z)
+
+    local Rxyz = {
+        {cosY * cosZ, -cosY * sinZ, sinY},
+        {sinX * sinY * cosZ + cosX * sinZ, -sinX * sinY * sinZ + cosX * cosZ, -sinX * cosY},
+        {-cosX * sinY * cosZ + sinX * sinZ, cosX * sinY * sinZ + sinX * cosZ, cosX * cosY}
+    }
+
+    -- Extrair ângulos ZYX da matriz de rotação
+    local rotZ2 = math.atan2(Rxyz[2][1], Rxyz[1][1])
+    local rotY2 = math.asin(-Rxyz[3][1])
+    local rotX2 = math.atan2(Rxyz[3][2], Rxyz[3][3])
+
+    -- Converter de volta para graus
+    rotX2 = rad2deg(rotX2)
+    rotY2 = rad2deg(rotY2)
+    rotZ2 = rad2deg(rotZ2)
+
+    -- Ajustar ângulos para o intervalo de -180 a 180 graus
+    rotX2 = wrap180(rotX2)
+    rotY2 = wrap180(rotY2)
+    rotZ2 = wrap180(rotZ2)
+
+    return {x = rotX2, y = -rotY2, z = rotZ2}
+end
+
+-- Função para adicionar duas rotações e retornar a rotação normalizada
+function addRotation(rot1, rot2)
+    local result = rot1 + rot2
+    return wrap180(result)
+end
+
+-- Função para subtrair duas rotações e retornar a rotação normalizada
+function subtractRotation(rot1, rot2)
+    local result = rot1 - rot2
+    return wrap180(result)
+end
+
+function SetEntitySpeedToCoord(Entity, CoordTarget, Mul, IgnoreX, IgnoreY, IgnoreZ, AddX, AddY, AddZ, Normalise, Relative)
+    local OPos = ENTITY.GET_ENTITY_COORDS(Entity)
+	local NewV3 = {
+        x = (CoordTarget.x - OPos.x) * Mul,
+        y = (CoordTarget.y - OPos.y) * Mul,
+        z = (CoordTarget.z - OPos.z) * Mul
+    }
+	local Vel = ENTITY.GET_ENTITY_VELOCITY(Entity)
+    if IgnoreX then
+        NewV3.x = Vel.x
+    end
+    if IgnoreY then
+        NewV3.y = Vel.y
+    end
+    if IgnoreZ then
+        NewV3.z = Vel.z
+    end
+    if Normalise then
+        NewV3 = v3.new(NewV3.x, NewV3.y, NewV3.z)
+        if math.abs(NewV3.x) > Mul or math.abs(NewV3.y) > Mul or math.abs(NewV3.z) > Mul then
+            NewV3 = v3.normalise(NewV3)
+            NewV3:mul(Mul)
+        end
+    end
+    local MoreX, MoreY, MoreZ = AddX, AddY, AddZ
+    if Relative then
+        local FVect, RVect, UpVect, Vect = v3.new(), v3.new(), v3.new(), v3.new()
+        ENTITY.GET_ENTITY_MATRIX(Entity, FVect, RVect, UpVect, Vect)
+        MoreX = (FVect.x * AddY) + (RVect.x * AddX) + (UpVect.x + AddZ)
+        MoreY = (FVect.y * AddY) + (RVect.y * AddX) + (UpVect.y + AddZ)
+        MoreZ = (FVect.z * AddY) + (RVect.z * AddX) + (UpVect.z + AddZ)
+    end
+    ENTITY.SET_ENTITY_VELOCITY(Entity, (NewV3.x) + MoreX, (NewV3.y) + MoreY, (NewV3.z) + MoreZ)
+end
+
+function SnakeClearLosCheck(Veh, Veh2, Offset)
+	local Bool = false
+	local Pos = ENTITY.GET_ENTITY_COORDS(Veh)
+	local Vel = ENTITY.GET_ENTITY_VELOCITY(Veh)
+	local Spd = ENTITY.GET_ENTITY_SPEED(Veh)
+	--Pos.x = Pos.x + Vel.x
+	--Pos.y = Pos.y + Vel.y
+	--Pos.z = Pos.z + Vel.z
+	local HitCoords, DidHit = ShapeTestNav(Veh, Pos, Offset, -1)
+	if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(Veh, Veh2, 17)
+	and not DidHit 
+	--and not MISC.IS_POSITION_OCCUPIED(Pos.x, Pos.y, Pos.z, Spd, false, true, Spd > 10.0, true, false, Veh, true)
+	--and not ENTITY.HAS_ENTITY_COLLIDED_WITH_ANYTHING(Veh) then
+	then
+		Bool = true
+	end
+	return Bool
 end
