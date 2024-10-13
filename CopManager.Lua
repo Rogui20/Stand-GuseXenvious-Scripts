@@ -1228,7 +1228,7 @@ if NETWORK.GET_ONLINE_VERSION() == "1.69" then
 	--Print(string.format("%X", Addr))
 	--util.copy_to_clipboard(string.format("%X", Addr))
 	if Addr ~= 0 then
-		Addr2 = memory.read_long(Addr+0x16)
+		Addr2 = memory.read_long(Addr+0x26)
 		Addr3 = memory.read_long(Addr2+0x8)
 		Addr4 = memory.read_long(Addr3+0xB0)
 		police3_FirstAddr = Addr4
