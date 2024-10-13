@@ -200,20 +200,91 @@ TaskStatusFunctionsT[11+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 end
 TaskStatusFunctionsT[12+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	if OperationT[peds].TaskStatus == 12 then
+		if OperationT[peds].Bits == nil then
+			OperationT[peds].Bits = 0
+		end
+		if OperationT[peds].TargetTimer == nil then
+			OperationT[peds].TargetTimer = 0
+		end
 		if OperationT[peds].Target == nil then
-			if RequestControlOfEntity(peds) then
-				local PlayerPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-				TASK.TASK_COMBAT_HATED_TARGETS_IN_AREA(peds, PlayerPos.x, PlayerPos.y, PlayerPos.z, 1000.0, 16)
-				OperationT[peds].TaskStatus = 13
+			OperationT[peds].Target = 0
+		end
+		if OperationT[peds].TargetTimer <= 0 then
+			OperationT[peds].TargetTimer = 100
+			local NewTarget = GetPedNearestTarget(peds)
+			if NewTarget ~= 0 then
+				if NewTarget ~= OperationT[peds].Target then
+					OperationT[peds].Target = NewTarget
+					OperationT[peds].Bits = 0
+				end
 			end
 		else
-			if not ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target) and not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) then
-				if not ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17) then
-					OperationT[peds].TaskStatus = 13
+			OperationT[peds].TargetTimer = OperationT[peds].TargetTimer - 1
+		end
+		if OperationT[peds].Target ~= 0 then
+			if ENTITY.DOES_ENTITY_EXIST(OperationT[peds].Target) and not ENTITY.IS_ENTITY_DEAD(OperationT[peds].Target) then
+				local HasClearLos = ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, OperationT[peds].Target, 17)
+				local VehHandle = PED.GET_VEHICLE_PED_IS_IN(peds, true)
+				if VehHandle ~= 0 and PED.IS_PED_IN_VEHICLE(peds, VehHandle) then
+					local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(VehHandle, -1, false)
+					if Ped == peds then
+						if not is_bit_set(OperationT[peds].Bits, 1) then
+							if HasClearLos then
+								OperationT[peds].Bits = set_bit(OperationT[peds].Bits, 1)
+								TASK.TASK_VEHICLE_SHOOT_AT_PED(peds, OperationT[peds].Target, 20.0)
+								TASK.TASK_VEHICLE_CHASE(peds, OperationT[peds].Target)
+								if is_bit_set(OperationT[peds].Bits, 2) then
+									OperationT[peds].Bits = clear_bit(OperationT[peds].Bits, 2)
+								end
+							end
+						else
+							if PED.IS_PED_SHOOTING(peds) then
+								OperationT[peds].Bits = clear_bit(OperationT[peds].Bits, 1)
+							end
+						end
+						if not is_bit_set(OperationT[peds].Bits, 2) then
+							if not HasClearLos then
+								OperationT[peds].Bits = set_bit(OperationT[peds].Bits, 2)
+								TASK.TASK_VEHICLE_CHASE(peds, OperationT[peds].Target)
+							end
+						end
+					else
+						if not is_bit_set(OperationT[peds].Bits, 1) then
+							if HasClearLos then
+								OperationT[peds].Bits = set_bit(OperationT[peds].Bits, 1)
+								TASK.TASK_VEHICLE_SHOOT_AT_PED(peds, OperationT[peds].Target, 20.0)
+								if is_bit_set(OperationT[peds].Bits, 2) then
+									OperationT[peds].Bits = clear_bit(OperationT[peds].Bits, 2)
+								end
+							end
+						else
+							if PED.IS_PED_SHOOTING(peds) then
+								OperationT[peds].Bits = clear_bit(OperationT[peds].Bits, 1)
+							end
+						end
+					end
+				else
+					if not is_bit_set(OperationT[peds].Bits, 3) then
+						if HasClearLos then
+							OperationT[peds].Bits = set_bit(OperationT[peds].Bits, 3)
+							TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, OperationT[peds].Target, OperationT[peds].Target, 3.0, true, 0.15, 1.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+							if is_bit_set(OperationT[peds].Bits, 4) then
+								OperationT[peds].Bits = clear_bit(OperationT[peds].Bits, 4)
+							end
+						end
+					end
+					if not is_bit_set(OperationT[peds].Bits, 4) then
+						if not HasClearLos then
+							OperationT[peds].Bits = set_bit(OperationT[peds].Bits, 4)
+							TASK.TASK_GO_TO_ENTITY(peds, OperationT[peds].Target, 30000, 10.0, 3.0, 100.0, 0)
+						end
+					end
 				end
 			else
-				OperationT[peds].Target = nil
+				OperationT[peds].Bits = 0
 			end
+		else
+			OperationT[peds].Bits = 0
 		end
 	end
 end
@@ -2147,12 +2218,12 @@ local SelectedTaskTXT = {
 	{TXT = "Closer cops exit vehicle", ColourG = 255, Task = 6},
 	{TXT = "Call to stay above veh", ColourG = 255, Task = 8},
 	{TXT = "Attack nearest ped in screen", ColourG = 255, Task = 7},
-	{TXT = "Rush to enemies", ColourG = 255, Task = 2},
+	{TXT = "Mega rush mode", ColourG = 255, Task = 2},
 	{TXT = "Rushed combat mode", ColourG = 255, Task = 9},
 	{TXT = "Super rushed combat mode", ColourG = 255, Task = 11}
 }
 local AvailableTasks = {
-	1, 5, 10, 3, 4, 6, 8, 7, 2, 9, 11
+	1, 5, 10, 3, 4, 6, 8, 7, 9, 11, 2
 }
 
 local CustomTasksFunctions = {
