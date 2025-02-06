@@ -211,7 +211,8 @@ TaskStatusFunctionsT[12+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 		end
 		if OperationT[peds].TargetTimer <= 0 then
 			OperationT[peds].TargetTimer = 100
-			local NewTarget = GetPedNearestTarget(peds)
+			local NewTarget = GetAllPedNearestTarget(peds, false, true, false, false, {1})
+			--GetPedNearestTarget(peds)
 			if NewTarget ~= 0 then
 				if NewTarget ~= OperationT[peds].Target then
 					OperationT[peds].Target = NewTarget
@@ -268,6 +269,7 @@ TaskStatusFunctionsT[12+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 						if HasClearLos then
 							OperationT[peds].Bits = set_bit(OperationT[peds].Bits, 3)
 							TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(peds, OperationT[peds].Target, OperationT[peds].Target, 3.0, true, 0.15, 1.0, true, true, joaat("FIRING_PATTERN_FULL_AUTO"))
+							PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
 							if is_bit_set(OperationT[peds].Bits, 4) then
 								OperationT[peds].Bits = clear_bit(OperationT[peds].Bits, 4)
 							end
@@ -277,11 +279,17 @@ TaskStatusFunctionsT[12+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 						if not HasClearLos then
 							OperationT[peds].Bits = set_bit(OperationT[peds].Bits, 4)
 							TASK.TASK_GO_TO_ENTITY(peds, OperationT[peds].Target, 30000, 10.0, 3.0, 100.0, 0)
+							PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, true)
 						end
 					end
 				end
 			else
-				OperationT[peds].Bits = 0
+				if OperationT[peds].Bits ~= 0 then
+					OperationT[peds].Bits = 0
+					OperationT[peds].Target = 0
+					PED.SET_BLOCKING_OF_NON_TEMPORARY_EVENTS(peds, false)
+					TASK.CLEAR_PED_TASKS(peds)
+				end
 			end
 		else
 			OperationT[peds].Bits = 0
@@ -1193,6 +1201,25 @@ TaskStatusFunctionsT[39+1] = function(OperationT, TaskArgs, peds, PlayerPed, Pla
 	end
 end
 
+TaskStatusFunctionsT[40+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
+	if OperationT[peds].TaskStatus == 40 then
+		if OperationT[peds].HasTasked == nil then
+			if RequestControlOfEntity(peds) then
+				TASK.TASK_GO_STRAIGHT_TO_COORD(peds, TaskArgs.HitCoords.x, TaskArgs.HitCoords.y, TaskArgs.HitCoords.z, 3.0, -1, 40000.0, 0.1)
+				--OperationT[peds].TaskStatus = 100
+				--util.copy_to_clipboard(string.format("%.3f", TaskArgs.HitCoords.x))
+				OperationT[peds].HasTasked = 0
+			end
+		end
+	end
+end
+
+TaskStatusFunctionsT[41+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
+	if OperationT[peds].TaskStatus == 41 then
+		
+	end
+end
+
 TaskStatusFunctionsT[100+1] = function(OperationT, TaskArgs, peds, PlayerPed, PlayerVeh)
 	OperationT[peds] = nil
 end
@@ -1288,7 +1315,7 @@ local blackopsPed_Addrs = {}
 local CanSetModels = false
 --local RelPlayersBitsAddr = SplitGlobals("Global_2657704[PLAYER::PLAYER_ID() /*463*/].f_253")
 local RelAddrs = {}
-if NETWORK.GET_ONLINE_VERSION() == "1.69" then
+if NETWORK.GET_ONLINE_VERSION() == "1.70" then
 	--Addr = 0x7FF66E4E63F0
 	for i = 0, 29 do
 		--RelAddrs[i+1] = memory.script_global(RelPlayersBitsAddr + 463 * i)
@@ -1299,7 +1326,10 @@ if NETWORK.GET_ONLINE_VERSION() == "1.69" then
 	--Print(string.format("%X", Addr))
 	--util.copy_to_clipboard(string.format("%X", Addr))
 	if Addr ~= 0 then
-		Addr2 = memory.read_long(Addr+0x26)
+		--Addr2 = memory.read_long(Addr+0x26)
+		--Addr3 = memory.read_long(Addr2+0x8)
+		--Addr4 = memory.read_long(Addr3+0xB0)
+		Addr2 = memory.read_long(Addr+0x16)
 		Addr3 = memory.read_long(Addr2+0x8)
 		Addr4 = memory.read_long(Addr3+0xB0)
 		police3_FirstAddr = Addr4
@@ -1533,8 +1563,8 @@ local PedModels = {
 	"csb_avon",
 	"hc_gunman",
 	"mp_m_fibsec_01",
-	"mp_m_freemode_01",
-	"mp_f_freemode_01",
+	--"mp_m_freemode_01",
+	--"mp_f_freemode_01",
 	"u_m_y_zombie_01"
 }
 
@@ -1806,7 +1836,7 @@ local UpgradeCopCars = true
 menu.toggle(CopSettingsMenu, "Upgrade Cop Cars", {}, "Cop cars will have a random upgrade.", function(toggle)
 	UpgradeCopCars = toggle
 end, UpgradeCopCars)
-local IncreaseCopCarSpeed = false
+local IncreaseCopCarSpeed = true
 menu.toggle(CopSettingsMenu, "Increase Cop Car Speed 1000x", {}, "Super fast!", function(toggle)
 	IncreaseCopCarSpeed = toggle
 end, IncreaseCopCarSpeed)
@@ -1837,7 +1867,7 @@ end)
 menu.slider(CopCarDefaultColoursMenu, "Secondary Blue", {"secondarybcolour"}, "", 0, 255, SB, 1, function(OnChange)
 	SB = OnChange
 end)
-local SetDefaultColours = true
+local SetDefaultColours = false
 menu.toggle(CopCarDefaultColoursMenu, "Enable Default Colours", {}, "", function(toggle)
 	SetDefaultColours = toggle
 end, SetDefaultColours)
@@ -1899,6 +1929,17 @@ menu.toggle(CopAttributesSettingsMenu, "Sprint Everytime", {}, "", function(togg
 end, SprintEverytime)
 
 local MiscCopSettings = menu.list(CopSettingsMenu, "Misc Settings", {}, "")
+
+local CopsShootCustomBullets = false
+menu.toggle(MiscCopSettings, "Cops Shoot Custom Bullet", {}, "Let it more OP.", function(toggle)
+	CopsShootCustomBullets = toggle
+end, CopsShootCustomBullets)
+
+local CopsInHeliShootMissile = false
+menu.toggle(MiscCopSettings, "Cops In Flying Veh Shoot Missile", {}, "", function(toggle)
+	CopsInHeliShootMissile = toggle
+end, CopsInHeliShootMissile)
+
 local RandomCopComponents = false
 menu.toggle(CopSettingsMenu, "Set Cops Random Components", {}, "Outfit.", function(toggle)
 	RandomCopComponents = toggle
@@ -2092,6 +2133,10 @@ local CopsFollowLikeSnake = false
 menu.toggle(MiscCustomTasksMenu, "Cops Follow Like Snake", {}, "", function(toggle)
 	CopsFollowLikeSnake = toggle
 end, CopsFollowLikeSnake)
+local CopsFollowLikeSnake2 = false
+menu.toggle(MiscCustomTasksMenu, "Cops Follow Like Snake 2", {}, "", function(toggle)
+	CopsFollowLikeSnake2 = toggle
+end, CopsFollowLikeSnake2)
 local SetDefensiveSphereToPlayer = false
 menu.toggle(MiscCustomTasksMenu, "Set Defensive Sphere To Player", {}, "", function(toggle)
 	SetDefensiveSphereToPlayer = toggle
@@ -2102,6 +2147,54 @@ local CopsForcedBeingNearSphere = false
 menu.toggle(AllyCopSettingsMenu, "Cops Forced Being Near Sphere", {}, "Cops will be bringed to near player with velocity.", function(toggle)
 	CopsForcedBeingNearSphere = toggle
 end, CopsForcedBeingNearSphere)
+
+local CopsHelpInMissions = false
+menu.toggle(AllyCopSettingsMenu, "Cops Help In Missions", {}, "Disable Use Custom Tasks Keys to Work. Help into supported missions.", function(toggle)
+	CopsHelpInMissions = toggle
+end, CopsHelpInMissions)
+
+local GlobalCopCount = 0
+local ArmySpawnerMenu = menu.list(menu.my_root(), "Army Spawner", {}, "Use with Apply Cop Settings on.")
+menu.action(ArmySpawnerMenu, "Spawn Bikers", {}, "", function(toggle)
+	local PedModel = joaat("g_m_y_lost_01")
+	local VehModel = joaat("avarus")
+	while not RequestModelFunc(PedModel) or not RequestModelFunc(VehModel) do
+		Wait()
+	end
+	local PlayerPed = PLAYER.PLAYER_PED_ID()
+	local Pos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+	local CamRot = CAM.GET_GAMEPLAY_CAM_ROT(2)
+	local CamRotInst = CAM.GET_GAMEPLAY_CAM_ROT(2)
+	--CamRot.z = CamRot.z - 180.0
+	local Dir = CamRot:toDir()
+	local JumpOffset = 4.0
+	local Amount = 10
+	for k = 1, Amount do
+		if GlobalCopCount < MaxCopsToEdit then
+			local V3 = v3.new(Pos.x + Dir.x * JumpOffset * k, Pos.y + Dir.y * JumpOffset * k, Pos.z + 1.0)
+			--if not MISC.IS_POSITION_OCCUPIED(V3.x, V3.y, V3.z, 1.0, false, true, --[[Ped]] false, false, false, 0, true) then
+				local Veh = VEHICLE.CREATE_VEHICLE(VehModel, V3.x, V3.y, V3.z, CamRotInst.z, true, true, true)
+				local Ped = PED.CREATE_PED(6, PedModel, V3.x, V3.y, V3.z, CamRotInst.z, true, true)
+				PED.SET_PED_INTO_VEHICLE(Ped, Veh, -1)
+				PED.SET_PED_RELATIONSHIP_GROUP_HASH(Ped, joaat("COP"))
+				local EntAddr = entities.handle_to_pointer(Veh) + 0xD8
+				if EntAddr ~= 0 then
+					memory.write_int(EntAddr, 329858)-- 329858)
+				end
+				local EntAddr = entities.handle_to_pointer(Ped) + 0xD8
+				if EntAddr ~= 0 then
+					--Print(memory.read_int(Addr))
+					--util.copy_to_clipboard(memory.read_int(Addr))
+					memory.write_int(EntAddr, 329858)-- 329858)
+				end
+				PED.SET_PED_AS_COP(Ped, true)
+				GlobalCopCount = GlobalCopCount + 1
+			--end
+		end
+	end
+	STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(PedModel)
+	STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(VehModel)
+end)
 
 local RenderCopCount = true
 menu.toggle(menu.my_root(), "Show Cop Count HUD", {}, "", function(toggle)
@@ -2220,10 +2313,11 @@ local SelectedTaskTXT = {
 	{TXT = "Attack nearest ped in screen", ColourG = 255, Task = 7},
 	{TXT = "Mega rush mode", ColourG = 255, Task = 2},
 	{TXT = "Rushed combat mode", ColourG = 255, Task = 9},
-	{TXT = "Super rushed combat mode", ColourG = 255, Task = 11}
+	{TXT = "Super rushed combat mode", ColourG = 255, Task = 11},
+	{TXT = "Go straight to coord", ColourG = 255, Task = 13}
 }
 local AvailableTasks = {
-	1, 5, 10, 3, 4, 6, 8, 7, 9, 11, 2
+	1, 5, 10, 3, 4, 6, 8, 7, 9, 11, 2, 13
 }
 
 local CustomTasksFunctions = {
@@ -2454,7 +2548,22 @@ local CustomTasksFunctions = {
 			SelectedTaskTXT[12].ColourG = 255
 			Args.IsAiming = false
 		end
-	end
+	end,
+	function(Args, PlayerPed, TableT, HitCoords, FVect, RVect, UpVect, Vect)
+		if Args.OperationButton then
+			TableT[13] = 1
+		end
+		if TableT[13] == 1 then
+			SelectedTaskTXT[13].ColourG = 20
+			TableT[13] = 0
+		else
+			SelectedTaskTXT[13].ColourG = 255
+		end
+		if Args.HitCoords == nil then
+			Args.HitCoords = RaycastFromCamera(PlayerPed, 1000.0)
+			Args.HasHit = Args.IsPlayerShooting
+		end
+	end,
 }
 
 local CustomTasksArgsFunctions = {
@@ -2668,7 +2777,42 @@ local CustomTasksArgsFunctions = {
 				}
 			end
 		end
+	end,
+	function(Args, OperationsTable, OperationT, peds, Veh, FVect, RVect, UpVect, Vect)
+		if OperationsTable[13] < 2 then
+			if Args.OperationButton then
+				local IsPilot = false
+				if Veh ~= 0 then
+					IsPilot = VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == peds
+				end
+				OperationT[peds] = {
+					Handle = peds, XOffset = 0.0, YOffset = 0,
+					X = 0.0, Y = 0.0, Z = 0.0, Heading = 0,
+					TaskStatus = 40, VehHandle = Veh, FVect = FVect, RVect = RVect, UpVect = UpVect,
+					Vect = Vect, IsPilot = IsPilot
+				}
+			end
+		end
 	end
+}
+
+local BlipsToFind = {
+	0,
+	1,
+	2,
+	306,
+	408,
+	432,
+	433,
+	478,
+	501,
+	523,
+	549,
+	556,
+	568,
+	615,
+	765,
+	868,
 }
 
 local NavTest = false
@@ -2734,10 +2878,10 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 						if DecorInt == 31 or DecorInt == 32 then
 							util.create_thread(function ()
 								local Tick = 0
-								while not RequestControlOfEntity(vehs) and Tick < 1000 do
-									Tick = Tick + 1
-									Wait()
-								end
+								--while not RequestControlOfEntity(vehs) and Tick < 1000 do
+								--	Tick = Tick + 1
+								--	Wait()
+								--end
 								local NetID = NETWORK.VEH_TO_NET(vehs)
 								if NetID ~= 0 then
 									NETWORK.SET_NETWORK_ID_ALWAYS_EXISTS_FOR_PLAYER(NetID, PLAYER.PLAYER_ID(), false)
@@ -2788,7 +2932,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		local TaskNum = 4
 		local SelectedTask = SelectedTaskTXT[TaskNum].Task
 		local OperationsTable = {}
-		local NumCreatedTasks = 12
+		local NumCreatedTasks = 13
 		local FoundCopVehs = {}
 		local CopVehsT = {}
 		local OwnedCopVehsT = {}
@@ -2802,6 +2946,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		local CopsToSetBlipsT = {}
 		local CopsHandlesToSetBlipsT = {}
 		local IndexToWrite = 0
+		local BulletsPerPed = {}
 		for i = 1, NumCreatedTasks do
 			OperationsTable[i] = 0
 		end
@@ -2836,6 +2981,8 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 		local HasSetCanTakeDamage = false
 		local PMin, PMax = v3.new(), v3.new()
 		local HasGotModelDimensions = false
+		local CopsIndexesInMissionT = {}
+		local CopsInMissionT = {}
 		while ApplyCopSettings do
 			local PlayerPed = PLAYER.PLAYER_PED_ID()
 			local IsInVeh = PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false)
@@ -3156,6 +3303,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					ClearedWantedLevel = true
 				end
 			end
+			GlobalCopCount = MissionCopCount
 			if MissionCopCount < MaxCopsToEdit then
 				PedsT = entities.get_all_peds_as_handles()
 			else
@@ -3176,6 +3324,10 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 				end
 			else
 				HasSetCanTakeDamage = false
+			end
+			local BikerResupplyScript = false
+			if CopsHelpInMissions then
+				BikerResupplyScript = SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("gb_illicit_goods_resupply")) > 0
 			end
 			if AutomaticCallDispatch then
 				if MissionCopCount < MaxCopsToEdit then
@@ -3285,6 +3437,10 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 														if RequestControlOfEntity(peds) then
 															if DECORATOR.DECOR_SET_INT(peds, "Casino_Game_Info_Decorator", 31) then
 																ENTITY.SET_ENTITY_AS_MISSION_ENTITY(peds, false, true)
+																local PedAddr = entities.handle_to_pointer(peds) + 0xD8
+																if PedAddr ~= 0 then
+																	memory.write_int(PedAddr, 460962)
+																end
 																DecorApplied = true
 																if SetNetworkID then
 																	local NetID = NETWORK.PED_TO_NET(peds)
@@ -3303,7 +3459,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																			end
 																		end
 																		FoundCopVehs[Veh] = Veh
-																		CopVehsT[#CopVehsT+1] = {Handle = Veh, HasSetToMissionEnt = false, Passengers = Peds, Tick = 0}
+																		CopVehsT[#CopVehsT+1] = {Handle = Veh, HasSetToMissionEnt = false, Passengers = Peds, Tick = 0, VehDestroyed = false}
 																	end
 																	OwnedCopVehsT[peds] = Veh
 																end
@@ -3358,9 +3514,10 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 															if RandomWeaponComponents then
 																Set_Weapon_Components(peds)
 															end
-															if IsCopModel then
+															if IsCopModel or HaveCopRel then
 																SetPedCombatAbilities(peds)
 																PED.SET_PED_FIRING_PATTERN(peds, joaat("FIRING_PATTERN_FULL_AUTO"))
+																PED.SET_PED_CAN_BE_KNOCKED_OFF_VEHICLE(peds, 1)
 															end
 															if EliteCops then
 																ENTITY.SET_ENTITY_MAX_HEALTH(peds, 300)
@@ -3626,8 +3783,59 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 										if CanEditCop then
 											local Veh = PED.GET_VEHICLE_PED_IS_IN(peds, false)
 											if RequestControlOfEntity(peds) then
+												--local Addr = entities.handle_to_pointer(peds) + 0xD8
+												--Print(memory.read_int(Addr))
+												if CopsShootCustomBullets then
+													local PTFXAsset = "weap_gr_weapons"
+													local PTFXName = "bullet_tracer_gr_tintable"
+													if not STREAMING.HAS_NAMED_PTFX_ASSET_LOADED(PTFXAsset) then
+														STREAMING.REQUEST_NAMED_PTFX_ASSET(PTFXAsset)
+													else
+														local TimerMilis = util.current_time_millis()
+														if BulletsPerPed[peds] == nil then
+															if not ENTITY.IS_ENTITY_DEAD(peds) then
+																local TargetPed = PED.GET_PED_TARGET_FROM_COMBAT_PED(peds, 0)
+																if TargetPed ~= 0 then
+																	if not ENTITY.IS_ENTITY_DEAD(TargetPed) then
+																		if ENTITY.HAS_ENTITY_CLEAR_LOS_TO_ENTITY(peds, TargetPed, 17) then
+																			local TimeStep = SYSTEM.TIMESTEP()
+																			BulletsPerPed[peds] = TimerMilis
+																			local PedPos = ENTITY.GET_ENTITY_COORDS(peds)
+																			local Velocity = ENTITY.GET_ENTITY_VELOCITY(TargetPed)
+																			--local TargetPos = ENTITY.GET_ENTITY_COORDS(TargetPed)
+																			local BonePos = PED.GET_PED_BONE_COORDS(TargetPed, 0x322C --[[head]], 0.0, 0.0, 0.0)
+																			Velocity:mul(TimeStep)
+																			BonePos:add(Velocity)
+																			MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS_IGNORE_ENTITY(PedPos.x, PedPos.y, PedPos.z, BonePos.x, BonePos.y, BonePos.z, 10, true, joaat("weapon_navyrevolver"), peds, true--[[VFX]], true, 10.0, peds, 0)
+																			local Rot = v3.lookAt(PedPos, BonePos)
+																			GRAPHICS.USE_PARTICLE_FX_ASSET(PTFXAsset)
+																			GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD(PTFXName, PedPos.x, PedPos.y, PedPos.z, Rot.y, Rot.x - 90.0, Rot.z - 90.0, 1.0, false, false, false, false)
+																			if CopsInHeliShootMissile then
+																				if PED.IS_PED_IN_FLYING_VEHICLE(peds) then
+																					MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS_IGNORE_ENTITY(PedPos.x, PedPos.y, PedPos.z, BonePos.x, BonePos.y, BonePos.z, 10, true, joaat("weapon_rpg"), peds, true--[[VFX]], true, -1.0, peds, 0)
+																				end
+																			end
+																		end
+																	end
+																end
+															end
+														else
+															if TimerMilis > BulletsPerPed[peds]+500 then
+																BulletsPerPed[peds] = nil
+															end
+														end
+													end
+												end
+												NETWORK.SET_ENTITY_VISIBLE_IN_CUTSCENE(peds, true, true)
+												NETWORK.SET_ENTITY_VISIBLE_IN_CUTSCENE(peds, true, false)
 												if SetCopsNotMigrateControl then
 													entities.set_can_migrate(peds, false)
+												end
+												if CopsHelpInMissions then
+													if CopsIndexesInMissionT[peds] == nil then
+														CopsIndexesInMissionT[peds] = 0
+														CopsInMissionT[#CopsInMissionT+1] = {Handle = peds, Bits = 0, Target = 0, TaskCoords = {x = 0.0, y = 0.0, z = 0.0}, Timer = 0}
+													end
 												end
 												if SetDefensiveSphereToPlayer then
 													if not PED.IS_PED_DEFENSIVE_AREA_ACTIVE(peds, false) then
@@ -3741,7 +3949,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																				if not ENTITY.IS_ENTITY_AT_ENTITY(peds, PlayerPed, 100.0, 100.0, 100.0, false, true, false) then
 																					if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
 																						if RequestControlOfEntity(peds) then
-																							TASK.TASK_VEHICLE_MISSION_PED_TARGET(peds, Veh, PlayerPed, 4, 100.0, 64+512+2048+262144, 50.0, 10.0, true)
+																							TASK.TASK_VEHICLE_MISSION_PED_TARGET(peds, Veh, PlayerPed, 4, 1000.0, 64+512+2048+262144, 50.0, 10.0, true)
 																						end
 																					end
 																				end
@@ -3751,14 +3959,14 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																				if IsAHeli then
 																					if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
 																						if RequestControlOfEntity(peds) then
-																							TASK.TASK_HELI_MISSION(peds, Veh, 0, PlayerPed, 0.0, 0.0, 150.0, 4, 100.0, 120.0, 0, 100, 50, -1.0, 0)
+																							TASK.TASK_HELI_MISSION(peds, Veh, 0, PlayerPed, 0.0, 0.0, 1500.0, 4, 100.0, 120.0, 0, 100, 50, -1.0, 0)
 																						end
 																					end
 																				end
 																				if IsAPlane then
 																					if TASK.GET_SCRIPT_TASK_STATUS(peds, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
 																						if RequestControlOfEntity(peds) then
-																							TASK.TASK_PLANE_MISSION(peds, Veh, 0, PlayerPed, 0, 0, 0, 4, 100.0, 50.0, 0.0, 50.0, 30.0, true)
+																							TASK.TASK_PLANE_MISSION(peds, Veh, 0, PlayerPed, 0, 0, 0, 4, 1000.0, 50.0, 0.0, 50.0, 30.0, true)
 																						end
 																					end
 																				end
@@ -4212,10 +4420,23 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			local RotSpd = 8.0
 			local Normalise = false
 			local SpdMul = 10.0
+			local VehSpeed = 0.0
+			local PVehRot = v3.new()
+			local PlayerRot = ENTITY.GET_ENTITY_ROTATION(PlayerPed, 5)
+			local PlayerOffset = v3.new()
+			local PlayerPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+			if PlayerVeh ~= 0 then
+				VehSpeed = ENTITY.GET_ENTITY_SPEED(PlayerVeh)
+				PVehRot = ENTITY.GET_ENTITY_ROTATION(PlayerVeh, 5)
+				PlayerOffset = ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(PlayerVeh, 0.0, (-PMax.y * 2.0) - 1.0, 0.0)
+			else
+				VehSpeed = ENTITY.GET_ENTITY_SPEED(PlayerPed)
+				PVehRot = ENTITY.GET_ENTITY_ROTATION(PlayerPed, 5)
+				PlayerOffset = ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(PlayerPed, 0.0, (-PMax.y * 2.0) - 1.0, 0.0)
+			end
 			if CopsFollowLikeSnake then
 				if ENTITY.GET_ENTITY_SPEED(PlayerPed) > 0.0 then
-					local PlayerPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
-					local PlayerRot = ENTITY.GET_ENTITY_ROTATION(PlayerPed, 5)
+					--local PlayerPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
 					if #StoredCoordsT < 5000 then
 						StoredCoordsT[#StoredCoordsT+1] = {Pos = PlayerPos, Rot = PlayerRot}
 					else
@@ -4224,9 +4445,18 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					end
 				end
 			end
+			local FirstAliveID = 0
+			local LastID = 1
+			local LastIDIsDead = false
 			for i = 1, #CopVehsT do
 				if CopVehsT[i] ~= nil then
 					if ENTITY.DOES_ENTITY_EXIST(CopVehsT[i].Handle) then
+						CopVehsT[i].VehDestroyed = ENTITY.IS_ENTITY_DEAD(CopVehsT[i].Handle)
+						if not CopVehsT[i].VehDestroyed then
+							if FirstAliveID == 0 then
+								FirstAliveID = i
+							end
+						end
 						if CopsFollowLikeSnake then
 							if #StoredCoordsT > 100 then
 								local Index = (#StoredCoordsT - 25) - 25 * i
@@ -4236,10 +4466,78 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 									end
 									if PlayerVeh ~= 0 then
 										SetEntitySpeedToCoord(CopVehsT[i].Handle, StoredCoordsT[Index].Pos, SpdMul, false, false, false, 0.0, 0.0, 0.0, false, false)
-										RotateEntityToTargetRotation(CopVehsT[i].Handle, StoredCoordsT[Index].Rot, RotSpd, Normalise)
+										RotateEntityToTargetRotation(CopVehsT[i].Handle, StoredCoordsT[Index].Rot, RotSpd, false)
 									end
 								end
 							end
+						end
+						if CopsFollowLikeSnake2 then
+							if not CopVehsT[i].VehDestroyed then
+								if CopVehsT[i].CurRot == nil then
+									CopVehsT[i].CurRot = ENTITY.GET_ENTITY_ROTATION(CopVehsT[i].Handle, 2)
+									local Min, Max = v3.new(), v3.new()
+									MISC.GET_MODEL_DIMENSIONS(ENTITY.GET_ENTITY_MODEL(CopVehsT[i].Handle), Min, Max)
+									CopVehsT[i].ModelMin = Min
+									CopVehsT[i].ModelMax = Max
+									if i == FirstAliveID then
+										ENTITY.SET_ENTITY_COORDS(CopVehsT[i].Handle, PlayerOffset.x, PlayerOffset.y, PlayerOffset.z)
+										ENTITY.SET_ENTITY_ROTATION(CopVehsT[i].Handle, PVehRot.x, PVehRot.y, PVehRot.z, 5)
+									else
+										local Offset = ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(CopVehsT[LastID].Handle, 0.0, (-CopVehsT[LastID].ModelMax.y  * 2.0) + 1.0, 0.0)
+										CopVehsT[i].CurRot = ENTITY.GET_ENTITY_ROTATION(CopVehsT[LastID].Handle, 2)
+										ENTITY.SET_ENTITY_COORDS(CopVehsT[i].Handle, Offset.x, Offset.y, Offset.z)
+										ENTITY.SET_ENTITY_ROTATION(CopVehsT[i].Handle, CopVehsT[i].CurRot.x, CopVehsT[i].CurRot.y, CopVehsT[i].CurRot.z, 2)
+									end
+								end
+								if i == FirstAliveID then
+									--CopVehsT[i].CurRot = InterpolateRotWithLimit(CopVehsT[i].CurRot, PVehRot, 1.0, VehSpeed)
+									--local Offset = ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(PlayerVeh, 0.0, -PMax.y + PMin.y, 0.0)
+									local IsInAir = ENTITY.IS_ENTITY_IN_AIR(CopVehsT[i].Handle)
+									SetEntitySpeedToCoord(CopVehsT[i].Handle, PlayerOffset, math.clamp(VehSpeed, 0.0, 1.0), false, false, IsInAir, 0.0, 0.0, 0.0, false, false)
+									--local Txt = "CopVehsT[1].CurRot: x: "..string.format("%0.3f", CopVehsT[i].CurRot.x).." y: "..string.format("%0.3f", CopVehsT[i].CurRot.y).." z: "..string.format("%0.3f", CopVehsT[i].CurRot.z)
+									--directx.draw_text(0.7, 0.5, Txt, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
+									local CopVehPos = ENTITY.GET_ENTITY_COORDS(CopVehsT[i].Handle)
+									--local LookAt = V3_LookAt(Pos, PlayerPos)
+									local SLookAt = v3.lookAt(CopVehPos, PlayerPos)
+									--local Txt = "LookAt: x: "..string.format("%0.3f", LookAt.x).." y: "..string.format("%0.3f", LookAt.y).." z: "..string.format("%0.3f", LookAt.z)
+									--directx.draw_text(0.7, 0.5, Txt, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
+									--local Txt2 = "SLookAt: x: "..string.format("%0.3f", SLookAt.x).." y: "..string.format("%0.3f", SLookAt.y).." z: "..string.format("%0.3f", SLookAt.z)
+									--directx.draw_text(0.7, 0.55, Txt2, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
+									--SLookAt.x = 0.0 --wrap180(SLookAt.x - 90.0)
+									--SLookAt.y = 0.0 --wrap180(SLookAt.x - 90.0)
+									CopVehsT[i].CurRot = SLookAt
+								else
+									--local OtherVehRot = ENTITY.GET_ENTITY_ROTATION(CopVehsT[i-1].Handle, 5)
+									--CopVehsT[i].CurRot = InterpolateRotWithLimit(CopVehsT[i].CurRot, OtherVehRot, 1.0, VehSpeed)
+									local IsInAir = ENTITY.IS_ENTITY_IN_AIR(CopVehsT[i].Handle)
+									local Offset = ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(CopVehsT[LastID].Handle, 0.0, (-CopVehsT[LastID].ModelMax.y  * 2.0) + 1.0, 0.0)
+									SetEntitySpeedToCoord(CopVehsT[i].Handle, Offset, math.clamp(VehSpeed, 0.0, 1.0), false, false, IsInAir, 0.0, 0.0, 0.0, false, false)
+									--CopVehsT[i].CurRot = ENTITY.GET_ENTITY_ROTATION(CopVehsT[LastID].Handle, 5)
+									local CopVehPos = ENTITY.GET_ENTITY_COORDS(CopVehsT[i].Handle)
+									local ToPos = ENTITY.GET_ENTITY_COORDS(CopVehsT[LastID].Handle)
+									local LookAt = v3.lookAt(CopVehPos, ToPos)
+									--LookAt.x = 0.0--wrap180(LookAt.x - 90.0)
+									--LookAt.y = 0.0--wrap180(LookAt.x - 90.0)
+									--LookAt.z = wrap180(LookAt.z - 90.0)
+									CopVehsT[i].CurRot = LookAt
+								end
+								local NewRot = convertRotationXYZtoZYX(CopVehsT[i].CurRot.x, CopVehsT[i].CurRot.y, CopVehsT[i].CurRot.z)
+								RotateEntityToTargetRotation(CopVehsT[i].Handle, NewRot, 1.0, false)
+								--if i == FirstAliveID then
+								--	local Txt = "CopVehsT[i].CurRot: x: "..string.format("%0.3f", CopVehsT[i].CurRot.x).." y: "..string.format("%0.3f", CopVehsT[i].CurRot.y).." z: "..string.format("%0.3f", CopVehsT[i].CurRot.z)
+								--	directx.draw_text(0.7, 0.5, Txt, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
+								--	local Txt2 = "NewRot: x: "..string.format("%0.3f", NewRot.x).." y: "..string.format("%0.3f", NewRot.y).." z: "..string.format("%0.3f", NewRot.z)
+								--	directx.draw_text(0.7, 0.55, Txt2, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
+								--	local Txt3 = "PVehRot: x: "..string.format("%0.3f", PVehRot.x).." y: "..string.format("%0.3f", PVehRot.y).." z: "..string.format("%0.3f", PVehRot.z)
+								--	directx.draw_text(0.7, 0.6, Txt3, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
+								--end
+							end
+						end
+						if CopVehsT[i].VehDestroyed then
+							LastIDIsDead = true
+						else
+							LastIDIsDead = false
+							LastID = i
 						end
 						if CopsRushedFollow then
 							if CopVehsT[i].Passengers[1] ~= nil then
@@ -4311,6 +4609,10 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 						if not CopVehsT[i].HasSetToMissionEnt then
 							if RequestControlOfEntity(CopVehsT[i].Handle) then
 								ENTITY.SET_ENTITY_AS_MISSION_ENTITY(CopVehsT[i].Handle, false, true)
+								local VehAddr = entities.handle_to_pointer(CopVehsT[i].Handle) + 0xD8
+								if VehAddr ~= 0 then
+									memory.write_int(VehAddr, 460962)
+								end
 								CopVehsT[i].NetID = 0
 								if SetNetworkID then
 									local NetID = NETWORK.VEH_TO_NET(CopVehsT[i].Handle)
@@ -4485,10 +4787,508 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 					end
 				end
 			end
+			if CopsHelpInMissions then
+				local Blips = {}
+				local PlayerPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
+				for k = 1, #BlipsToFind do
+					local Blip = HUD.GET_CLOSEST_BLIP_INFO_ID(BlipsToFind[k])
+					if Blip ~= 0 then
+						local Entity = HUD.GET_BLIP_INFO_ID_ENTITY_INDEX(Blip)
+						Blips[#Blips+1] = {Handle = Blip, Coords = HUD.GET_BLIP_COORDS(Blip), Color = HUD.GET_BLIP_COLOUR(Blip), Entity = Entity, EntityType = ENTITY.GET_ENTITY_TYPE(Entity)}
+					end
+				end
+				
+				for k = 1, #CopsInMissionT do
+					if ENTITY.DOES_ENTITY_EXIST(CopsInMissionT[k].Handle) and not ENTITY.IS_ENTITY_DEAD(CopsInMissionT[k].Handle) then
+						local InCombat = PED.IS_PED_IN_COMBAT(CopsInMissionT[k].Handle, 0) and CopsInMissionT[k].CombatTarget == 0
+						local PCoords = ENTITY.GET_ENTITY_COORDS(CopsInMissionT[k].Handle)
+						if not is_bit_set(CopsInMissionT[k].Bits, 1) then
+							OperationT[CopsInMissionT[k].Handle] = nil
+							if not InCombat then
+								if #Blips > 0 then
+									local RandomID = math.random(#Blips)
+									CopsInMissionT[k].BlipHandle = Blips[RandomID].Handle
+									if Blips[RandomID].Color == 1 then
+										if Blips[RandomID].Entity ~= 0 then
+											if Blips[RandomID].EntityType == 1 then
+												if ENTITY.DOES_ENTITY_EXIST(Blips[RandomID].Entity) and not ENTITY.IS_ENTITY_DEAD(Blips[RandomID].Entity) then
+													TASK.TASK_COMBAT_PED(CopsInMissionT[k].Handle, Blips[RandomID].Entity, 0, 16)
+													CopsInMissionT[k].Target = Blips[RandomID].Entity
+													CopsInMissionT[k].CombatTarget = Blips[RandomID].Entity
+													CopsInMissionT[k].TargetType = Blips[RandomID].EntityType
+													CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 1)
+													if not is_bit_set(CopsInMissionT[k].Bits, 2) then
+														CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 2)
+													end
+												end
+											elseif Blips[RandomID].EntityType == 2 then
+												if ENTITY.DOES_ENTITY_EXIST(Blips[RandomID].Entity) and not ENTITY.IS_ENTITY_DEAD(Blips[RandomID].Entity) then
+													local Veh = PED.GET_VEHICLE_PED_IS_IN(CopsInMissionT[k].Handle, true)
+													if Veh ~= 0 then
+														if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == CopsInMissionT[k].Handle then
+															CopsInMissionT[k].TargetType = Blips[RandomID].EntityType
+															CopsInMissionT[k].Target = Blips[RandomID].Entity
+															local Coords = ENTITY.GET_ENTITY_COORDS(Blips[RandomID].Entity)
+															TASK.TASK_VEHICLE_MISSION(CopsInMissionT[k].Handle, Veh, Blips[RandomID].Entity, 6, 1000.0, 1, 1, 4.0, true)
+															CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 1)
+															if not is_bit_set(CopsInMissionT[k].Bits, 2) then
+																CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 2)
+															end
+														end
+													end
+												end
+											elseif Blips[RandomID].EntityType == 3 then
+												if ENTITY.DOES_ENTITY_EXIST(Blips[RandomID].Entity) and not ENTITY.IS_ENTITY_DEAD(Blips[RandomID].Entity) then
+													local Veh = PED.GET_VEHICLE_PED_IS_IN(CopsInMissionT[k].Handle, true)
+													if Veh ~= 0 and not ENTITY.IS_ENTITY_AT_ENTITY(CopsInMissionT[k].Handle, Blips[RandomID].Entity, 30.0, 30.0, 30.0, false, true, false) then
+														if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == CopsInMissionT[k].Handle then
+															CopsInMissionT[k].TaskCoord = Blips[RandomID].Coords
+															CopsInMissionT[k].TargetType = Blips[RandomID].EntityType
+															CopsInMissionT[k].Target = Blips[RandomID].Entity
+															local TaskID = memory.alloc(8)
+															TASK.OPEN_SEQUENCE_TASK(TaskID)
+															TASK.TASK_VEHICLE_DRIVE_TO_COORD(0, Veh, Blips[RandomID].Coords.x, Blips[RandomID].Coords.y, Blips[RandomID].Coords.z, 1000.0, 1, ENTITY.GET_ENTITY_MODEL(Veh), 786469, 4.0, 30.0)
+															TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(0, Blips[RandomID].Entity, Blips[RandomID].Entity, 2.0, true, 0.1, 0.1, true, false, joaat("FIRING_PATTERN_FULL_AUTO"))
+															TASK.CLOSE_SEQUENCE_TASK(memory.read_int(TaskID))
+															TASK.TASK_PERFORM_SEQUENCE(CopsInMissionT[k].Handle, memory.read_int(TaskID))
+															CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 1)
+															if not is_bit_set(CopsInMissionT[k].Bits, 2) then
+																CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 2)
+															end
+														end
+													else
+														CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 1)
+														if not is_bit_set(CopsInMissionT[k].Bits, 2) then
+															CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 2)
+														end
+														CopsInMissionT[k].TaskCoord = Blips[RandomID].Coords
+														CopsInMissionT[k].TargetType = Blips[RandomID].EntityType
+														CopsInMissionT[k].Target = Blips[RandomID].Entity
+														TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(CopsInMissionT[k].Handle, Blips[RandomID].Entity, Blips[RandomID].Entity, 2.0, true, 0.1, 0.1, true, false, joaat("FIRING_PATTERN_FULL_AUTO"))
+													end
+												end
+											end
+										end
+									elseif Blips[RandomID].Color == 2 or Blips[RandomID].Color == 3 or Blips[RandomID].Color == 5 then
+										if Blips[RandomID].Entity ~= 0 then
+											if Blips[RandomID].EntityType == 2 then
+												local Veh = PED.GET_VEHICLE_PED_IS_IN(CopsInMissionT[k].Handle, true)
+												if Veh ~= 0 and not ENTITY.IS_ENTITY_AT_ENTITY(CopsInMissionT[k].Handle, Blips[RandomID].Entity, 30.0, 30.0, 30.0, false, true, false) then
+													if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == CopsInMissionT[k].Handle then
+														CopsInMissionT[k].TaskCoord = Blips[RandomID].Coords
+														CopsInMissionT[k].TargetType = Blips[RandomID].EntityType
+														CopsInMissionT[k].Target = Blips[RandomID].Entity
+														local TaskID = memory.alloc(8)
+														TASK.OPEN_SEQUENCE_TASK(TaskID)
+														TASK.TASK_VEHICLE_DRIVE_TO_COORD(0, Veh, Blips[RandomID].Coords.x, Blips[RandomID].Coords.y, Blips[RandomID].Coords.z, 1000.0, 1, ENTITY.GET_ENTITY_MODEL(Veh), 786469, 4.0, 30.0)
+														TASK.TASK_ENTER_VEHICLE(0, Veh, -1, -1, 3.0, 0, 0, 0)
+														TASK.CLOSE_SEQUENCE_TASK(memory.read_int(TaskID))
+														TASK.TASK_PERFORM_SEQUENCE(CopsInMissionT[k].Handle, memory.read_int(TaskID))
+														CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 1)
+														if not is_bit_set(CopsInMissionT[k].Bits, 4) then
+															CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 4)
+														end
+													end
+												else
+													CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 1)
+													if not is_bit_set(CopsInMissionT[k].Bits, 4) then
+														CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 4)
+													end
+													CopsInMissionT[k].TaskCoord = Blips[RandomID].Coords
+													CopsInMissionT[k].TargetType = Blips[RandomID].GetEntityType
+													CopsInMissionT[k].Target = Blips[RandomID].Entity
+													TASK.TASK_ENTER_VEHICLE(CopsInMissionT[k].Handle, Veh, -1, -1, 3.0, 0, 0, 0)
+												end
+											elseif Blips[RandomID].EntityType == 3 then
+												if OBJECT.IS_OBJECT_A_PORTABLE_PICKUP(Blips[RandomID].Entity) then
+													local Veh = PED.GET_VEHICLE_PED_IS_IN(CopsInMissionT[k].Handle, true)
+													if Veh ~= 0 and not ENTITY.IS_ENTITY_AT_ENTITY(CopsInMissionT[k].Handle, Blips[RandomID].Entity, 30.0, 30.0, 30.0, false, true, false) then
+														if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == CopsInMissionT[k].Handle then
+															CopsInMissionT[k].TaskCoord = Blips[RandomID].Coords
+															CopsInMissionT[k].TargetType = Blips[RandomID].EntityType
+															CopsInMissionT[k].Target = Blips[RandomID].Entity
+															local TaskID = memory.alloc(8)
+															TASK.OPEN_SEQUENCE_TASK(TaskID)
+															TASK.TASK_VEHICLE_DRIVE_TO_COORD(0, Veh, Blips[RandomID].Coords.x, Blips[RandomID].Coords.y, Blips[RandomID].Coords.z, 1000.0, 1, ENTITY.GET_ENTITY_MODEL(Veh), 786469, 4.0, 30.0)
+															TASK.TASK_GO_TO_ENTITY(0, Blips[RandomID].Entity, -1, 0.1, 3.0, 0.5, 1)
+															TASK.CLOSE_SEQUENCE_TASK(memory.read_int(TaskID))
+															TASK.TASK_PERFORM_SEQUENCE(CopsInMissionT[k].Handle, memory.read_int(TaskID))
+															CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 1)
+															if not is_bit_set(CopsInMissionT[k].Bits, 3) then
+																CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 3)
+															end
+														end
+													else
+														CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 1)
+														if not is_bit_set(CopsInMissionT[k].Bits, 3) then
+															CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 3)
+														end
+														CopsInMissionT[k].TaskCoord = Blips[RandomID].Coords
+														CopsInMissionT[k].TargetType = Blips[RandomID].GetEntityType
+														CopsInMissionT[k].Target = Blips[RandomID].Entity
+														TASK.TASK_GO_TO_ENTITY(CopsInMissionT[k].Handle, Blips[RandomID].Entity, -1, 0.1, 3.0, 0.5, 1)
+													end
+												end
+											end
+										else
+											local Veh = PED.GET_VEHICLE_PED_IS_IN(CopsInMissionT[k].Handle, true)
+											if Veh ~= 0 then
+												if VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false) == CopsInMissionT[k].Handle then
+													CopsInMissionT[k].TaskCoord = Blips[RandomID].Coords
+													CopsInMissionT[k].TargetType = Blips[RandomID].EntityType
+													CopsInMissionT[k].Target = Blips[RandomID].Entity
+													TASK.TASK_VEHICLE_DRIVE_TO_COORD(CopsInMissionT[k].Handle, Veh, Blips[RandomID].Coords.x, Blips[RandomID].Coords.y, Blips[RandomID].Coords.z, 1000.0, 1, ENTITY.GET_ENTITY_MODEL(Veh), 786469, 4.0, 30.0)
+													CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 1)
+													if not is_bit_set(CopsInMissionT[k].Bits, 5) then
+														CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 5)
+													end
+												end
+											else
+												CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 1)
+												if not is_bit_set(CopsInMissionT[k].Bits, 5) then
+													CopsInMissionT[k].Bits = set_bit(CopsInMissionT[k].Bits, 5)
+												end
+												CopsInMissionT[k].TaskCoord = Blips[RandomID].Coords
+												CopsInMissionT[k].TargetType = Blips[RandomID].GetEntityType
+												CopsInMissionT[k].Target = Blips[RandomID].Entity
+												TASK.TASK_GO_TO_COORD_ANY_MEANS(CopsInMissionT[k].Handle, Blips[RandomID].Coords.x, Blips[RandomID].Coords.y, Blips[RandomID].Coords.z, 3.0, 0, true, 786469, -1.0)
+											end
+										end
+									end
+								end
+							end
+						else
+							if OperationT[CopsInMissionT[k].Handle] == nil then
+								OperationT[CopsInMissionT[k].Handle] = {
+									Handle = CopsInMissionT[k].Handle, XOffset = 0.0, YOffset = 0,
+									X = 0.0, Y = 0.0, Z = 0.0, Heading = 0,
+									TaskStatus = 41, VehHandle = Veh, FVect = FVect, RVect = RVect, UpVect = UpVect,
+									Vect = Vect, IsPilot = false
+								}
+							end
+							if is_bit_set(CopsInMissionT[k].Bits, 2) then
+								if CopsInMissionT[k].Target ~= 0 then
+									if CopsInMissionT[k].TargetType == 1 or CopsInMissionT[k].TargetType == 2 then
+										if not ENTITY.DOES_ENTITY_EXIST(CopsInMissionT[k].Target) or ENTITY.IS_ENTITY_DEAD(CopsInMissionT[k].Target)
+										or not HUD.DOES_BLIP_EXIST(CopsInMissionT[k].BlipHandle) then
+											CopsInMissionT[k].Bits = clear_bit(CopsInMissionT[k].Bits, 1)
+											CopsInMissionT[k].Bits = clear_bit(CopsInMissionT[k].Bits, 2)
+											TASK.CLEAR_PED_TASKS(CopsInMissionT[k].Handle)
+											CopsInMissionT[k].Target = 0
+											CopsInMissionT[k].TargetType = 0
+											CopsInMissionT[k].CombatTarget = 0
+										else
+											local TCoords = ENTITY.GET_ENTITY_COORDS(CopsInMissionT[k].Target)
+											local Distance = DistanceBetween(PCoords.x, PCoords.y, PCoords.z, TCoords.x, TCoords.y, TCoords.z)
+											if Distance > 30.0 then
+												if TASK.GET_SCRIPT_TASK_STATUS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+													local Veh = PED.GET_VEHICLE_PED_IS_IN(CopsInMissionT[k].Handle, true)
+													if Veh == 0 then
+														Veh = PED.GET_VEHICLE_PED_IS_TRYING_TO_ENTER(CopsInMissionT[k].Handle)
+													end
+													if Veh == 0 and TASK.GET_SCRIPT_TASK_STATUS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_GO_TO_COORD_ANY_MEANS")) == 7 then
+														TASK.TASK_GO_TO_COORD_ANY_MEANS(CopsInMissionT[k].Handle, PlayerPos.x, PlayerPos.y, PlayerPos.z, 3.0, 0, true, 786469, -1.0)
+													end
+													if Veh ~= 0 then
+														local CanCall = true
+														if PED.IS_PED_IN_VEHICLE(CopsInMissionT[k].Handle, Veh, false) then
+															local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false)
+															if Ped ~= 0 then
+																if Ped ~= CopsInMissionT[k].Handle then
+																	CanCall = false
+																end
+															end
+														end
+														if CanCall then
+															TASK.TASK_VEHICLE_MISSION_PED_TARGET(CopsInMissionT[k].Handle, Veh, CopsInMissionT[k].Target, 2, 1000.0, 786469, 4.0, 8.0, true)
+														end
+													end
+												end
+											else
+												if CopsInMissionT[k].TargetType == 1 then
+													if not PED.IS_PED_IN_COMBAT(CopsInMissionT[k].Handle, 0) then
+														TASK.TASK_COMBAT_PED(CopsInMissionT[k].Handle, CopsInMissionT[k].Target, 0, 16)
+													end
+												else
+													if TASK.GET_SCRIPT_TASK_STATUS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY")) == 7 then
+														TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(CopsInMissionT[k].Handle, CopsInMissionT[k].Target, CopsInMissionT[k].Target, 2.0, true, 0.1, 0.1, true, false, joaat("FIRING_PATTERN_FULL_AUTO"))
+													end
+												end
+											end
+										end
+									end
+									if CopsInMissionT[k].TargetType == 3 then
+										if ENTITY.DOES_ENTITY_EXIST(CopsInMissionT[k].Target) then
+											if OBJECT.HAS_OBJECT_BEEN_BROKEN(CopsInMissionT[k].Target, true)
+											or not HUD.DOES_BLIP_EXIST(CopsInMissionT[k].BlipHandle) then
+												CopsInMissionT[k].Bits = clear_bit(CopsInMissionT[k].Bits, 1)
+												CopsInMissionT[k].Bits = clear_bit(CopsInMissionT[k].Bits, 2)
+												TASK.CLEAR_PED_TASKS(CopsInMissionT[k].Handle)
+												CopsInMissionT[k].Target = 0
+												CopsInMissionT[k].TargetType = 0
+												CopsInMissionT[k].CombatTarget = 0
+											else
+												local TCoords = ENTITY.GET_ENTITY_COORDS(CopsInMissionT[k].Target)
+												local Distance = DistanceBetween(PCoords.x, PCoords.y, PCoords.z, TCoords.x, TCoords.y, TCoords.z)
+												if Distance > 30.0 then
+													if TASK.GET_SCRIPT_TASK_STATUS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_VEHICLE_DRIVE_TO_COORD")) == 7 then
+														local Veh = PED.GET_VEHICLE_PED_IS_IN(CopsInMissionT[k].Handle, true)
+														if Veh == 0 then
+															Veh = PED.GET_VEHICLE_PED_IS_TRYING_TO_ENTER(CopsInMissionT[k].Handle)
+														end
+														if Veh == 0 and TASK.GET_SCRIPT_TASK_STATUS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_GO_TO_COORD_ANY_MEANS")) == 7 then
+															TASK.TASK_GO_TO_COORD_ANY_MEANS(CopsInMissionT[k].Handle, PlayerPos.x, PlayerPos.y, PlayerPos.z, 3.0, 0, true, 786469, -1.0)
+														end
+														if Veh ~= 0 then
+															local CanCall = true
+															if PED.IS_PED_IN_VEHICLE(CopsInMissionT[k].Handle, Veh, false) then
+																local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false)
+																if Ped ~= 0 then
+																	if Ped ~= CopsInMissionT[k].Handle then
+																		CanCall = false
+																	end
+																end
+															end
+															if CanCall then
+																TASK.TASK_VEHICLE_DRIVE_TO_COORD(CopsInMissionT[k].Handle, Veh, TCoords.x, TCoords.y, TCoords.z, 1000.0, 1, ENTITY.GET_ENTITY_MODEL(Veh), 786469, 4.0, 30.0)
+															end
+														end
+													end
+												else
+													if TASK.GET_SCRIPT_TASK_STATUS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY")) == 7 then
+														TASK.TASK_GO_TO_ENTITY_WHILE_AIMING_AT_ENTITY(CopsInMissionT[k].Handle, CopsInMissionT[k].Target, CopsInMissionT[k].Target, 2.0, true, 0.1, 0.1, true, false, joaat("FIRING_PATTERN_FULL_AUTO"))
+													end
+												end
+											end
+										else
+											CopsInMissionT[k].Bits = clear_bit(CopsInMissionT[k].Bits, 1)
+											CopsInMissionT[k].Bits = clear_bit(CopsInMissionT[k].Bits, 2)
+											TASK.CLEAR_PED_TASKS(CopsInMissionT[k].Handle)
+											CopsInMissionT[k].Target = 0
+											CopsInMissionT[k].TargetType = 0
+											CopsInMissionT[k].CombatTarget = 0
+										end
+									end
+								else
+									CopsInMissionT[k].Bits = clear_bit(CopsInMissionT[k].Bits, 1)
+									CopsInMissionT[k].Bits = clear_bit(CopsInMissionT[k].Bits, 2)
+									TASK.CLEAR_PED_TASKS(CopsInMissionT[k].Handle)
+									CopsInMissionT[k].Target = 0
+									CopsInMissionT[k].TargetType = 0
+									CopsInMissionT[k].CombatTarget = 0
+								end
+							end
+							if is_bit_set(CopsInMissionT[k].Bits, 3) then
+								if CopsInMissionT[k].Target ~= 0 then
+									if CopsInMissionT[k].TargetType == 3 then
+										if not ENTITY.DOES_ENTITY_EXIST(CopsInMissionT[k].Target) or ENTITY.IS_ENTITY_DEAD(CopsInMissionT[k].Target) then
+											CopsInMissionT[k].Bits = clear_bit(CopsInMissionT[k].Bits, 1)
+											CopsInMissionT[k].Bits = clear_bit(CopsInMissionT[k].Bits, 3)
+											TASK.CLEAR_PED_TASKS(CopsInMissionT[k].Handle)
+											CopsInMissionT[k].Target = 0
+											CopsInMissionT[k].TargetType = 0
+										else
+											if not ENTITY.IS_ENTITY_ATTACHED_TO_ANY_PED(CopsInMissionT[k].Target) then
+												if ENTITY.IS_ENTITY_AT_ENTITY(CopsInMissionT[k].Handle, CopsInMissionT[k].Target, 2.0, 2.0, 2.0, false, true, false) and not
+												ENTITY.IS_ENTITY_AT_ENTITY(CopsInMissionT[k].Handle, PlayerPed, 10.0, 10.0, 10.0, false, true, false) then
+													if RequestControlOfEntity(CopsInMissionT[k].Target) then
+														OBJECT.ATTACH_PORTABLE_PICKUP_TO_PED(CopsInMissionT[k].Target, CopsInMissionT[k].Handle)
+													end
+												end
+												local TCoords = ENTITY.GET_ENTITY_COORDS(CopsInMissionT[k].Target)
+												local Distance = DistanceBetween(PCoords.x, PCoords.y, PCoords.z, TCoords.x, TCoords.y, TCoords.z)
+												if Distance > 30.0 then
+													if TASK.GET_SCRIPT_TASK_STATUS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_VEHICLE_DRIVE_TO_COORD")) == 7 then
+														local Veh = PED.GET_VEHICLE_PED_IS_IN(CopsInMissionT[k].Handle, true)
+														if Veh == 0 then
+															Veh = PED.GET_VEHICLE_PED_IS_TRYING_TO_ENTER(CopsInMissionT[k].Handle)
+														end
+														if Veh == 0 and TASK.GET_SCRIPT_TASK_STATUS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_GO_TO_COORD_ANY_MEANS")) == 7 then
+															TASK.TASK_GO_TO_COORD_ANY_MEANS(CopsInMissionT[k].Handle, TCoords.x, TCoords.y, TCoords.z, 3.0, 0, true, 786469, -1.0)
+														end
+														if Veh ~= 0 then
+															local CanCall = true
+															if PED.IS_PED_IN_VEHICLE(CopsInMissionT[k].Handle, Veh, false) then
+																local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false)
+																if Ped ~= 0 then
+																	if Ped ~= CopsInMissionT[k].Handle then
+																		CanCall = false
+																	end
+																end
+															end
+															if CanCall then
+																TASK.TASK_VEHICLE_DRIVE_TO_COORD(CopsInMissionT[k].Handle, Veh, TCoords.x, TCoords.y, TCoords.z, 1000.0, 1, ENTITY.GET_ENTITY_MODEL(Veh), 786469, 4.0, 20.0)
+															end
+														end
+													end
+												else
+													if not PED.IS_PED_IN_COMBAT(CopsInMissionT[k].Handle, 0) then
+														if TASK.GET_SCRIPT_TASK_STATUS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_GO_TO_ENTITY")) == 7 then
+															TASK.TASK_GO_TO_ENTITY(CopsInMissionT[k].Handle, CopsInMissionT[k].Target, -1, 0.1, 3.0, 0.5, 1)
+														end
+													end
+												end
+											else
+												if ENTITY.IS_ENTITY_ATTACHED_TO_ENTITY(CopsInMissionT[k].Target, CopsInMissionT[k].Handle) then
+													if not ENTITY.IS_ENTITY_AT_ENTITY(CopsInMissionT[k].Handle, PlayerPed, 10.0, 10.0, 10.0, false, true, false) then
+														if TASK.GET_SCRIPT_TASK_STATUS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+															local Veh = PED.GET_VEHICLE_PED_IS_IN(CopsInMissionT[k].Handle, true)
+															if Veh == 0 then
+																Veh = PED.GET_VEHICLE_PED_IS_TRYING_TO_ENTER(CopsInMissionT[k].Handle)
+															end
+															if Veh == 0 and TASK.SCRIPT_TASK_GO_TO_COORD_ANY_MEANS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_GO_TO_COORD_ANY_MEANS")) == 7 then
+																TASK.TASK_GO_TO_COORD_ANY_MEANS(CopsInMissionT[k].Handle, PlayerPos.x, PlayerPos.y, PlayerPos.z, 3.0, 0, true, 786469, -1.0)
+															end
+															if Veh ~= 0 then
+																local CanCall = true
+																if PED.IS_PED_IN_VEHICLE(CopsInMissionT[k].Handle, Veh, false) then
+																	local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false)
+																	if Ped ~= 0 then
+																		if Ped ~= CopsInMissionT[k].Handle then
+																			CanCall = false
+																		end
+																	end
+																end
+																if CanCall then
+																	TASK.TASK_VEHICLE_MISSION_PED_TARGET(CopsInMissionT[k].Handle, Veh, PlayerPed, 4, 1000.0, 786469, 10.0, 8.0, true)
+																end
+															end
+														end
+													else
+														if not ENTITY.IS_ENTITY_ATTACHED_TO_ENTITY(CopsInMissionT[k].Target, PlayerPed) then
+															if RequestControlOfEntity(CopsInMissionT[k].Target) then
+																ENTITY.DETACH_ENTITY(CopsInMissionT[k].Target, true, true)
+															end
+														end
+													end
+												else
+													CopsInMissionT[k].Bits = clear_bit(CopsInMissionT[k].Bits, 1)
+													CopsInMissionT[k].Bits = clear_bit(CopsInMissionT[k].Bits, 3)
+													TASK.CLEAR_PED_TASKS(CopsInMissionT[k].Handle)
+													CopsInMissionT[k].Target = 0
+													CopsInMissionT[k].TargetType = 0
+												end
+											end
+										end
+									end
+								end
+							end
+							if is_bit_set(CopsInMissionT[k].Bits, 4) then
+								if CopsInMissionT[k].Target ~= 0 then
+									if CopsInMissionT[k].TargetType == 2 then
+										if not ENTITY.DOES_ENTITY_EXIST(CopsInMissionT[k].Target) or ENTITY.IS_ENTITY_DEAD(CopsInMissionT[k].Target) then
+											CopsInMissionT[k].Bits = clear_bit(CopsInMissionT[k].Bits, 1)
+											CopsInMissionT[k].Bits = clear_bit(CopsInMissionT[k].Bits, 4)
+											TASK.CLEAR_PED_TASKS(CopsInMissionT[k].Handle)
+											CopsInMissionT[k].Target = 0
+											CopsInMissionT[k].TargetType = 0
+										else
+											local InVeh = PED.IS_PED_IN_VEHICLE(CopsInMissionT[k].Handle, CopsInMissionT[k].Target, false)
+											if not InVeh then
+												local TCoords = ENTITY.GET_ENTITY_COORDS(CopsInMissionT[k].Target)
+												local Distance = DistanceBetween(PCoords.x, PCoords.y, PCoords.z, TCoords.x, TCoords.y, TCoords.z)
+												if Distance > 30.0 then
+													if TASK.GET_SCRIPT_TASK_STATUS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+														local Veh = PED.GET_VEHICLE_PED_IS_IN(CopsInMissionT[k].Handle, true)
+														if Veh == 0 then
+															Veh = PED.GET_VEHICLE_PED_IS_TRYING_TO_ENTER(CopsInMissionT[k].Handle)
+														end
+														if Veh == 0 and TASK.GET_SCRIPT_TASK_STATUS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_GO_TO_COORD_ANY_MEANS")) == 7 then
+															TASK.TASK_GO_TO_COORD_ANY_MEANS(CopsInMissionT[k].Handle, PlayerPos.x, PlayerPos.y, PlayerPos.z, 3.0, 0, true, 786469, -1.0)
+														end
+														if Veh ~= 0 then
+															local CanCall = true
+															if PED.IS_PED_IN_VEHICLE(CopsInMissionT[k].Handle, Veh, false) then
+																local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false)
+																if Ped ~= 0 then
+																	if Ped ~= CopsInMissionT[k].Handle then
+																		CanCall = false
+																	end
+																end
+															end
+															if CanCall then
+																TASK.TASK_VEHICLE_MISSION(CopsInMissionT[k].Handle, Veh, CopsInMissionT[k].Target, 4, 1000.0, 786469, 20.0, 8.0, true)
+															end
+														end
+													end
+												else
+													local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(CopsInMissionT[k].Target, -1, false)
+													if Ped ~= 0 then
+														if PED.GET_RELATIONSHIP_BETWEEN_PEDS(CopsInMissionT[k].Handle, Ped) ~= 1 then
+															if TASK.GET_SCRIPT_TASK_STATUS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_ENTER_VEHICLE")) == 7 then
+																TASK.TASK_ENTER_VEHICLE(CopsInMissionT[k].Handle, CopsInMissionT[k].Target, -1, -1, 3.0, 0, 0, 0)
+															end
+														end
+													else
+														if TASK.GET_SCRIPT_TASK_STATUS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_ENTER_VEHICLE")) == 7 then
+															TASK.TASK_ENTER_VEHICLE(CopsInMissionT[k].Handle, CopsInMissionT[k].Target, -1, -1, 3.0, 0, 0, 0)
+														end
+													end
+												end
+											else
+												if TASK.GET_SCRIPT_TASK_STATUS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_VEHICLE_MISSION")) == 7 then
+													local Veh = CopsInMissionT[k].Target
+													if Veh ~= 0 then
+														TASK.TASK_VEHICLE_MISSION_PED_TARGET(CopsInMissionT[k].Handle, Veh, PlayerPed, 4, 1000.0, 786469, 10.0, 8.0, true)
+													end
+												end
+											end
+										end
+									end
+								end
+							end
+							if is_bit_set(CopsInMissionT[k].Bits, 5) then
+								if not PED.IS_PED_IN_COMBAT(CopsInMissionT[k].Handle, 0) then
+									local Distance = DistanceBetween(PCoords.x, PCoords.y, PCoords.z, CopsInMissionT[k].TaskCoord.x, CopsInMissionT[k].TaskCoord.y, CopsInMissionT[k].TaskCoord.z)
+									if Distance > 30.0 then
+										if TASK.GET_SCRIPT_TASK_STATUS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_VEHICLE_DRIVE_TO_COORD")) == 7 then
+											local Veh = PED.GET_VEHICLE_PED_IS_IN(CopsInMissionT[k].Handle, true)
+											if Veh == 0 then
+												Veh = PED.GET_VEHICLE_PED_IS_TRYING_TO_ENTER(CopsInMissionT[k].Handle)
+											end
+											if Veh == 0 and TASK.GET_SCRIPT_TASK_STATUS(CopsInMissionT[k].Handle, joaat("SCRIPT_TASK_GO_TO_COORD_ANY_MEANS")) == 7 then
+												TASK.TASK_GO_TO_COORD_ANY_MEANS(CopsInMissionT[k].Handle, CopsInMissionT[k].TaskCoord.x, CopsInMissionT[k].TaskCoord.y, CopsInMissionT[k].TaskCoord.z, 3.0, 0, true, 786469, -1.0)
+											end
+											if Veh ~= 0 then
+												local CanCall = true
+												if PED.IS_PED_IN_VEHICLE(CopsInMissionT[k].Handle, Veh, false) then
+													local Ped = VEHICLE.GET_PED_IN_VEHICLE_SEAT(Veh, -1, false)
+													if Ped ~= 0 then
+														if Ped ~= CopsInMissionT[k].Handle then
+															CanCall = false
+														end
+													end
+												end
+												if CanCall then
+													TASK.TASK_VEHICLE_DRIVE_TO_COORD(CopsInMissionT[k].Handle, Veh, CopsInMissionT[k].TaskCoord.x, CopsInMissionT[k].TaskCoord.y, CopsInMissionT[k].TaskCoord.z, 1000.0, 1, ENTITY.GET_ENTITY_MODEL(Veh), 786469, 4.0, 20.0)
+													
+												end
+											end
+										end
+									end
+								end
+								if ENTITY.IS_ENTITY_AT_COORD(CopsInMissionT[k].Handle, CopsInMissionT[k].TaskCoord.x, CopsInMissionT[k].TaskCoord.y, CopsInMissionT[k].TaskCoord.z, 10.0, 10.0, 10.0, false, true, 0)
+								or not HUD.DOES_BLIP_EXIST(CopsInMissionT[k].BlipHandle) then
+									CopsInMissionT[k].Bits = clear_bit(CopsInMissionT[k].Bits, 1)
+									CopsInMissionT[k].Bits = clear_bit(CopsInMissionT[k].Bits, 5)
+									TASK.CLEAR_PED_TASKS(CopsInMissionT[k].Handle)
+									CopsInMissionT[k].Target = 0
+									CopsInMissionT[k].TargetType = 0
+								end
+							end
+						end
+					else
+						CopsIndexesInMissionT[CopsInMissionT[k].Handle] = nil
+						table.remove(CopsInMissionT, k)
+						break
+					end
+				end
+			end
 			Wait()
 		end
 	end
 end)
+
 
 menu.toggle_loop(menu.my_root(), "Enable Cops In Cayo Perico", {}, "", function(toggle)
 	local PlayerId = PLAYER.PLAYER_ID()
@@ -4855,16 +5655,23 @@ menu.action(MiscMenu, "Bring Fortified Boxville", {}, "", function(toggle)
 	end
 end)
 
-menu.toggle_loop(MiscMenu, "GB_FORTIFIED Spam Enemies", {}, "", function(toggle)
-	if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("gb_fortified")) > 0 then
-		memory.write_int(memory.script_local("gb_fortified", 1085+331-26), 3)
-		memory.write_int(memory.script_local("gb_fortified", 1085+331-7), 1)
-		util.spoof_script("gb_fortified", function()
-			if not NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
-				util.request_script_host("gb_fortified")
-				NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
-			end
-		end)
+local SpamEnemies = false
+menu.toggle(MiscMenu, "GB_FORTIFIED Spam Enemies", {}, "", function(toggle)
+	SpamEnemies = toggle
+	while SpamEnemies do
+		local Delay = 0
+		if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("gb_fortified")) > 0 then
+			memory.write_int(memory.script_local("gb_fortified", 1108+331-26), 3)
+			memory.write_int(memory.script_local("gb_fortified", 1108+331-7), 1)
+			util.spoof_script("gb_fortified", function()
+				if not NETWORK.NETWORK_IS_HOST_OF_THIS_SCRIPT() then
+					util.request_script_host("gb_fortified")
+					--NETWORK.NETWORK_REQUEST_TO_BE_HOST_OF_THIS_SCRIPT()
+					Delay = 1000
+				end
+			end)
+		end
+		Wait(Delay)
 	end
 end)
 
@@ -5968,7 +6775,7 @@ function QuatToRot(quat)
 
 end
 
-function math.atan2(x, y)
+function Atan2_Function(x, y)
 
 	if x > 0 then
 		return math.atan(y / x)
@@ -6781,7 +7588,17 @@ local BulletTracer = false
 menu.toggle(MiscMenu, "Bullet Tracer", {}, "", function(toggle)
 	BulletTracer = toggle
 	if BulletTracer then
+		local PTFXAsset = "weap_gr_weapons"
+		local PTFXName = "bullet_tracer_gr_tintable"
+		STREAMING.REQUEST_NAMED_PTFX_ASSET(PTFXAsset)
+		while not STREAMING.HAS_NAMED_PTFX_ASSET_LOADED(PTFXAsset) do
+			Wait()
+		end
 		while BulletTracer do
+			while not STREAMING.HAS_NAMED_PTFX_ASSET_LOADED(PTFXAsset) do
+				STREAMING.REQUEST_NAMED_PTFX_ASSET(PTFXAsset)
+				Wait()
+			end
 			for index, peds in pairs(entities.get_all_peds_as_handles()) do
 				if PED.IS_PED_SHOOTING(peds) then
 					local Weap = WEAPON.GET_CURRENT_PED_WEAPON_ENTITY_INDEX(peds, 0)
@@ -6796,9 +7613,9 @@ menu.toggle(MiscMenu, "Bullet Tracer", {}, "", function(toggle)
 								local Pos = ENTITY.GET_WORLD_POSITION_OF_ENTITY_BONE(Weap, BoneID)
 								local Rot = v3.lookAt(Pos, HitV3)
 								util.create_thread(function()
-									for i = 1, 10 do
-										GRAPHICS.USE_PARTICLE_FX_ASSET("core")
-										GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD("bullet_tracer_railgun", Pos.x, Pos.y, Pos.z, Rot.y, Rot.x - 90.0, Rot.z - 90.0, 1.0, false, false, false, false)
+									for i = 1, 1 do
+										GRAPHICS.USE_PARTICLE_FX_ASSET(PTFXAsset)
+										GRAPHICS.START_NETWORKED_PARTICLE_FX_NON_LOOPED_AT_COORD(PTFXName, Pos.x, Pos.y, Pos.z, Rot.y, Rot.x - 90.0, Rot.z - 90.0, 1.0, false, false, false, false)
 									end
 								end)
 							end
@@ -6855,12 +7672,18 @@ local BulletTracerOverride = false
 menu.toggle(MiscMenu, "Bullet Tracer Override", {}, "Railgun tracer.", function(toggle)
 	BulletTracerOverride = toggle
 	local OldAssetNames = {"bullet_tracer", "bullet_tracer_jet", "bullet_tracer_mg", "bullet_shotgun_tracer"}
-	local NewAssetName = "bullet_tracer_railgun"
+	local NewAssetName = "bullet_tracer_gr_tintable"
 	if not BulletTracerOverride then
 		for i = 1, #OldAssetNames do
 			GRAPHICS.RESET_PARTICLE_FX_OVERRIDE(OldAssetNames[i])
 		end
 	end
+	local PTFXAsset = "weap_gr_weapons"
+    local PTFXName = "bullet_tracer_gr_tintable"
+    STREAMING.REQUEST_NAMED_PTFX_ASSET(PTFXAsset)
+    while not STREAMING.HAS_NAMED_PTFX_ASSET_LOADED(PTFXAsset) do
+        Wait()
+    end
 	while BulletTracerOverride do
 		for i = 1, #OldAssetNames do
 			GRAPHICS.SET_PARTICLE_FX_OVERRIDE(OldAssetNames[i], NewAssetName)
@@ -7143,10 +7966,17 @@ menu.toggle(MiscMenu, "Veh Blend", {}, "", function(toggle)
 end)
 
 function SetMissionEntitiesCanTakeDamage()
-	local PedsGlobal = SplitGlobals("Global_4980736.f_119419[bVar3 /*1180*/].f_555")
+	local PedsGlobal = SplitGlobals("Global_4980736.f_121122[bVar3 /*1198*/].f_555")
+	local PedsGlobal2 = SplitGlobals("Global_4980736.f_121122[bVar3 /*1198*/].f_564")
 	for i = 0, 79 do
 		local Address = memory.script_global(PedsGlobal + 1180 * i)
-		memory.write_int(Address, clear_bit(memory.read_int(Address), 30))
+		if is_bit_set(memory.read_int(Address), 30) then
+			memory.write_int(Address, clear_bit(memory.read_int(Address), 30))
+		end
+		local Address2 = memory.script_global(PedsGlobal2 + 1180 * i)
+		if is_bit_set(memory.read_int(Address2), 21) then
+			memory.write_int(Address2, clear_bit(memory.read_int(Address), 21))
+		end
 	end
 end
 
@@ -7506,32 +8336,48 @@ menu.toggle(NewWeapons, "Pro Movements", {}, "", function(toggle)
 		while AK47 do
 			local PlayerPed = PLAYER.PLAYER_PED_ID()
 			local PlayerID = PLAYER.PLAYER_ID()
-			--CAM.DISABLE_ON_FOOT_FIRST_PERSON_VIEW_THIS_UPDATE()
-			--local CurWeap = memory.alloc(8)
-			local HasWeap = false --WEAPON.GET_CURRENT_PED_WEAPON(PlayerPed, CurWeap, false)
-			PED.SET_PED_RESET_FLAG(PlayerPed, 71, true)
-			PED.SET_PED_RESET_FLAG(PlayerPed, 91, true)
-			if not PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, true) then
-				PED.SET_PED_RESET_FLAG(PlayerPed, 156, true)
-			end
-			PED.SET_PED_RESET_FLAG(PlayerPed, 401, true)
-			PED.SET_PED_RESET_FLAG(PlayerPed, 237, true)
-			--PED.SET_PED_RESET_FLAG(PlayerPed, 309, true)
-			PED.SET_PED_RESET_FLAG(PlayerPed, 442, true)
-			PED.SET_PED_CONFIG_FLAG(PlayerPed, 95, true)
-			PED.SET_PED_CONFIG_FLAG(PlayerPed, 427, true)
-			--PLAYER.SET_PLAYER_FORCE_SKIP_AIM_INTRO(PlayerID, true)
-			--PLAYER.SET_PLAYER_SIMULATE_AIMING(PlayerID, true)
-			if PED.GET_VEHICLE_PED_IS_TRYING_TO_ENTER(PlayerPed) ~= 0 or PAD.IS_CONTROL_PRESSED(1, 75) then
-				PED.FORCE_PED_AI_AND_ANIMATION_UPDATE(PlayerPed, false, false)
-			else
-				--PLAYER.SET_PLAYER_CONTROL(PLAYER.PLAYER_ID(), true, -1)
-			end
-			--PAD.ENABLE_ALL_CONTROL_ACTIONS(0)
-			--PAD.ENABLE_ALL_CONTROL_ACTIONS(1)
-			if not PLAYER.IS_PLAYER_FREE_AIMING(PlayerID) then
-				if not TASK.IS_PED_SPRINTING(PlayerPed) then
-		 	        if PAD.IS_CONTROL_JUST_PRESSED(0, 21) then
+			if not ENTITY.IS_ENTITY_DEAD(PlayerPed) and PLAYER.IS_PLAYER_CONTROL_ON(PlayerID) then
+				--CAM.DISABLE_ON_FOOT_FIRST_PERSON_VIEW_THIS_UPDATE()
+				--local CurWeap = memory.alloc(8)
+				local HasWeap = false --WEAPON.GET_CURRENT_PED_WEAPON(PlayerPed, CurWeap, false)
+				PED.SET_PED_RESET_FLAG(PlayerPed, 71, true)
+				PED.SET_PED_RESET_FLAG(PlayerPed, 91, true)
+				if not PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, true) then
+					PED.SET_PED_RESET_FLAG(PlayerPed, 156, true)
+				end
+				PED.SET_PED_RESET_FLAG(PlayerPed, 401, true)
+				PED.SET_PED_RESET_FLAG(PlayerPed, 237, true)
+				--PED.SET_PED_RESET_FLAG(PlayerPed, 309, true)
+				PED.SET_PED_RESET_FLAG(PlayerPed, 442, true)
+				PED.SET_PED_CONFIG_FLAG(PlayerPed, 95, true)
+				PED.SET_PED_CONFIG_FLAG(PlayerPed, 427, true)
+				--PLAYER.SET_PLAYER_FORCE_SKIP_AIM_INTRO(PlayerID, true)
+				--PLAYER.SET_PLAYER_SIMULATE_AIMING(PlayerID, true)
+				if PED.GET_VEHICLE_PED_IS_TRYING_TO_ENTER(PlayerPed) ~= 0 or PAD.IS_CONTROL_PRESSED(1, 75) then
+					PED.FORCE_PED_AI_AND_ANIMATION_UPDATE(PlayerPed, false, false)
+				else
+					--PLAYER.SET_PLAYER_CONTROL(PLAYER.PLAYER_ID(), true, -1)
+				end
+				--PAD.ENABLE_ALL_CONTROL_ACTIONS(0)
+				--PAD.ENABLE_ALL_CONTROL_ACTIONS(1)
+				if not PLAYER.IS_PLAYER_FREE_AIMING(PlayerID) then
+					if not TASK.IS_PED_SPRINTING(PlayerPed) then
+						if PAD.IS_CONTROL_JUST_PRESSED(0, 21) then
+							if not PED.IS_PED_SWIMMING(PlayerPed) and not PED.IS_PED_SWIMMING_UNDER_WATER(PlayerPed) then
+								if not PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, true) then
+									local Cam = CAM.GET_GAMEPLAY_CAM_ROT(2)
+									local X = PAD.GET_CONTROL_NORMAL(0, 30)
+									local Y = -PAD.GET_CONTROL_NORMAL(0, 31)
+									if X ~= 0.0 or Y ~= 0.0 then
+										local V3 = v3.new(X, Y, 0.0)
+										local Rot = V3:toRot()
+										ENTITY.SET_ENTITY_HEADING(PlayerPed, Cam.z + Rot.z)
+									end
+								end
+								PED.FORCE_PED_MOTION_STATE(PlayerPed, -1115154469, false, 1, false)
+							end
+						end
+					else
 						if not PED.IS_PED_SWIMMING(PlayerPed) and not PED.IS_PED_SWIMMING_UNDER_WATER(PlayerPed) then
 							if not PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, true) then
 								local Cam = CAM.GET_GAMEPLAY_CAM_ROT(2)
@@ -7543,63 +8389,49 @@ menu.toggle(NewWeapons, "Pro Movements", {}, "", function(toggle)
 									ENTITY.SET_ENTITY_HEADING(PlayerPed, Cam.z + Rot.z)
 								end
 							end
-							PED.FORCE_PED_MOTION_STATE(PlayerPed, -1115154469, false, 1, false)
 						end
 					end
-				else
+					--if PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false) then
+					--	if PAD.IS_CONTROL_PRESSED(0, 68) or PAD.IS_CONTROL_PRESSED(0, 69) then-- or PAD.IS_CONTROL_PRESSED(1, 257) then
+					--		local EndV = RaycastFromCamera(PlayerPed, 1000.0, -1)
+					--		PED.SET_PED_SHOOTS_AT_COORD(PlayerPed, EndV.x, EndV.y, EndV.z, false)
+					--	end
+					--end
+				end
+				if PED.IS_PED_SWITCHING_WEAPON(PlayerPed) then
 					if not PED.IS_PED_SWIMMING(PlayerPed) and not PED.IS_PED_SWIMMING_UNDER_WATER(PlayerPed) then
-						if not PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, true) then
-							local Cam = CAM.GET_GAMEPLAY_CAM_ROT(2)
-							local X = PAD.GET_CONTROL_NORMAL(0, 30)
-							local Y = -PAD.GET_CONTROL_NORMAL(0, 31)
-							if X ~= 0.0 or Y ~= 0.0 then
-								local V3 = v3.new(X, Y, 0.0)
-								local Rot = V3:toRot()
-								ENTITY.SET_ENTITY_HEADING(PlayerPed, Cam.z + Rot.z)
+						PED.FORCE_PED_MOTION_STATE(PlayerPed, 1063765679, false, 1, false)
+					end
+				end
+				if HasWeap then
+					--if memory.read_int(CurWeap) == joaat("weapon_assaultrifle") then
+						local WIndex = WEAPON.GET_CURRENT_PED_WEAPON_ENTITY_INDEX(PlayerPed, false)
+						for i = 1, #AttachsT do
+							if not AttachsT[i].Created then
+								AttachsT[i].Created = AttachsT[i].Func(WIndex)
 							end
 						end
-					end
-				end
-				--if PED.IS_PED_IN_ANY_VEHICLE(PlayerPed, false) then
-				--	if PAD.IS_CONTROL_PRESSED(0, 68) or PAD.IS_CONTROL_PRESSED(0, 69) then-- or PAD.IS_CONTROL_PRESSED(1, 257) then
-				--		local EndV = RaycastFromCamera(PlayerPed, 1000.0, -1)
-				--		PED.SET_PED_SHOOTS_AT_COORD(PlayerPed, EndV.x, EndV.y, EndV.z, false)
-				--	end
-				--end
-			end
-			if PED.IS_PED_SWITCHING_WEAPON(PlayerPed) then
-				if not PED.IS_PED_SWIMMING(PlayerPed) and not PED.IS_PED_SWIMMING_UNDER_WATER(PlayerPed) then
-					PED.FORCE_PED_MOTION_STATE(PlayerPed, 1063765679, false, 1, false)
-				end
-			end
-			if HasWeap then
-				--if memory.read_int(CurWeap) == joaat("weapon_assaultrifle") then
-					local WIndex = WEAPON.GET_CURRENT_PED_WEAPON_ENTITY_INDEX(PlayerPed, false)
+						--if PED.IS_PED_SHOOTING(PlayerPed) then
+							--local Coords = RaycastFromCamera(PlayerPed, 1000.0, -1)
+						--	PED. SET_PED_SHOOTS_AT_COORD(PlayerPed, Coords.x, Coords.y, Coords.z, false)
+						--	Print("S")
+							--MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS(VECTOR VecStartCoors, VECTOR VecEndCoors, INT DamageCaused, BOOL bPerfectAccuracy = FALSE, WEAPON_TYPE Weapon = WEAPONTYPE_ASSAULTRIFLE, PED_INDEX PedIndex = NULL, BOOL bCreateTraceVfx = TRUE, BOOL bAllowRumble = TRUE, FLOAT InitialVelocity = -1.0)
+						--end
+						--STREAMING.REQUEST_MODEL(Scope)
+						--if STREAMING.HAS_MODEL_LOADED(Scope) then
+						--	local WIndex = WEAPON.GET_CURRENT_PED_WEAPON_ENTITY_INDEX(PlayerPed, false)
+						--	local Pos = ENTITY.GET_ENTITY_COORDS(WIndex)
+						--	local Obj = OBJECT.CREATE_OBJECT(Scope, Pos.x, Pos.y, Pos.z, true, true, true)
+						--	ENTITY.ATTACH_ENTITY_TO_ENTITY(Obj, WIndex, 0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, true, false, true, false, 2, true, true)
+						--	STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(Scope)
+						--	HasPlaced = true
+						--	PropsT[#PropsT+1] = Obj
+						--end
+					--end
+				else
 					for i = 1, #AttachsT do
-						if not AttachsT[i].Created then
-							AttachsT[i].Created = AttachsT[i].Func(WIndex)
-						end
+						AttachsT[i].Created = false
 					end
-					--if PED.IS_PED_SHOOTING(PlayerPed) then
-						--local Coords = RaycastFromCamera(PlayerPed, 1000.0, -1)
-					--	PED. SET_PED_SHOOTS_AT_COORD(PlayerPed, Coords.x, Coords.y, Coords.z, false)
-					--	Print("S")
-						--MISC.SHOOT_SINGLE_BULLET_BETWEEN_COORDS(VECTOR VecStartCoors, VECTOR VecEndCoors, INT DamageCaused, BOOL bPerfectAccuracy = FALSE, WEAPON_TYPE Weapon = WEAPONTYPE_ASSAULTRIFLE, PED_INDEX PedIndex = NULL, BOOL bCreateTraceVfx = TRUE, BOOL bAllowRumble = TRUE, FLOAT InitialVelocity = -1.0)
-					--end
-					--STREAMING.REQUEST_MODEL(Scope)
-					--if STREAMING.HAS_MODEL_LOADED(Scope) then
-					--	local WIndex = WEAPON.GET_CURRENT_PED_WEAPON_ENTITY_INDEX(PlayerPed, false)
-					--	local Pos = ENTITY.GET_ENTITY_COORDS(WIndex)
-					--	local Obj = OBJECT.CREATE_OBJECT(Scope, Pos.x, Pos.y, Pos.z, true, true, true)
-					--	ENTITY.ATTACH_ENTITY_TO_ENTITY(Obj, WIndex, 0, 0.0, 0.0, 0.08, 0.0, 0.0, 0.0, true, false, true, false, 2, true, true)
-					--	STREAMING.SET_MODEL_AS_NO_LONGER_NEEDED(Scope)
-					--	HasPlaced = true
-					--	PropsT[#PropsT+1] = Obj
-					--end
-				--end
-			else
-				for i = 1, #AttachsT do
-					AttachsT[i].Created = false
 				end
 			end
 			Wait()
@@ -7857,13 +8689,28 @@ menu.toggle(NewWeapons, "Fast Synchronised Scene", {}, "", function(toggle)
 			{"anim@heists@ornate_bank@grab_cash", "grab"},
 			{"anim@heists@ornate_bank@grab_cash_heels", "grab"}
 		}
+		local FM_SceneID_Local = SplitGlobals("Local_10255.f_9")
+		local FM_SceneRate_Local = SplitGlobals("Local_10255.f_14")
+		local FM_SceneRate2_Local = SplitGlobals("Local_31621[bParam0 /*292*/].f_139")
+		local PhaseToSet = 0.0
+		local AvoidSceneID = 0
 		while FastGrab do
 			local PlayerPed = PLAYER.PLAYER_PED_ID()
 			for i = 1, #AnimsT do
 				if ENTITY.IS_ENTITY_PLAYING_ANIM(PlayerPed, AnimsT[i][1], AnimsT[i][2], 3) then
-					ENTITY.SET_ENTITY_ANIM_SPEED(PlayerPed, AnimsT[i][1], AnimsT[i][2], 3.0)
+					ENTITY.SET_ENTITY_ANIM_SPEED(PlayerPed, AnimsT[i][1], AnimsT[i][2], 5.0)
 				end
 			end
+			--local ObjsT = entities.get_all_objects_as_handles()
+			--for k = 1, #ObjsT do
+			--	if ENTITY.IS_ENTITY_A_MISSION_ENTITY(ObjsT[k]) then
+			--		if ENTITY.IS_ENTITY_PLAYING_ANIM(ObjsT[k], "anim@heists@ornate_bank@grab_cash", "cart_cash_dissapear", 3) then
+			--			RequestControlOfEntity(ObjsT[k])
+			--			ENTITY.SET_ENTITY_ANIM_CURRENT_TIME(ObjsT[k], "anim@heists@ornate_bank@grab_cash", "cart_cash_dissapear", 0.0)
+			--		end
+			--	end
+			--end
+			--TASK.SET_ANIM_RATE(PlayerPed, 5.0, 3, false)
 			--if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller_2020")) > 0 then
 			--	local AddrValue = memory.read_int(memory.script_local("fm_mission_controller_2020", FM_2020_SceneID))
 			--	if AddrValue ~= 0 then
@@ -7876,35 +8723,105 @@ menu.toggle(NewWeapons, "Fast Synchronised Scene", {}, "", function(toggle)
 			--		end
 			--	end
 			--end
-			if EstimatedValue == 0 then
-				if Tick <= 0 then
-					for i = MinValueS, MaxValueS do
-						if PED.IS_SYNCHRONIZED_SCENE_RUNNING(i) then
-							--ScenesT[i] = i
-							EstimatedValue = i
+			if SCRIPT.GET_NUMBER_OF_THREADS_RUNNING_THE_SCRIPT_WITH_THIS_HASH(joaat("fm_mission_controller")) > 0 then
+				local AddrValue = memory.read_int(memory.script_local("fm_mission_controller", FM_SceneID_Local))
+				if AddrValue ~= 0 then
+					util.spoof_script("fm_mission_controller", function()
+						local SceneID = NETWORK.NETWORK_GET_LOCAL_SCENE_FROM_NETWORK_ID(AddrValue)
+						if SceneID ~= 0 then
+							--EstimatedValue = SceneID
+							--if PED.GET_SYNCHRONIZED_SCENE_RATE(SceneID) ~= 0.0 then
+								PED.SET_SYNCHRONIZED_SCENE_RATE(SceneID, 5.0)
+								AvoidSceneID = SceneID
+								--PED.SET_SYNCHRONIZED_SCENE_PHASE(SceneID, PhaseToSet)
+								--PED.SET_SYNCHRONIZED_SCENE_LOOPED(SceneID, true)
+								--PED.TAKE_OWNERSHIP_OF_SYNCHRONIZED_SCENE(SceneID)
+								--Print("SceneID "..SceneID)
+							--end
+							--NETWORK.NETWORK_START_SYNCHRONISED_SCENE(AddrValue)
+						end
+						--PED.FORCE_PED_AI_AND_ANIMATION_UPDATE(PlayerPed, false, false)
+					end)
+				end
+				memory.write_float(memory.script_local("fm_mission_controller", FM_SceneRate_Local), 5.0)
+				for k = 0, 31 do
+					local AddrValue2 = memory.read_int(memory.script_local("fm_mission_controller", FM_SceneRate2_Local + 292 * k))
+					if AddrValue2 ~= 0 then
+						util.spoof_script("fm_mission_controller", function()
+							local SceneID = NETWORK.NETWORK_GET_LOCAL_SCENE_FROM_NETWORK_ID(AddrValue2)
+							if SceneID ~= 0 then
+								--EstimatedValue = SceneID
+								--if PED.GET_SYNCHRONIZED_SCENE_RATE(SceneID) ~= 0.0 then
+									PED.SET_SYNCHRONIZED_SCENE_RATE(SceneID, 5.0)
+									
+									--Print("SceneID2 "..SceneID)
+									--PED.SET_SYNCHRONIZED_SCENE_PHASE(SceneID, PhaseToSet)
+									--PED.SET_SYNCHRONIZED_SCENE_LOOPED(SceneID, true)
+									--PED.TAKE_OWNERSHIP_OF_SYNCHRONIZED_SCENE(SceneID)
+								--end
+								--NETWORK.NETWORK_START_SYNCHRONISED_SCENE(AddrValue)
+							end
+							--PED.FORCE_PED_AI_AND_ANIMATION_UPDATE(PlayerPed, false, false)
+						end)
+					end
+				end
+				memory.write_float(memory.script_local("fm_mission_controller", 10255 + 13), PhaseToSet)
+			end
+			util.spoof_script("fm_mission_controller", function()
+				if EstimatedValue == 0 then
+					if Tick <= 0 then
+						for i = MinValueS, MaxValueS do
+							if PED.IS_SYNCHRONIZED_SCENE_RUNNING(i) then
+								--ScenesT[i] = i
+								EstimatedValue = i
+								--Print("Scene Running Search ID "..i.. " Estimated Value "..EstimatedValue)
+							end
+						end
+						if State < 7 then
+							State = State + 1
+							MinValueS = MinValueS + 1000
+							MaxValueS = MaxValueS + 1000
+						else
+							State = 0
+							MinValueS = 1
+							MaxValueS = 1000
+						end
+						Tick = 0
+					else
+						Tick = Tick - 1
+					end
+				end
+				if EstimatedValue ~= 0 then
+					local Running = false
+					for i = EstimatedValue-1000, EstimatedValue+1000 do
+						if PED.IS_SYNCHRONIZED_SCENE_RUNNING(i) then-- or PAD.IS_CONTROL_PRESSED(0, 21) then
+							--local SceneID = NETWORK.NETWORK_GET_LOCAL_SCENE_FROM_NETWORK_ID(i)
+							--if SceneID ~= 0 then
+							--	PED.SET_SYNCHRONIZED_SCENE_RATE(SceneID, 5.0)
+							--	--PED.SET_SYNCHRONIZED_SCENE_PHASE(SceneID, PhaseToSet)
+							--	--PED.SET_SYNCHRONIZED_SCENE_LOOPED(SceneID, true)
+							--	--PED.TAKE_OWNERSHIP_OF_SYNCHRONIZED_SCENE(SceneID)
+							--end
+							PED.SET_SYNCHRONIZED_SCENE_RATE(i, 5.0)
+							if i ~= AvoidSceneID then
+								--PED.TAKE_OWNERSHIP_OF_SYNCHRONIZED_SCENE(i)
+								--PED.SET_SYNCHRONIZED_SCENE_PHASE(i, PhaseToSet)
+							end
+							--PED.SET_SYNCHRONIZED_SCENE_PHASE(i, PhaseToSet)
+							--PED.SET_SYNCHRONIZED_SCENE_LOOPED(i, true)
+							--Print("Scene Running Search ID "..i)
+							--PED.TAKE_OWNERSHIP_OF_SYNCHRONIZED_SCENE(i)
+							Running = true
 						end
 					end
-					if State < 7 then
-						State = State + 1
-						MinValueS = MinValueS + 1000
-						MaxValueS = MaxValueS + 1000
-					else
+					if not Running then
+						EstimatedValue = 0
 						State = 0
 						MinValueS = 1
 						MaxValueS = 1000
 					end
-					Tick = 0
-				else
-					Tick = Tick - 1
 				end
-			end
-			if EstimatedValue ~= 0 then
-				for i = EstimatedValue-1000, EstimatedValue+1000 do
-					if PED.IS_SYNCHRONIZED_SCENE_RUNNING(i) then-- or PAD.IS_CONTROL_PRESSED(0, 21) then
-						PED.SET_SYNCHRONIZED_SCENE_RATE(i, 3.0)
-					end
-				end
-			end
+			end)
 			--for index, scenes in pairs(ScenesT) do
 			--	if PED.GET_SYNCHRONIZED_SCENE_RATE(scenes) ~= 0.0 then
 			--		PED.SET_SYNCHRONIZED_SCENE_RATE(scenes, 3.0)
@@ -7925,7 +8842,8 @@ menu.toggle_loop(NewWeapons, "Door Control", {}, "", function(toggle)
 	local Veh = PED.GET_VEHICLE_PED_IS_IN(PLAYER.PLAYER_PED_ID())
 	if Veh ~= 0 then
 		VEHICLE.SET_DOOR_ALLOWED_TO_BE_BROKEN_OFF(Veh, 2, false)
-		VEHICLE.SET_VEHICLE_DOOR_CONTROL(Veh, 2, 360, 180.0)
+		--VEHICLE.SET_VEHICLE_DOOR_CONTROL(Veh, 2, 360, 180.0)
+		VEHICLE.SET_VEHICLE_DOOR_CONTROL(Veh, 5, 360, 180.0)
 	end
 end)
 
@@ -7933,56 +8851,56 @@ menu.toggle_loop(NewWeapons, "First Person Aim", {}, "", function(toggle)
 	WEAPON.SET_WEAPON_ANIMATION_OVERRIDE(PLAYER.PLAYER_PED_ID(), joaat("FirstPersonFranklinAiming"))
 end)
 
-local Relationships = {
-	"CIVMALE",
-	"CIVFEMALE",
-	"COP",
-	"SECURITY_GUARD",
-	"PRIVATE_SECURITY",
-	"FIREMAN",
-	"GANG_1",
-	"GANG_2",
-	"GANG_9",
-	"GANG_10",
-	"AMBIENT_GANG_LOST",
-	"AMBIENT_GANG_MEXICAN",
-	"AMBIENT_GANG_FAMILY",
-	"AMBIENT_GANG_BALLAS",
-	"AMBIENT_GANG_MARABUNTE",
-	"AMBIENT_GANG_CULT",
-	"AMBIENT_GANG_SALVA",
-	"AMBIENT_GANG_WEICHENG",
-	"AMBIENT_GANG_HILLBILLY",
-	"DEALER",
-	"HATES_PLAYER",
-	"HEN",
-	"WILD_ANIMAL",
-	"SHARK",
-	"COUGAR",
-	"NO_RELATIONSHIP",
-	"SPECIAL",
-	"MISSION2",
-	"MISSION3",
-	"MISSION4",
-	"MISSION5",
-	"MISSION6",
-	"MISSION7",
-	"MISSION8",
-	"ARMY",
-	"GUARD_DOG",
-	"AGGRESSIVE_INVESTIGATE",
-	"MEDIC",
-	"CAT"
-}
-
-menu.action(MiscMenu, "Set All Relationships Hate", {}, "The ambient ones.", function(toggle)
-	for i = 1, #Relationships do
-		for k = 1, #Relationships do
-			PED.SET_RELATIONSHIP_BETWEEN_GROUPS(5, joaat(Relationships[i]), joaat(Relationships[k]))
-			PED.SET_RELATIONSHIP_BETWEEN_GROUPS(5, joaat(Relationships[k]), joaat(Relationships[i]))
-		end
-	end
-end)
+--local Relationships = {
+--	"CIVMALE",
+--	"CIVFEMALE",
+--	"COP",
+--	"SECURITY_GUARD",
+--	"PRIVATE_SECURITY",
+--	"FIREMAN",
+--	"GANG_1",
+--	"GANG_2",
+--	"GANG_9",
+--	"GANG_10",
+--	"AMBIENT_GANG_LOST",
+--	"AMBIENT_GANG_MEXICAN",
+--	"AMBIENT_GANG_FAMILY",
+--	"AMBIENT_GANG_BALLAS",
+--	"AMBIENT_GANG_MARABUNTE",
+--	"AMBIENT_GANG_CULT",
+--	"AMBIENT_GANG_SALVA",
+--	"AMBIENT_GANG_WEICHENG",
+--	"AMBIENT_GANG_HILLBILLY",
+--	"DEALER",
+--	"HATES_PLAYER",
+--	"HEN",
+--	"WILD_ANIMAL",
+--	"SHARK",
+--	"COUGAR",
+--	"NO_RELATIONSHIP",
+--	"SPECIAL",
+--	"MISSION2",
+--	"MISSION3",
+--	"MISSION4",
+--	"MISSION5",
+--	"MISSION6",
+--	"MISSION7",
+--	"MISSION8",
+--	"ARMY",
+--	"GUARD_DOG",
+--	"AGGRESSIVE_INVESTIGATE",
+--	"MEDIC",
+--	"CAT"
+--}
+--
+--menu.action(MiscMenu, "Set All Relationships Hate", {}, "The ambient ones.", function(toggle)
+--	for i = 1, #Relationships do
+--		for k = 1, #Relationships do
+--			PED.SET_RELATIONSHIP_BETWEEN_GROUPS(5, joaat(Relationships[i]), joaat(Relationships[k]))
+--			PED.SET_RELATIONSHIP_BETWEEN_GROUPS(5, joaat(Relationships[k]), joaat(Relationships[i]))
+--		end
+--	end
+--end)
 
 --menu.toggle_loop(NewWeapons, "Vehicle Speed Direction", {}, "", function(toggle)
 --	local Veh = PED.GET_VEHICLE_PED_IS_IN(PLAYER.PLAYER_PED_ID())
@@ -8907,6 +9825,25 @@ menu.toggle(WeaponizedVehiclesMenu, "Vehicle Homing Kinect", {}, "", function(to
 end)
 
 
+--local MyRelTeam = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PlayerPed)
+--SelectedTeam = joaat(AiHateRel)
+--for i = 1, 30 do
+--	if NETWORK.NETWORK_IS_PLAYER_CONNECTED(i-1) then
+--		if is_bit_set(AvoidPlayerBits, i) then
+--			local TargetRel = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(i-1))
+--			PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, SelectedTeam, TargetRel)
+--			PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, TargetRel, SelectedTeam)
+--		else
+--			local TargetRel = PED.GET_PED_RELATIONSHIP_GROUP_HASH(PLAYER.GET_PLAYER_PED_SCRIPT_INDEX(i-1))
+--			PED.SET_RELATIONSHIP_BETWEEN_GROUPS(5, SelectedTeam, TargetRel)
+--			PED.SET_RELATIONSHIP_BETWEEN_GROUPS(5, TargetRel, SelectedTeam)
+--		end
+--	end
+--end
+--PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, SelectedTeam, MyRelTeam)
+--PED.SET_RELATIONSHIP_BETWEEN_GROUPS(1, MyRelTeam, SelectedTeam)
+--menu.toggle_loop(DevMenu, "Matrix Test", {}, "", function(toggle)
+
 menu.toggle_loop(DevMenu, "Matrix Test", {}, "", function(toggle)
 	local PlayerPed = PLAYER.PLAYER_PED_ID()
 	local Vel = ENTITY.GET_ENTITY_VELOCITY(PlayerPed)
@@ -9132,17 +10069,17 @@ function angleDifference(target, current)
 end
 
 -- Função para converter graus para radianos
-local function deg2rad(deg)
+function deg2rad(deg)
     return deg * math.pi / 180.0
 end
 
 -- Função para converter radianos para graus
-local function rad2deg(rad)
+function rad2deg(rad)
     return rad * 180.0 / math.pi
 end
 
 -- Função para limitar o ângulo no intervalo de -180 a 180 graus
-local function wrap180(deg)
+function wrap180(deg)
     while deg <= -180.0 do deg = deg + 360.0 end
     while deg > 180.0 do deg = deg - 360.0 end
     return deg
@@ -9218,10 +10155,10 @@ function SetEntitySpeedToCoord(Entity, CoordTarget, Mul, IgnoreX, IgnoreY, Ignor
     end
     if Normalise then
         NewV3 = v3.new(NewV3.x, NewV3.y, NewV3.z)
-        if math.abs(NewV3.x) > Mul or math.abs(NewV3.y) > Mul or math.abs(NewV3.z) > Mul then
-            NewV3 = v3.normalise(NewV3)
-            NewV3:mul(Mul)
-        end
+		if DistanceBetween(OPos.x, OPos.y, OPos.z, CoordTarget.x, CoordTarget.y, CoordTarget.z) * 0.5 > 1.0 then
+			NewV3:normalise()
+			NewV3:mul(Mul)
+		end
     end
     local MoreX, MoreY, MoreZ = AddX, AddY, AddZ
     if Relative then
@@ -9251,4 +10188,128 @@ function SnakeClearLosCheck(Veh, Veh2, Offset)
 		Bool = true
 	end
 	return Bool
+end
+
+function GetPositionCircle(Center, Radius, Angle)
+	local NewPoint = {
+		x = Center.x + Radius * math.cos(math.rad(Angle)),
+		y = Center.y + Radius * math.sin(math.rad(Angle)),
+		z = Center.z
+	}
+	return NewPoint
+end
+
+function RequestModelFunc(Model)
+    STREAMING.REQUEST_MODEL(Model)
+    return STREAMING.HAS_MODEL_LOADED(Model)
+end
+
+function math.clamp(value, min, max)
+    return math.max(min, math.min(max, value))
+end
+
+function InterpolateRotWithLimit(CurRot, TargetRot, DeltaTime, Limit)
+    local RotDifference = {
+        x = TargetRot.x - CurRot.x,
+        y = TargetRot.y - CurRot.y,
+        z = TargetRot.z - CurRot.z,
+    }
+    
+    RotDifference.x = (RotDifference.x + 180) % 360 - 180
+    RotDifference.y = (RotDifference.y + 180) % 360 - 180
+    RotDifference.z = (RotDifference.z + 180) % 360 - 180
+
+    local LimitedRotation = {
+        x = math.clamp(RotDifference.x, -Limit, Limit),
+        y = math.clamp(RotDifference.y, -Limit, Limit),
+        z = math.clamp(RotDifference.z, -Limit, Limit)
+    }
+    local NewV = {
+        x = wrap180(CurRot.x + (LimitedRotation.x * DeltaTime)),
+        y = wrap180(CurRot.y + (LimitedRotation.y * DeltaTime)),
+        z = wrap180(CurRot.z + (LimitedRotation.z * DeltaTime))
+    }
+    return NewV
+end
+
+vect = {}
+vect.new = function(x,y,z)
+    return {['x'] = x, ['y'] = y, ['z'] = z or 0}
+end
+
+vect.subtract = function(a,b)
+	return vect.new(a.x - b.x, a.y - b.y, a.z - b.z)
+end
+
+vect.add = function(a,b)
+	return vect.new(a.x + b.x, a.y + b.y, a.z + b.z)
+end
+
+vect.mag = function(a)
+	return math.sqrt(a.x^2 + a.y^2 + a.z^2)
+end
+
+vect.norm = function(a)
+    local mag = vect.mag(a)
+    return vect.mult(a, 1/mag)
+end
+
+vect.mult = function(a,b)
+	return vect.new(a.x*b, a.y*b, a.z*b)
+end
+
+-- returns the dot product of two vectors
+vect.dot = function (a,b)
+	return (a.x * b.x + a.y * b.y + a.z * b.z)
+end
+
+--returns the angle between two vectors
+vect.angle = function (a,b)
+	return math.acos(vect.dot(a,b) / ( vect.mag(a) * vect.mag(b) ))
+end
+
+-- returns the distance between two coords
+vect.dist = function(a,b)
+    return vect.mag(vect.subtract(a, b))
+end
+
+vect.tostring = function(a)
+    return "{" .. a.x .. ", " .. a.y .. ", " .. a.z .. "}"
+end
+
+function atan2(y, x)
+	if x > 0 then
+		return ( math.atan(y / x) )
+	end
+	if x < 0 and y >= 0 then
+		return ( math.atan(y / x) + math.pi )
+	end
+	if x < 0 and y < 0 then
+		return ( math.atan(y / x) - math.pi )
+	end
+	if x == 0 and y > 0 then
+		return ( math.pi / 2 )
+	end
+	if x == 0 and y < 0 then
+		return ( - math.pi / 2 )
+	end
+	if x == 0 and y == 0 then
+		return 0 -- actually 'tan' is not defined in this case
+	end
+end
+
+function GET_ROTATION_FROM_DIRECTION(v)
+	local mag = vect.mag(v)
+	local rotation = {
+		x = math.asin(v.z / mag) * (180 / math.pi),
+		y =   0.0,
+		z = - atan2(v.x, v.y) * (180 / math.pi)
+	}
+	return rotation
+end
+
+function V3_LookAt(Start, Target)
+	local ab = vect.subtract(Target, Start)
+	local rot = GET_ROTATION_FROM_DIRECTION(ab)
+    return rot
 end
