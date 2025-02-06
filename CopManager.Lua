@@ -3458,8 +3458,13 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 																				Peds[#Peds+1] = Ped
 																			end
 																		end
+																		local VehModelHash = ENTITY.GET_ENTITY_MODEL(Veh)
 																		FoundCopVehs[Veh] = Veh
-																		CopVehsT[#CopVehsT+1] = {Handle = Veh, HasSetToMissionEnt = false, Passengers = Peds, Tick = 0, VehDestroyed = false}
+																		CopVehsT[#CopVehsT+1] = {Handle = Veh, HasSetToMissionEnt = false, Passengers = Peds, Tick = 0, VehDestroyed = false,
+																		IsAHeli = VEHICLE.IS_THIS_MODEL_A_HELI(VehModelHash), IsAPlane = VEHICLE.IS_THIS_MODEL_A_PLANE(VehModelHash),
+																		IsNotAPlane = VEHICLE.IS_THIS_MODEL_A_BOAT(VehModelHash) or VEHICLE.IS_THIS_MODEL_A_JETSKI(VehModelHash) or VEHICLE.IS_THIS_MODEL_A_CAR(VehModelHash) or
+																		VEHICLE.IS_THIS_MODEL_A_BIKE(VehModelHash) or VEHICLE.IS_THIS_MODEL_A_BICYCLE(VehModelHash) or VEHICLE.IS_THIS_MODEL_A_QUADBIKE(VehModelHash) or
+																		VEHICLE.IS_THIS_MODEL_AN_AMPHIBIOUS_CAR(VehModelHash) or VEHICLE.IS_THIS_MODEL_AN_AMPHIBIOUS_QUADBIKE(VehModelHash)}
 																	end
 																	OwnedCopVehsT[peds] = Veh
 																end
@@ -4426,7 +4431,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 			local PlayerOffset = v3.new()
 			local PlayerPos = ENTITY.GET_ENTITY_COORDS(PlayerPed)
 			if PlayerVeh ~= 0 then
-				VehSpeed = ENTITY.GET_ENTITY_SPEED(PlayerVeh)
+				VehSpeed = ENTITY.GET_ENTITY_SPEED_VECTOR(PlayerVeh, true).y
 				PVehRot = ENTITY.GET_ENTITY_ROTATION(PlayerVeh, 5)
 				PlayerOffset = ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(PlayerVeh, 0.0, (-PMax.y * 2.0) - 1.0, 0.0)
 			else
@@ -4452,7 +4457,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 				if CopVehsT[i] ~= nil then
 					if ENTITY.DOES_ENTITY_EXIST(CopVehsT[i].Handle) then
 						CopVehsT[i].VehDestroyed = ENTITY.IS_ENTITY_DEAD(CopVehsT[i].Handle)
-						if not CopVehsT[i].VehDestroyed then
+						if not CopVehsT[i].VehDestroyed and CopVehsT[i].IsNotAPlane then
 							if FirstAliveID == 0 then
 								FirstAliveID = i
 							end
@@ -4472,7 +4477,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 							end
 						end
 						if CopsFollowLikeSnake2 then
-							if not CopVehsT[i].VehDestroyed then
+							if not CopVehsT[i].VehDestroyed and CopVehsT[i].IsNotAPlane and IsInVeh then
 								if CopVehsT[i].CurRot == nil then
 									CopVehsT[i].CurRot = ENTITY.GET_ENTITY_ROTATION(CopVehsT[i].Handle, 2)
 									local Min, Max = v3.new(), v3.new()
@@ -4492,11 +4497,12 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 								if i == FirstAliveID then
 									--CopVehsT[i].CurRot = InterpolateRotWithLimit(CopVehsT[i].CurRot, PVehRot, 1.0, VehSpeed)
 									--local Offset = ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(PlayerVeh, 0.0, -PMax.y + PMin.y, 0.0)
-									local IsInAir = ENTITY.IS_ENTITY_IN_AIR(CopVehsT[i].Handle)
-									SetEntitySpeedToCoord(CopVehsT[i].Handle, PlayerOffset, math.clamp(VehSpeed, 0.0, 1.0), false, false, IsInAir, 0.0, 0.0, 0.0, false, false)
+									local IsInAir = false--ENTITY.IS_ENTITY_IN_AIR(CopVehsT[i].Handle)
+									--SetEntitySpeedToCoord(CopVehsT[i].Handle, PlayerOffset, math.clamp(VehSpeed, 0.0, 3.0), false, false, IsInAir, 0.0, 0.0, 0.0, false, false)
 									--local Txt = "CopVehsT[1].CurRot: x: "..string.format("%0.3f", CopVehsT[i].CurRot.x).." y: "..string.format("%0.3f", CopVehsT[i].CurRot.y).." z: "..string.format("%0.3f", CopVehsT[i].CurRot.z)
 									--directx.draw_text(0.7, 0.5, Txt, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
 									local CopVehPos = ENTITY.GET_ENTITY_COORDS(CopVehsT[i].Handle)
+									local CopVehRot = ENTITY.GET_ENTITY_ROTATION(CopVehsT[i].Handle, 2)
 									--local LookAt = V3_LookAt(Pos, PlayerPos)
 									local SLookAt = v3.lookAt(CopVehPos, PlayerPos)
 									--local Txt = "LookAt: x: "..string.format("%0.3f", LookAt.x).." y: "..string.format("%0.3f", LookAt.y).." z: "..string.format("%0.3f", LookAt.z)
@@ -4505,24 +4511,28 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 									--directx.draw_text(0.7, 0.55, Txt2, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
 									--SLookAt.x = 0.0 --wrap180(SLookAt.x - 90.0)
 									--SLookAt.y = 0.0 --wrap180(SLookAt.x - 90.0)
+									SLookAt.y = CopVehRot.y
 									CopVehsT[i].CurRot = SLookAt
 								else
 									--local OtherVehRot = ENTITY.GET_ENTITY_ROTATION(CopVehsT[i-1].Handle, 5)
 									--CopVehsT[i].CurRot = InterpolateRotWithLimit(CopVehsT[i].CurRot, OtherVehRot, 1.0, VehSpeed)
-									local IsInAir = ENTITY.IS_ENTITY_IN_AIR(CopVehsT[i].Handle)
+									local IsInAir = false--ENTITY.IS_ENTITY_IN_AIR(CopVehsT[i].Handle)
 									local Offset = ENTITY.GET_OFFSET_FROM_ENTITY_IN_WORLD_COORDS(CopVehsT[LastID].Handle, 0.0, (-CopVehsT[LastID].ModelMax.y  * 2.0) + 1.0, 0.0)
-									SetEntitySpeedToCoord(CopVehsT[i].Handle, Offset, math.clamp(VehSpeed, 0.0, 1.0), false, false, IsInAir, 0.0, 0.0, 0.0, false, false)
+									--SetEntitySpeedToCoord(CopVehsT[i].Handle, Offset, math.clamp(VehSpeed, 0.0, 3.0), false, false, IsInAir, 0.0, 0.0, 0.0, false, false)
 									--CopVehsT[i].CurRot = ENTITY.GET_ENTITY_ROTATION(CopVehsT[LastID].Handle, 5)
 									local CopVehPos = ENTITY.GET_ENTITY_COORDS(CopVehsT[i].Handle)
 									local ToPos = ENTITY.GET_ENTITY_COORDS(CopVehsT[LastID].Handle)
+									local CopVehRot = ENTITY.GET_ENTITY_ROTATION(CopVehsT[i].Handle, 2)
 									local LookAt = v3.lookAt(CopVehPos, ToPos)
 									--LookAt.x = 0.0--wrap180(LookAt.x - 90.0)
 									--LookAt.y = 0.0--wrap180(LookAt.x - 90.0)
 									--LookAt.z = wrap180(LookAt.z - 90.0)
+									LookAt.y = CopVehRot.y
 									CopVehsT[i].CurRot = LookAt
 								end
 								local NewRot = convertRotationXYZtoZYX(CopVehsT[i].CurRot.x, CopVehsT[i].CurRot.y, CopVehsT[i].CurRot.z)
-								RotateEntityToTargetRotation(CopVehsT[i].Handle, NewRot, 1.0, false)
+								RotateEntityToTargetRotation(CopVehsT[i].Handle, NewRot, 5.0, false)
+								VEHICLE.SET_VEHICLE_FORWARD_SPEED(CopVehsT[i].Handle, VehSpeed)
 								--if i == FirstAliveID then
 								--	local Txt = "CopVehsT[i].CurRot: x: "..string.format("%0.3f", CopVehsT[i].CurRot.x).." y: "..string.format("%0.3f", CopVehsT[i].CurRot.y).." z: "..string.format("%0.3f", CopVehsT[i].CurRot.z)
 								--	directx.draw_text(0.7, 0.5, Txt, ALIGN_CENTRE, 1.0, {r = 0.0, g = 1.0 , b = 1.0, a = 1.0}, false)
@@ -4533,7 +4543,7 @@ menu.toggle(menu.my_root(), "Apply Cop Settings", {}, "", function(toggle)
 								--end
 							end
 						end
-						if CopVehsT[i].VehDestroyed then
+						if CopVehsT[i].VehDestroyed or not CopVehsT[i].IsNotAPlane then
 							LastIDIsDead = true
 						else
 							LastIDIsDead = false
